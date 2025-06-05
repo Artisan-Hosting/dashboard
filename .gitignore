@@ -1,0 +1,12 @@
+target
+
+.DS_Store
+
+# React Router
+.react-router
+frontend/build/
+node_modules
+.env
+.env.local
+.next
+out
