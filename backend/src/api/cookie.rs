@@ -10,13 +10,35 @@ use crate::database::connection::get_db_pool;
 
 use super::helper::{get_base_url, peek_exp_from_jwt_unverified, peek_sub_from_jwt_unverified};
 
-#[derive(Clone)]
+use serde::{de, Deserialize, Serialize};
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SessionData {
     pub session_id: String,
     pub user_id: String, // sub data
     pub auth_jwt: String,
     pub refresh_jwt: String,
+    #[serde(
+        serialize_with = "timestamp_to_u64",
+        deserialize_with = "timestamp_from_u64"
+    )]
     pub expires_at: NaiveDateTime,
+}
+
+fn timestamp_to_u64<S>(dt: &NaiveDateTime, s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    s.serialize_u64(dt.timestamp() as u64)
+}
+
+fn timestamp_from_u64<'de, D>(d: D) -> Result<NaiveDateTime, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let ts = u64::deserialize(d)?;
+    NaiveDateTime::from_timestamp_opt(ts as i64, 0)
+        .ok_or_else(|| serde::de::Error::custom("invalid timestamp"))
 }
 
 pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
@@ -76,29 +98,31 @@ pub async fn lookup_session(
     pool: &sqlx::Pool<sqlx::MySql>,
     session_id: String,
 ) -> Result<SessionData, ()> {
-    let row = sqlx::query!(
-        r#"
-        SELECT user_id, auth_jwt, refresh_jwt, expires_at
+    let row = sqlx::query(
+        r#"SELECT user_id, auth_jwt, refresh_jwt, expires_at
         FROM sessions
-        WHERE session_id = ?
-        "#,
-        session_id
+        WHERE session_id = ?"#,
     )
+    .bind(&session_id)
     .fetch_optional(pool)
     .await
     .map_err(|_| ())?;
 
     if let Some(r) = row {
-        // Compare `expires_at` (TIMESTAMP) to now
-        let now = Utc::now();
-        let expires_at = r.expires_at;
+        let user_id: String = r.try_get("user_id").map_err(|_| ())?;
+        let auth_jwt: String = r.try_get("auth_jwt").map_err(|_| ())?;
+        let refresh_jwt: String = r.try_get("refresh_jwt").map_err(|_| ())?;
+        let expires_at: NaiveDateTime = r.try_get("expires_at").map_err(|_| ())?;
 
-        if r.expires_at > now {
+        // Compare `expires_at` (TIMESTAMP) to now
+        let now = Utc::now().naive_utc();
+
+        if expires_at > now {
             Ok(SessionData {
-                user_id: r.user_id,
-                auth_jwt: r.auth_jwt,
-                refresh_jwt: r.refresh_jwt,
-                expires_at: expires_at.naive_utc(),
+                user_id,
+                auth_jwt,
+                refresh_jwt,
+                expires_at,
                 session_id,
             })
         } else {
@@ -112,15 +136,13 @@ pub async fn lookup_session(
 }
 
 pub async fn update_session_auth(auth: String, session_id: String) -> Result<String, String> {
-    match sqlx::query!(
-        r#"
-        UPDATE sessions
+    match sqlx::query(
+        r#"UPDATE sessions
         SET auth_jwt = ?
-        WHERE session_id = ?
-        "#,
-        auth,
-        session_id
+        WHERE session_id = ?"#,
     )
+    .bind(&auth)
+    .bind(&session_id)
     .execute(get_db_pool())
     .await {
         Ok(_) => Ok(auth),
