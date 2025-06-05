@@ -2,6 +2,7 @@ use artisan_middleware::api::token::SimpleLoginRequest;
 use warp::{Filter, http::header, reject::Rejection, reply::Reply};
 
 use crate::api::handler::{generic_proxy_handler, me_handler, runners_handler};
+use crate::api::secret::secret_routes;
 
 use super::{
     handler::{login_handler, logout_handler, whoami_handler},
@@ -126,7 +127,8 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
                 .or(whoami)
                 .or(runners)
                 .or(proxy_route)
-                .or(me), // .or(get_pretty)
+                .or(me)
+                .or(secret_routes()), // .or(get_pretty)
                          // .or(set_pretty)
                          // .or(update_email)
                          // .or(change_password)
