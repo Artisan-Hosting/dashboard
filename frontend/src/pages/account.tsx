@@ -61,19 +61,19 @@ export default function AccountPage() {
       <Sidebar onLogout={handleLogout} />
 
       {/* Main content on the right */}
-      <div className="flex-1 p-8 space-y-12">
-        <h1 className="text-3xl font-bold text-purple-400">Account Settings</h1>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-12">
+        <h1 className="text-3xl font-bold text-brand">Account Settings</h1>
 
         {/* 1. User Info */}
         <section className="card p-6">
-          <h2 className="text-xl font-semibold text-purple-300 mb-4">User Info</h2>
+          <h2 className="text-xl font-semibold text-brand mb-4">User Info</h2>
           <div className="flex items-center space-x-4">
             <img
               src={`https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(
                 username
               )}`}
               alt="avatar"
-              className="w-14 h-14 rounded-full border border-purple-500"
+              className="w-14 h-14 rounded-full border border-brand"
             />
             <div>
               <p className="text-white font-medium">{username}</p>
@@ -84,7 +84,7 @@ export default function AccountPage() {
 
         {/* 2. Security Settings */}
         <section className="card p-6 space-y-6">
-          <h2 className="text-xl font-semibold text-purple-300 mb-2">Security Settings</h2>
+          <h2 className="text-xl font-semibold text-brand mb-2">Security Settings</h2>
           <div className="space-y-2">
             <label className="block text-sm">New Password</label>
             <input
@@ -112,7 +112,7 @@ export default function AccountPage() {
             />
             {/* <button
               onClick={handleUpdateEmail}
-              className="mt-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded"
+              className="mt-2 px-4 py-2 bg-brand hover:bg-brand-dark rounded"
             >
               Update Email
             </button> */}
@@ -121,7 +121,7 @@ export default function AccountPage() {
 
         {/* 3. Personalization */}
         <section className="card p-6">
-          <h2 className="text-xl font-semibold text-purple-300 mb-4">Personalization</h2>
+          <h2 className="text-xl font-semibold text-brand mb-4">Personalization</h2>
           <label className="block text-sm mb-2">Set Pretty Project Name</label>
           <input
             type="text"

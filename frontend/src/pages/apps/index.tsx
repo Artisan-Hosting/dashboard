@@ -68,15 +68,15 @@ export default function Dashboard() {
       <Sidebar onLogout={handleLogout} />
 
       {/* Content area */}
-      <main className="flex-1 p-8">
-        <h2 className="text-2xl font-semibold mb-8 text-purple-300">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <h2 className="text-2xl font-semibold mb-8 text-brand">
           Current Projects
         </h2>
 
         {loading ? (
           <p className="text-gray-400">Loading runners…</p>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {runners.map((r) => (
               <div
                 key={r.name}
@@ -84,7 +84,7 @@ export default function Dashboard() {
               >
                 <div className="flex justify-between items-center mb-4">
                   <div>
-                    <p className="text-xl font-semibold text-purple-200">
+                    <p className="text-xl font-semibold text-brand">
                       {r.name}
                     </p>
                     <p
@@ -99,7 +99,7 @@ export default function Dashboard() {
                   </div>
                   <button
                     onClick={() => router.push(`/apps/${r.name}`)}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-full text-sm font-medium"
+                    className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-full text-sm font-medium"
                   >
                     Details →
                   </button>
@@ -131,7 +131,7 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                <div className="h-28 bg-gradient-to-r from-purple-600/20 to-purple-800/30 rounded-lg flex items-center justify-center text-sm italic text-gray-400">
+                <div className="h-28 bg-gradient-to-r from-[#1E3A8A]/20 to-[#1E3A8A]/40 rounded-lg flex items-center justify-center text-sm italic text-gray-400">
                   [Realtime graph coming soon]
                 </div>
               </div>

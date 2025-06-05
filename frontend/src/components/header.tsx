@@ -42,7 +42,7 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
             <img
               src={`https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(username || 'placeholder')}`}
               alt="Profile"
-              className="w-12 h-12 rounded-full border border-purple-500"
+              className="w-12 h-12 rounded-full border border-brand"
             />
             <div className="max-w-full overflow-hidden">
               <div className="text-white text-sm font-semibold truncate">{username}</div>

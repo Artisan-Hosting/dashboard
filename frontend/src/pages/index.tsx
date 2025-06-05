@@ -55,7 +55,7 @@ export default function LoginPage() {
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-page">
-            <div className="w-full max-w-sm card p-8">
+            <div className="w-full max-w-sm card p-6 sm:p-8">
                 <div className="mb-6 flex justify-center">
                     <img src="/logo.webp" alt="Artisan Hosting" className="h-36 w-auto" />
                 </div>
