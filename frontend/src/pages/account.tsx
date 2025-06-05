@@ -61,7 +61,7 @@ export default function AccountPage() {
       <Sidebar onLogout={handleLogout} />
 
       {/* Main content on the right */}
-      <div className="flex-1 p-8 space-y-12">
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-12">
         <h1 className="text-3xl font-bold text-purple-400">Account Settings</h1>
 
         {/* 1. User Info */}

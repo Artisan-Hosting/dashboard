@@ -60,7 +60,7 @@ export default function BillingPage() {
       <Sidebar onLogout={handleLogout} />
 
 
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8">
         <h1 className="text-3xl font-bold text-purple-400 mb-6">Billing Summary</h1>
         {loading ? (
           <p className="text-gray-400">Calculating billing…</p>

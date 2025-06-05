@@ -166,7 +166,7 @@ export default function ProjectPage() {
       <Toaster position="bottom-right" />
       <Sidebar onLogout={handleLogout} />
 
-      <main className="flex-1 overflow-y-auto p-6">
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6">
         <h1 className="text-3xl font-bold text-purple-400 mb-6">Project: {runnerId}</h1>
 
         {loading ? (
@@ -197,7 +197,7 @@ export default function ProjectPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm text-gray-300">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm text-gray-300">
 
                     <div className="space-y-1">
                       <h3 className="font-semibold text-purple-300">Health</h3>
@@ -249,7 +249,7 @@ export default function ProjectPage() {
             <h2 className="text-xl font-bold mb-4 text-purple-300">
               Overall Usage & Billing
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1 text-gray-300">
                 <p>Total CPU Time: {groupUsage.total_cpu.toFixed(2)} hrs</p>
                 <p>Avg Memory:       {groupUsage.avg_memory.toFixed(2)} MB</p>

@@ -68,7 +68,7 @@ export default function Dashboard() {
       <Sidebar onLogout={handleLogout} />
 
       {/* Content area */}
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8">
         <h2 className="text-2xl font-semibold mb-8 text-purple-300">
           Current Projects
         </h2>
@@ -76,7 +76,7 @@ export default function Dashboard() {
         {loading ? (
           <p className="text-gray-400">Loading runners…</p>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {runners.map((r) => (
               <div
                 key={r.name}

@@ -63,12 +63,12 @@ export default function VmListPage() {
     <div className="min-h-screen flex bg-page text-foreground">
       <Sidebar onLogout={handleLogout} />
 
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8">
         <h2 className="text-2xl font-semibold mb-6 text-purple-300">
           Virtual Machines
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {vms.map((vm) => {
             const isBusy = actionLoading[vm.vmid] ?? false;
 
