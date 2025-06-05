@@ -22,19 +22,15 @@ pub async fn login_handler(
 ) -> Result<impl warp::Reply, warp::Rejection> {
     return match login(login_data).await {
         Ok(session) => {
-            // Use sqlx’s `query!` macro (compile‐time checked).
-            // If your table has different column names/types, change these fields accordingly.
-            sqlx::query!(
-                r#"
-        INSERT INTO sessions (session_id, user_id, auth_jwt, refresh_jwt, expires_at)
-        VALUES (?, ?, ?, ?, ?)
-        "#,
-                session.session_id,
-                session.user_id,
-                session.auth_jwt,
-                session.refresh_jwt,
-                session.expires_at
+            sqlx::query(
+                r#"INSERT INTO sessions (session_id, user_id, auth_jwt, refresh_jwt, expires_at)
+                   VALUES (?, ?, ?, ?, ?)"#,
             )
+            .bind(&session.session_id)
+            .bind(&session.user_id)
+            .bind(&session.auth_jwt)
+            .bind(&session.refresh_jwt)
+            .bind(session.expires_at)
             .execute(get_db_pool())
             .await
             .map_err(|e| {
@@ -65,10 +61,10 @@ pub async fn login_handler(
 
 pub async fn logout_handler(session: SessionData) -> Result<impl warp::Reply, warp::Rejection> {
     // Delete the row (if it exists):
-    if let Err(e) = sqlx::query!(
+    if let Err(e) = sqlx::query(
         "DELETE FROM sessions WHERE session_id = ?",
-        session.session_id
     )
+    .bind(&session.session_id)
     .execute(get_db_pool())
     .await
     {
