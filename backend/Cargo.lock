@@ -140,6 +140,7 @@ dependencies = [
  "jsonwebtoken",
  "once_cell",
  "prost",
+ "prost-build",
  "prost-types",
  "reqwest",
  "serde",
