@@ -64,7 +64,7 @@ export default function VmListPage() {
       <Sidebar onLogout={handleLogout} />
 
       <main className="flex-1 p-4 sm:p-6 lg:p-8">
-        <h2 className="text-2xl font-semibold mb-6 text-purple-300">
+        <h2 className="text-2xl font-semibold mb-6 text-brand">
           Virtual Machines
         </h2>
 
@@ -77,7 +77,7 @@ export default function VmListPage() {
                 key={vm.vmid}
                 className="card-hover p-6"
               >
-                <h3 className="text-xl font-semibold text-purple-200">
+                <h3 className="text-xl font-semibold text-brand">
                   VM {vm.vmid}
                 </h3>
                 <p
@@ -112,7 +112,7 @@ export default function VmListPage() {
                           ${
                             isBusy
                               ? 'bg-gray-500 cursor-not-allowed'
-                              : 'bg-purple-600 hover:bg-purple-700'
+                              : 'bg-brand hover:bg-brand-dark'
                           }
                         `}
                       >

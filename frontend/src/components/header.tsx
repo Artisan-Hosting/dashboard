@@ -42,7 +42,7 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
             <img
               src={`https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(username || 'placeholder')}`}
               alt="Profile"
-              className="w-12 h-12 rounded-full border border-purple-500"
+              className="w-12 h-12 rounded-full border border-brand"
             />
             <div className="max-w-full overflow-hidden">
               <div className="text-white text-sm font-semibold truncate">{username}</div>
@@ -58,10 +58,10 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
 
         </div>
         <nav className="flex flex-col space-y-4 text-gray-300 text-sm">
-          <button onClick={() => router.push('/apps')} className="text-left hover:text-purple-400">Apps</button>
-          <button onClick={() => router.push('/vms')} className="text-left hover:text-purple-400">Vms</button>
-          <button onClick={() => router.push('/account')} className="text-left hover:text-purple-400">Account</button>
-          <button onClick={() => router.push('/billing')} className="text-left hover:text-purple-400">Billing</button>
+          <button onClick={() => router.push('/apps')} className="text-left hover:text-brand">Apps</button>
+          <button onClick={() => router.push('/vms')} className="text-left hover:text-brand">Vms</button>
+          <button onClick={() => router.push('/account')} className="text-left hover:text-brand">Account</button>
+          <button onClick={() => router.push('/billing')} className="text-left hover:text-brand">Billing</button>
           <button onClick={onLogout} className="text-left text-red-400 hover:text-red-500 font-semibold mt-auto">Logout</button>
         </nav>
       </aside>

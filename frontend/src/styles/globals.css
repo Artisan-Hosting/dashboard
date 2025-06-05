@@ -4,7 +4,7 @@
   --background: #ffffff;
   --foreground: #171717;
   --background-alt: #f3f4f6;
-  --accent: #8b5cf6; /* tailwind violet-500 */
+  --accent: #1E3A8A; /* brand color */
 }
 
 @theme inline {
@@ -34,7 +34,7 @@ body {
 }
 
 .card {
-  @apply bg-white dark:bg-[#1e1e2f] border border-gray-200 dark:border-gray-700 rounded-2xl shadow;
+  @apply bg-white dark:bg-[#1e1e2f] border border-gray-200 dark:border-gray-700 rounded-2xl shadow overflow-x-auto;
 }
 
 .card-hover {
@@ -43,4 +43,25 @@ body {
 
 .text-foreground {
   color: var(--foreground);
+}
+
+/* Brand color utilities */
+.text-brand {
+  color: var(--accent);
+}
+
+.hover\:text-brand:hover {
+  color: var(--accent);
+}
+
+.bg-brand {
+  background-color: var(--accent);
+}
+
+.hover\:bg-brand-dark:hover {
+  background-color: color-mix(in srgb, var(--accent), black 20%);
+}
+
+.border-brand {
+  border-color: var(--accent);
 }

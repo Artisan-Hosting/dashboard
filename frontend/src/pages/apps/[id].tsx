@@ -5,6 +5,7 @@ import { handleLogout } from '@/lib/logout';
 import { FullInstance, RunnerDetails, UsageSummary, BillingCosts, LogEntry, statusColorMap, StatusType } from '@/lib/types';
 import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
+import { Menu } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 
 function formatBytes(bytes: number): string {
@@ -28,6 +29,7 @@ export default function ProjectPage() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const previousStatusRef = useRef<Record<string, string>>({});
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   const handleCommand = async (instanceId: string, command: string) => {
     try {
@@ -167,12 +169,12 @@ export default function ProjectPage() {
       <Sidebar onLogout={handleLogout} />
 
       <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-        <h1 className="text-3xl font-bold text-purple-400 mb-6">Project: {runnerId}</h1>
+        <h1 className="text-3xl font-bold text-brand mb-6">Project: {runnerId}</h1>
 
         {loading ? (
           <p className="text-gray-400">Loading instances…</p>
         ) : (
-          <div className="grid gap-6">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
             {instances.map(({ details, usage }) => {
               const costs = instanceCosts[details.id];
               const instanceLogs = logs[details.id] || [];
@@ -183,24 +185,39 @@ export default function ProjectPage() {
                 >
                   <div className="flex justify-between items-center mb-2">
                     <div>
-                      <h2 className="text-xl font-semibold text-purple-200">
+                      <h2 className="text-xl font-semibold text-brand">
                         {details.id}
                       </h2>
                       <p className={`text-sm ${statusColorMap[details.status as StatusType] || 'text-black'}`}>
                         {details.status}
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="hidden sm:flex gap-2">
                       <button onClick={() => handleCommand(details.id, 'start')} className="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-white text-sm">Start</button>
                       <button onClick={() => handleCommand(details.id, 'stop')} className="bg-yellow-500 hover:bg-yellow-600 px-2 py-1 rounded text-white text-sm">Stop</button>
-                      <button onClick={() => handleCommand(details.id, 'restart')} className="bg-purple-600 hover:bg-purple-700 px-2 py-1 rounded text-white text-sm">Restart</button>
+                      <button onClick={() => handleCommand(details.id, 'restart')} className="bg-brand hover:bg-brand-dark px-2 py-1 rounded text-white text-sm">Restart</button>
+                    </div>
+                    <div className="relative sm:hidden">
+                      <button
+                        onClick={() => setOpenMenu(openMenu === details.id ? null : details.id)}
+                        className="p-2 bg-brand rounded text-white"
+                      >
+                        <Menu className="w-5 h-5" />
+                      </button>
+                      {openMenu === details.id && (
+                        <div className="absolute right-0 mt-2 bg-[#1b1e2e] p-2 rounded shadow-lg space-y-1 z-20">
+                          <button onClick={() => {handleCommand(details.id, 'start'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-gray-700 text-sm">Start</button>
+                          <button onClick={() => {handleCommand(details.id, 'stop'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-gray-700 text-sm">Stop</button>
+                          <button onClick={() => {handleCommand(details.id, 'restart'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-gray-700 text-sm">Restart</button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm text-gray-300">
 
                     <div className="space-y-1">
-                      <h3 className="font-semibold text-purple-300">Health</h3>
+                      <h3 className="font-semibold text-brand">Health</h3>
                       <p>CPU Usage: {details.health?.cpu_usage ?? 'N/A'}</p>
                       <p>RAM Usage: {details.health?.ram_usage ?? 'N/A'}</p>
                       <p>TX: {formatBytes(details.health?.tx_bytes ?? 0)}</p>
@@ -208,7 +225,7 @@ export default function ProjectPage() {
                     </div>
 
                     <div className="space-y-1">
-                      <h3 className="font-semibold text-purple-300">Usage</h3>
+                      <h3 className="font-semibold text-brand">Usage</h3>
                       <p>Total CPU Time: {usage.total_cpu.toFixed(3)} hrs</p>
                       <p>Avg Memory: {usage.avg_memory.toFixed(3)} MB</p>
                       <p>Peak Memory: {usage.peak_memory.toFixed(3)} MB</p>
@@ -216,7 +233,7 @@ export default function ProjectPage() {
 
                     {/* {costs && (
                       <div className="space-y-1">
-                        <h3 className="font-semibold text-purple-300">Billing</h3>
+                        <h3 className="font-semibold text-brand">Billing</h3>
                         <p>CPU Cost: ${costs.cpu_cost.toFixed(3)}</p>
                         <p>RAM Cost: ${costs.ram_cost.toFixed(3)}</p>
                         <p>Bandwidth: ${costs.bandwidth_cost.toFixed(2)}</p>
@@ -227,7 +244,7 @@ export default function ProjectPage() {
 
                   {instanceLogs.length > 0 && (
                     <details className="mt-4">
-                      <summary className="cursor-pointer font-semibold text-sm mb-2 text-purple-400">
+                      <summary className="cursor-pointer font-semibold text-sm mb-2 text-brand">
                         Recent Logs
                       </summary>
                       <div className="max-h-40 overflow-y-auto bg-black text-green-400 text-xs p-2 rounded border border-gray-700">
@@ -246,7 +263,7 @@ export default function ProjectPage() {
 
         {groupUsage && !loading && groupCosts && (
           <div className="mt-10 card p-6">
-            <h2 className="text-xl font-bold mb-4 text-purple-300">
+            <h2 className="text-xl font-bold mb-4 text-brand">
               Overall Usage & Billing
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
