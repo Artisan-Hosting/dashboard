@@ -56,7 +56,7 @@ export default function BillingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-tr from-[#0b0c10] via-[#161b22] to-[#1f2937] text-white">
+    <div className="min-h-screen flex bg-page text-foreground">
       <Sidebar onLogout={handleLogout} />
 
 
@@ -67,7 +67,7 @@ export default function BillingPage() {
         ) : (
           <div className="space-y-6">
             {blocks.map((block) => (
-              <div key={block.name} className="bg-[#1e1e2f] border border-gray-700 rounded-2xl p-6 shadow-lg">
+              <div key={block.name} className="card p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold text-purple-300">{block.name}</h2>
                   <button
