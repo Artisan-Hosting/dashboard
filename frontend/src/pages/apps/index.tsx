@@ -63,12 +63,12 @@ export default function Dashboard() {
   }, [loadData]);
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-tr from-[#0b0c10] via-[#161b22] to-[#1f2937] text-white">
+    <div className="min-h-screen flex bg-page text-foreground">
       {/* Sidebar should be a sibling of <main>, not a child */}
       <Sidebar onLogout={handleLogout} />
 
       {/* Content area */}
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8">
         <h2 className="text-2xl font-semibold mb-8 text-purple-300">
           Current Projects
         </h2>
@@ -76,11 +76,11 @@ export default function Dashboard() {
         {loading ? (
           <p className="text-gray-400">Loading runners…</p>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {runners.map((r) => (
               <div
                 key={r.name}
-                className="bg-[#1e1e2f] border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300"
+                className="card-hover p-6"
               >
                 <div className="flex justify-between items-center mb-4">
                   <div>
@@ -131,7 +131,7 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                <div className="h-28 bg-gradient-to-r from-[#2e2e3e] to-[#3f3f5e] rounded-lg flex items-center justify-center text-sm italic text-gray-400">
+                <div className="h-28 bg-gradient-to-r from-purple-600/20 to-purple-800/30 rounded-lg flex items-center justify-center text-sm italic text-gray-400">
                   [Realtime graph coming soon]
                 </div>
               </div>
