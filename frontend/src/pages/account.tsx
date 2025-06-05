@@ -57,7 +57,7 @@ export default function AccountPage() {
   // }
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-tr from-[#0b0c10] via-[#161b22] to-[#1f2937] text-white">
+    <div className="min-h-screen flex bg-page text-foreground">
       <Sidebar onLogout={handleLogout} />
 
       {/* Main content on the right */}
@@ -65,7 +65,7 @@ export default function AccountPage() {
         <h1 className="text-3xl font-bold text-purple-400">Account Settings</h1>
 
         {/* 1. User Info */}
-        <section className="bg-[#1e1e2f] p-6 rounded-xl border border-gray-700">
+        <section className="card p-6">
           <h2 className="text-xl font-semibold text-purple-300 mb-4">User Info</h2>
           <div className="flex items-center space-x-4">
             <img
@@ -83,7 +83,7 @@ export default function AccountPage() {
         </section>
 
         {/* 2. Security Settings */}
-        <section className="bg-[#1e1e2f] p-6 rounded-xl border border-gray-700 space-y-6">
+        <section className="card p-6 space-y-6">
           <h2 className="text-xl font-semibold text-purple-300 mb-2">Security Settings</h2>
           <div className="space-y-2">
             <label className="block text-sm">New Password</label>
@@ -120,7 +120,7 @@ export default function AccountPage() {
         </section>
 
         {/* 3. Personalization */}
-        <section className="bg-[#1e1e2f] p-6 rounded-xl border border-gray-700">
+        <section className="card p-6">
           <h2 className="text-xl font-semibold text-purple-300 mb-4">Personalization</h2>
           <label className="block text-sm mb-2">Set Pretty Project Name</label>
           <input

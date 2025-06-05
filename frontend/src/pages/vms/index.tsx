@@ -60,7 +60,7 @@ export default function VmListPage() {
   if (loading) return <p>Loading VMs…</p>;
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-tr from-[#0b0c10] via-[#161b22] to-[#1f2937] text-white">
+    <div className="min-h-screen flex bg-page text-foreground">
       <Sidebar onLogout={handleLogout} />
 
       <main className="flex-1 p-8">
@@ -75,7 +75,7 @@ export default function VmListPage() {
             return (
               <div
                 key={vm.vmid}
-                className="bg-[#1e1e2f] border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300"
+                className="card-hover p-6"
               >
                 <h3 className="text-xl font-semibold text-purple-200">
                   VM {vm.vmid}

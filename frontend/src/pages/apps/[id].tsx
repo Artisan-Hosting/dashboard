@@ -162,7 +162,7 @@ export default function ProjectPage() {
 
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-tr from-[#0b0c10] via-[#161b22] to-[#1f2937] text-white">
+    <div className="min-h-screen flex bg-page text-foreground">
       <Toaster position="bottom-right" />
       <Sidebar onLogout={handleLogout} />
 
@@ -179,7 +179,7 @@ export default function ProjectPage() {
               return (
                 <div
                   key={details.id}
-                  className="bg-[#1e1e2f] border border-gray-700 rounded-2xl shadow p-4"
+                  className="card p-4"
                 >
                   <div className="flex justify-between items-center mb-2">
                     <div>
@@ -245,7 +245,7 @@ export default function ProjectPage() {
         )}
 
         {groupUsage && !loading && groupCosts && (
-          <div className="mt-10 bg-[#1e1e2f] border border-gray-700 rounded-2xl shadow p-6">
+          <div className="mt-10 card p-6">
             <h2 className="text-xl font-bold mb-4 text-purple-300">
               Overall Usage & Billing
             </h2>
