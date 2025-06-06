@@ -11,7 +11,9 @@ use warp::{
     reject::{self, Rejection},
 };
 
+use super::cache::SESSION_CACHE;
 use super::cookie::{SessionData, lookup_session};
+use std::time::Duration;
 
 pub fn get_base_url() -> &'static str {
     "https://api.artisanhosting.net/v1/"
@@ -20,24 +22,29 @@ pub fn get_base_url() -> &'static str {
 pub fn with_session() -> impl Filter<Extract = (SessionData,), Error = Rejection> + Clone {
     // First, try to grab the "session_id" cookie.
     // If missing, warp will generate a BadRequest rejection.
-    warp::cookie("session_id").and_then(move |session_id: String| {
-        async move {
-            match lookup_session(get_db_pool(), session_id.clone()).await {
-                Ok(user) => {
-                    log!(
-                        LogLevel::Debug,
-                        "validated session {} for user {}",
-                        user.session_id,
-                        user.user_id
-                    );
-                    Ok(user)
-                }
-                Err(_) => {
-                    log!(LogLevel::Warn, "invalid session {}", session_id);
-                    Err(reject::custom(Unauthorized(
-                        "Invalid session data".to_owned(),
-                    )))
-                }
+    warp::cookie("session_id").and_then(move |session_id: String| async move {
+        const TTL: Duration = Duration::from_secs(30 * 60);
+        if let Some(cached) = SESSION_CACHE.get(&session_id, TTL).await {
+            log!(LogLevel::Debug, "session cache hit {}", session_id);
+            return Ok(cached);
+        }
+
+        match lookup_session(get_db_pool(), session_id.clone()).await {
+            Ok(user) => {
+                log!(
+                    LogLevel::Debug,
+                    "validated session {} for user {}",
+                    user.session_id,
+                    user.user_id
+                );
+                SESSION_CACHE.insert(session_id.clone(), user.clone()).await;
+                Ok(user)
+            }
+            Err(_) => {
+                log!(LogLevel::Warn, "invalid session {}", session_id);
+                Err(reject::custom(Unauthorized(
+                    "Invalid session data".to_owned(),
+                )))
             }
         }
     })
