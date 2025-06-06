@@ -3,6 +3,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --background-alt: #f3f4f6;
+  --accent: #1E3A8A; /* brand color */
 }
 
 @theme inline {
@@ -14,7 +16,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: #0b0c10;
+    --background-alt: #1f2937;
     --foreground: #ededed;
   }
 }
@@ -23,4 +26,42 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Utility classes used across pages */
+.bg-page {
+  @apply bg-gradient-to-tr from-[color:var(--background)] via-[color:var(--background-alt)] to-[color:var(--background-alt)];
+}
+
+.card {
+  @apply bg-white dark:bg-[#1e1e2f] border border-gray-200 dark:border-gray-700 rounded-2xl shadow overflow-x-auto;
+}
+
+.card-hover {
+  @apply bg-white dark:bg-[#1e1e2f] border border-gray-200 dark:border-gray-700 rounded-2xl shadow hover:shadow-xl transform transition hover:-translate-y-1;
+}
+
+.text-foreground {
+  color: var(--foreground);
+}
+
+/* Brand color utilities */
+.text-brand {
+  color: var(--accent);
+}
+
+.hover\:text-brand:hover {
+  color: var(--accent);
+}
+
+.bg-brand {
+  background-color: var(--accent);
+}
+
+.hover\:bg-brand-dark:hover {
+  background-color: color-mix(in srgb, var(--accent), black 20%);
+}
+
+.border-brand {
+  border-color: var(--accent);
 }

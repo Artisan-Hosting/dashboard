@@ -4,11 +4,13 @@ use artisan_middleware::{
 };
 use chrono::{NaiveDateTime, Utc};
 use reqwest::Client;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::database::connection::get_db_pool;
 
 use super::helper::{get_base_url, peek_exp_from_jwt_unverified, peek_sub_from_jwt_unverified};
+
 
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
@@ -119,24 +121,10 @@ pub async fn lookup_session(
     log!(LogLevel::Trace, "lookup_session row exists: {}", row.is_some());
 
     if let Some(r) = row {
-        let user_id: String = r.try_get("user_id").map_err(|e| {
-            log!(LogLevel::Error, "lookup_session column user_id error: {}", e);
-            ()
-        })?;
-        let auth_jwt: String = r.try_get("auth_jwt").map_err(|e| {
-            log!(LogLevel::Error, "lookup_session column auth_jwt error: {}", e);
-            ()
-        })?;
-        let refresh_jwt: String = r.try_get("refresh_jwt").map_err(|e| {
-            log!(LogLevel::Error, "lookup_session column refresh_jwt error: {}", e);
-            ()
-        })?;
-        let expires_at: NaiveDateTime = r.try_get("expires_at").map_err(|e| {
-            log!(LogLevel::Error, "lookup_session column expires_at error: {}", e);
-            ()
-        })?;
-
-        log!(LogLevel::Trace, "lookup_session fetched user {}", user_id);
+        let user_id: String = r.try_get("user_id").map_err(|_| ())?;
+        let auth_jwt: String = r.try_get("auth_jwt").map_err(|_| ())?;
+        let refresh_jwt: String = r.try_get("refresh_jwt").map_err(|_| ())?;
+        let expires_at: NaiveDateTime = r.try_get("expires_at").map_err(|_| ())?;
 
         // Compare `expires_at` (TIMESTAMP) to now
         let now = Utc::now().naive_utc();

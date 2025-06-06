@@ -34,6 +34,7 @@ async fn grpc_client() -> Result<grpc::SecretClient, tonic::transport::Error> {
     grpc::SecretClient::connect(addr).await
 }
 
+
 async fn list_handler(query: SecretQuery, session: crate::api::cookie::SessionData) -> Result<impl warp::Reply, warp::Rejection> {
     log!(LogLevel::Debug, "list secrets session {}", session.session_id);
     let mut client = grpc_client().await.map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
