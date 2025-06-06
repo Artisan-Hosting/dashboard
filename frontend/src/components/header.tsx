@@ -23,7 +23,7 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
       <div className="lg:hidden fixed top-4 right-4 z-50">
         <button
           onClick={() => setOpen(!open)}
-          className="text-white bg-[#1b1e2e] p-2 rounded shadow"
+          className="text-white bg-brand-gradient p-2 rounded shadow"
           aria-label="Toggle sidebar"
         >
           {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -31,18 +31,18 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
       </div>
 
       <aside
-        className={`bg-[#1b1e2e] p-6 shadow-xl flex flex-col lg:static fixed top-0 left-0 h-full w-64 z-40 transform transition-transform duration-300 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"
-          } lg:h-screen`}
+        className={`bg-brand-gradient text-white p-6 shadow-xl flex flex-col lg:static fixed top-0 left-0 h-full w-64 z-40 transform transition-transform duration-300 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"
+          } lg:min-h-screen`}
       >
         <div
-          className="bg-[#2a2f45] p-4 rounded-xl mb-6 cursor-pointer hover:bg-[#353b55] transition"
+          className="bg-white/10 p-4 rounded-xl mb-6 cursor-pointer hover:bg-white/20 transition"
           onClick={() => router.push('/account')}
         >
           <div className="flex items-center space-x-3 relative group">
             <img
               src={`https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(username || 'placeholder')}`}
               alt="Profile"
-              className="w-12 h-12 rounded-full border border-purple-500"
+              className="w-12 h-12 rounded-full border border-brand"
             />
             <div className="max-w-full overflow-hidden">
               <div className="text-white text-sm font-semibold truncate">{username}</div>
@@ -58,10 +58,11 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
 
         </div>
         <nav className="flex flex-col space-y-4 text-gray-300 text-sm">
-          <button onClick={() => router.push('/apps')} className="text-left hover:text-purple-400">Apps</button>
-          <button onClick={() => router.push('/vms')} className="text-left hover:text-purple-400">Vms</button>
-          <button onClick={() => router.push('/account')} className="text-left hover:text-purple-400">Account</button>
-          <button onClick={() => router.push('/billing')} className="text-left hover:text-purple-400">Billing</button>
+          <button onClick={() => router.push('/apps')} className="text-left hover:text-brand">Apps</button>
+          <button onClick={() => router.push('/vms')} className="text-left hover:text-brand">Vms</button>
+          <button onClick={() => router.push('/secrets')} className="text-left hover:text-brand">Secrets</button>
+          <button onClick={() => router.push('/account')} className="text-left hover:text-brand">Account</button>
+          <button onClick={() => router.push('/billing')} className="text-left hover:text-brand">Billing</button>
           <button onClick={onLogout} className="text-left text-red-400 hover:text-red-500 font-semibold mt-auto">Logout</button>
         </nav>
       </aside>
