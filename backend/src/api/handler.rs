@@ -54,10 +54,9 @@ pub async fn login_handler(
             })?;
 
             let cookie = CookieBuilder::new("session_id", session.session_id.clone())
-                // .http_only(true)
-                .path("/");
-            // .secure(true)
-            // .finish();
+                .http_only(true)
+                .path("/")
+                .secure(true);
 
             let set_cookie_header = cookie.to_string();
 
@@ -325,7 +324,9 @@ pub async fn generic_proxy_handler(
     const TTL: Duration = Duration::from_secs(15);
     let cache_key = format!("{}?{}", tail.as_str(), raw_query);
     if method == warp::http::Method::GET
-        && ( (tail.as_str().starts_with("vms") && !tail.as_str().contains("status") )  || tail.as_str().starts_with("runners") || tail.as_str().starts_with("usage"))
+        && ((tail.as_str().starts_with("vms") && !tail.as_str().contains("status"))
+            || tail.as_str().starts_with("runners")
+            || tail.as_str().starts_with("usage"))
     {
         if let Some(cached) = PROXY_CACHE.get(&cache_key, TTL).await {
             log!(LogLevel::Debug, "proxy cache hit {}", cache_key);
@@ -419,7 +420,9 @@ pub async fn generic_proxy_handler(
     } else {
         log!(LogLevel::Debug, "proxy responded {}", status);
         if method == warp::http::Method::GET
-            && ( (tail.as_str().starts_with("vms") && !tail.as_str().contains("status") )  || tail.as_str().starts_with("runners") || tail.as_str().starts_with("usage"))
+            && ((tail.as_str().starts_with("vms") && !tail.as_str().contains("status"))
+                || tail.as_str().starts_with("runners")
+                || tail.as_str().starts_with("usage"))
         {
             PROXY_CACHE
                 .insert(
