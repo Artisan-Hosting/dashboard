@@ -23,7 +23,6 @@ pub async fn login_handler(
     log!(LogLevel::Debug, "login_handler called for {}", login_data.email);
     return match login(login_data).await {
         Ok(session) => {
-
             log!(
                 LogLevel::Info,
                 "storing session {} for user {}",

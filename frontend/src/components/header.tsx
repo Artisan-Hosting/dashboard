@@ -32,7 +32,7 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
 
       <aside
         className={`bg-[#1b1e2e] p-6 shadow-xl flex flex-col lg:static fixed top-0 left-0 h-full w-64 z-40 transform transition-transform duration-300 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"
-          } lg:min-h-screen`}
+          } lg:h-screen`}
       >
         <div
           className="bg-[#2a2f45] p-4 rounded-xl mb-6 cursor-pointer hover:bg-[#353b55] transition"
@@ -42,7 +42,7 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
             <img
               src={`https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(username || 'placeholder')}`}
               alt="Profile"
-              className="w-12 h-12 rounded-full border border-brand"
+              className="w-12 h-12 rounded-full border border-purple-500"
             />
             <div className="max-w-full overflow-hidden">
               <div className="text-white text-sm font-semibold truncate">{username}</div>
