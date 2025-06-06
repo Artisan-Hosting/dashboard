@@ -321,6 +321,7 @@ pub async fn generic_proxy_handler(
         backend_url.push_str(&raw_query);
     }
 
+
     const TTL_SHORT: Duration = Duration::from_secs(5);
     const TTL_LONG: Duration = Duration::from_secs(600);
     let cache_key = format!("{}?{}", tail.as_str(), raw_query);

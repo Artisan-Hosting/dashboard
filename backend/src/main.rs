@@ -9,7 +9,8 @@ use artisan_middleware::dusa_collection_utils::{
     core::logger::{LogLevel, set_log_level},
     log,
 };
-use database::connection::init_db_pool;
+use database::connection::{init_db_pool, get_db_pool};
+use api::{cache::SESSION_CACHE, cookie::load_active_sessions};
 use warp::Filter;
 // use database::{caching::{orgid_cache_cleaning_loop, permission_cache_cleaning_loop}, connections::init_db_pool};
 // use global::GLOBAL_STATE;
@@ -31,6 +32,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if let Err(e) = init_db_pool().await {
         log!(LogLevel::Error, "FATAL INIT ERROR: {}", e);
         std::process::exit(1);
+    }
+
+    match load_active_sessions(get_db_pool()).await {
+        Ok(sessions) => {
+            let count = sessions.len();
+            for s in sessions {
+                SESSION_CACHE.insert(s.session_id.clone(), s).await;
+            }
+            log!(LogLevel::Info, "prefilled {} session cache entries", count);
+        }
+        Err(e) => {
+            log!(LogLevel::Warn, "failed to prefill session cache: {}", e);
+        }
     }
 
     // —————————————————————
