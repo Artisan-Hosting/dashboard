@@ -7,10 +7,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Instruct prost to add `#[derive(serde::Serialize, serde::Deserialize)]`
     // to every generated message. (If you only want it on CreateSecretRequest,
     // replace "." with "secret_service.CreateSecretRequest".)
-    prost_config.type_attribute(
-        ".",
-        "#[derive(serde::Serialize, serde::Deserialize)]",
-    );
+    prost_config.type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]");
 
     // 2) Run tonic_build with our custom prost_config
     tonic_build::configure()
@@ -31,4 +28,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
