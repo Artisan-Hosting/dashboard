@@ -14,6 +14,7 @@ use serde_json::json;
 use crate::api::{cookie::{update_session_auth, SessionData}, helper::{get_base_url, peek_exp_from_jwt_unverified}};
 
 pub async fn get_token(session: SessionData) -> Result<String, ErrorArrayItem> {
+    log!(LogLevel::Debug, "get_token for session {}", session.session_id);
     let auth_token = session.auth_jwt;
     let refresh_token = session.refresh_jwt;
 
@@ -43,8 +44,11 @@ pub async fn get_token(session: SessionData) -> Result<String, ErrorArrayItem> {
         if response.status().is_success() {
             let json: serde_json::Value = response.json().await?;
             if let Some(new_token) = json.get("auth").and_then(|t| t.as_str()) {
-                return match update_session_auth(new_token.to_owned(), session.session_id).await {
-                    Ok(token) => Ok(token),
+                return match update_session_auth(new_token.to_owned(), session.session_id.clone()).await {
+                    Ok(token) => {
+                        log!(LogLevel::Info, "token refreshed for session {}", session.session_id);
+                        Ok(token)
+                    },
                     Err(err) => {
                         Err(ErrorArrayItem::new(Errors::AuthenticationError, err.to_string()))
                     },
@@ -57,6 +61,7 @@ pub async fn get_token(session: SessionData) -> Result<String, ErrorArrayItem> {
         }
         
     } else {
+        log!(LogLevel::Debug, "token still valid for {}", session.session_id);
         return Ok(auth_token);
     }
 }

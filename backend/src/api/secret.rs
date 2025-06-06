@@ -3,6 +3,7 @@ use crate::{
     api::{common::PortalRejection::Whoops, helper::with_session},
     grpc::{self, secret_service},
 };
+use artisan_middleware::dusa_collection_utils::{core::logger::LogLevel, log};
 use warp::Filter;
 
 #[derive(Deserialize)]
@@ -33,7 +34,9 @@ async fn grpc_client() -> Result<grpc::SecretClient, tonic::transport::Error> {
     grpc::SecretClient::connect(addr).await
 }
 
-async fn list_handler(query: SecretQuery, _session: crate::api::cookie::SessionData) -> Result<impl warp::Reply, warp::Rejection> {
+
+async fn list_handler(query: SecretQuery, session: crate::api::cookie::SessionData) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Debug, "list secrets session {}", session.session_id);
     let mut client = grpc_client().await.map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
     let req = secret_service::GetAllSecretsRequest {
         runner_id: query.runner_id,
@@ -41,15 +44,28 @@ async fn list_handler(query: SecretQuery, _session: crate::api::cookie::SessionD
         version: query.version.unwrap_or_default(),
     };
     match client.get_all_secrets(req).await {
-        Ok(resp) => Ok(warp::reply::json(&resp)),
-        Err(e) => Err(warp::reject::custom(Whoops(e.to_string()))),
+        Ok(resp) => {
+            log!(LogLevel::Info, "list secrets success session {}", session.session_id);
+            Ok(warp::reply::json(&resp))
+        }
+        Err(e) => {
+            log!(LogLevel::Error, "list secrets failed for {}: {}", session.session_id, e);
+            Err(warp::reject::custom(Whoops(e.to_string())))
+        }
     }
 }
 
-async fn create_handler(req: secret_service::CreateSecretRequest, _session: crate::api::cookie::SessionData) -> Result<impl warp::Reply, warp::Rejection> {
+async fn create_handler(req: secret_service::CreateSecretRequest, session: crate::api::cookie::SessionData) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Debug, "create secret {} session {}", req.secret_key, session.session_id);
     let mut client = grpc_client().await.map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
     match client.create_secret(req).await {
-        Ok(resp) => Ok(warp::reply::json(&resp)),
-        Err(e) => Err(warp::reject::custom(Whoops(e.to_string()))),
+        Ok(resp) => {
+            log!(LogLevel::Info, "create secret success session {}", session.session_id);
+            Ok(warp::reply::json(&resp))
+        }
+        Err(e) => {
+            log!(LogLevel::Error, "create secret failed for {}: {}", session.session_id, e);
+            Err(warp::reject::custom(Whoops(e.to_string())))
+        }
     }
 }

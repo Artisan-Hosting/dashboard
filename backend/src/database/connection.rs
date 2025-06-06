@@ -1,6 +1,7 @@
 use once_cell::sync::OnceCell;
-use sqlx::{MySqlPool, mysql::MySqlPoolOptions};
+use sqlx::{mysql::MySqlPoolOptions, MySqlPool};
 use std::env;
+use artisan_middleware::dusa_collection_utils::{core::logger::LogLevel, log};
 
 static DB_POOL: OnceCell<MySqlPool> = OnceCell::new();
 
@@ -11,6 +12,8 @@ pub async fn init_db_pool() -> Result<(), sqlx::Error> {
         "mysql://artisan:Danny9518!@database-0.arhst.net:3306/ArtisanRbac".into()
     });
 
+    log!(LogLevel::Info, "connecting DB...");
+
     let pool = MySqlPoolOptions::new()
         .max_connections(10)
         .connect(&database_url)
@@ -20,6 +23,7 @@ pub async fn init_db_pool() -> Result<(), sqlx::Error> {
         .set(pool)
         .map_err(|_| sqlx::Error::Configuration("Pool already initialized".into()))?;
 
+    log!(LogLevel::Info, "database connection established");
     Ok(())
 }
 

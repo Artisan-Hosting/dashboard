@@ -11,7 +11,9 @@ use crate::database::connection::get_db_pool;
 
 use super::helper::{get_base_url, peek_exp_from_jwt_unverified, peek_sub_from_jwt_unverified};
 
-use serde::{de, Deserialize, Serialize};
+
+use serde::{Deserialize, Serialize};
+use sqlx::Row;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SessionData {
@@ -43,6 +45,7 @@ where
 }
 
 pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
+    log!(LogLevel::Info, "login attempt for {}", request.email);
     let client = Client::new();
     let response = client
         .post(&format!("{}auth/login", get_base_url()))
@@ -73,13 +76,14 @@ pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
                     NaiveDateTime::from_timestamp(expiration_raw as i64, 0);
 
                 let session = SessionData {
-                    session_id,
-                    user_id,
+                    session_id: session_id.clone(),
+                    user_id: user_id.clone(),
                     auth_jwt,
                     refresh_jwt,
                     expires_at,
                 };
 
+                log!(LogLevel::Info, "login success user {} session {}", user_id, session_id);
                 return Ok(session);
             }
             _ => {
@@ -91,6 +95,7 @@ pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
             }
         };
     } else {
+        log!(LogLevel::Warn, "login failed with status {}", response.status());
         return Err("Login failed".into());
     }
 }
@@ -99,6 +104,7 @@ pub async fn lookup_session(
     pool: &sqlx::Pool<sqlx::MySql>,
     session_id: String,
 ) -> Result<SessionData, ()> {
+    // Look up the session in the database
     let row = sqlx::query(
         r#"SELECT user_id, auth_jwt, refresh_jwt, expires_at
         FROM sessions
@@ -107,7 +113,12 @@ pub async fn lookup_session(
     .bind(&session_id)
     .fetch_optional(pool)
     .await
-    .map_err(|_| ())?;
+    .map_err(|e| {
+        log!(LogLevel::Error, "lookup_session query error: {}", e);
+        ()
+    })?;
+
+    log!(LogLevel::Trace, "lookup_session row exists: {}", row.is_some());
 
     if let Some(r) = row {
         let user_id: String = r.try_get("user_id").map_err(|_| ())?;
@@ -137,6 +148,7 @@ pub async fn lookup_session(
 }
 
 pub async fn update_session_auth(auth: String, session_id: String) -> Result<String, String> {
+    log!(LogLevel::Debug, "refreshing auth for session {}", session_id);
     match sqlx::query(
         r#"UPDATE sessions
         SET auth_jwt = ?
@@ -146,7 +158,18 @@ pub async fn update_session_auth(auth: String, session_id: String) -> Result<Str
     .bind(&session_id)
     .execute(get_db_pool())
     .await {
-        Ok(_) => Ok(auth),
-        Err(err) => Err(err.to_string()),
+        Ok(result) => {
+            log!(
+                LogLevel::Trace,
+                "update_session_auth affected {} rows for {}",
+                result.rows_affected(),
+                session_id
+            );
+            Ok(auth)
+        },
+        Err(err) => {
+            log!(LogLevel::Error, "update_session_auth failed for {}: {}", session_id, err);
+            Err(err.to_string())
+        },
     }
 }
