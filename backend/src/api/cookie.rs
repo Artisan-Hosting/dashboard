@@ -2,8 +2,9 @@ use artisan_middleware::{
     api::token::SimpleLoginRequest,
     dusa_collection_utils::{core::logger::LogLevel, log},
 };
-use chrono::{NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use reqwest::Client;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::database::connection::get_db_pool;
@@ -22,22 +23,22 @@ pub struct SessionData {
         serialize_with = "timestamp_to_u64",
         deserialize_with = "timestamp_from_u64"
     )]
-    pub expires_at: NaiveDateTime,
+    pub expires_at: DateTime<Utc>,
 }
 
-fn timestamp_to_u64<S>(dt: &NaiveDateTime, s: S) -> Result<S::Ok, S::Error>
+fn timestamp_to_u64<S>(dt: &DateTime<Utc>, s: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
     s.serialize_u64(dt.timestamp() as u64)
 }
 
-fn timestamp_from_u64<'de, D>(d: D) -> Result<NaiveDateTime, D::Error>
+fn timestamp_from_u64<'de, D>(d: D) -> Result<DateTime<Utc>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
     let ts = u64::deserialize(d)?;
-    NaiveDateTime::from_timestamp_opt(ts as i64, 0)
+    DateTime::from_timestamp(ts as i64, 0)
         .ok_or_else(|| serde::de::Error::custom("invalid timestamp"))
 }
 
@@ -131,8 +132,8 @@ pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
                 let refresh_jwt: String = refresh.to_string();
 
                 #[allow(deprecated)]
-                let expires_at: NaiveDateTime =
-                    NaiveDateTime::from_timestamp(expiration_raw as i64, 0);
+                let expires_at: DateTime<Utc> = DateTime::from_timestamp(expiration_raw as i64, 0)
+                    .unwrap_or(DateTime::default());
 
                 let session = SessionData {
                     session_id: session_id.clone(),
@@ -142,7 +143,12 @@ pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
                     expires_at,
                 };
 
-                log!(LogLevel::Info, "login success user {} session {}", user_id, session_id);
+                log!(
+                    LogLevel::Info,
+                    "login success user {} session {}",
+                    user_id,
+                    session_id
+                );
                 return Ok(session);
             }
             _ => {
@@ -154,7 +160,11 @@ pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
             }
         };
     } else {
-        log!(LogLevel::Warn, "login failed with status {}", response.status());
+        log!(
+            LogLevel::Warn,
+            "login failed with status {}",
+            response.status()
+        );
         return Err("Login failed".into());
     }
 }
@@ -177,22 +187,38 @@ pub async fn lookup_session(
         ()
     })?;
 
-    log!(LogLevel::Trace, "lookup_session row exists: {}", row.is_some());
+    log!(
+        LogLevel::Trace,
+        "lookup_session row exists: {}",
+        row.is_some()
+    );
 
     if let Some(r) = row {
         let user_id: String = r.try_get("user_id").map_err(|e| {
-            log!(LogLevel::Error, "lookup_session column user_id error: {}", e);
+            log!(
+                LogLevel::Error,
+                "lookup_session column user_id error: {}",
+                e
+            );
             ()
         })?;
         let auth_jwt: String = r.try_get("auth_jwt").map_err(|e| {
-            log!(LogLevel::Error, "lookup_session column auth_jwt error: {}", e);
+            log!(
+                LogLevel::Error,
+                "lookup_session column auth_jwt error: {}",
+                e
+            );
             ()
         })?;
         let refresh_jwt: String = r.try_get("refresh_jwt").map_err(|e| {
-            log!(LogLevel::Error, "lookup_session column refresh_jwt error: {}", e);
+            log!(
+                LogLevel::Error,
+                "lookup_session column refresh_jwt error: {}",
+                e
+            );
             ()
         })?;
-        let expires_at: NaiveDateTime = r.try_get("expires_at").map_err(|e| {
+        let expires_at: DateTime<Utc> = r.try_get("expires_at").map_err(|e| {
             log!(LogLevel::Error, "lookup_session column expires_at error: {}", e);
             ()
         })?;
@@ -200,7 +226,7 @@ pub async fn lookup_session(
         log!(LogLevel::Trace, "lookup_session fetched user {}", user_id);
 
         // Compare `expires_at` (TIMESTAMP) to now
-        let now = Utc::now().naive_utc();
+        let now = Utc::now();
         log!(
             LogLevel::Debug,
             "lookup_session(): now={}, expires_at={}",
