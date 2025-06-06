@@ -321,8 +321,9 @@ pub async fn generic_proxy_handler(
         backend_url.push_str(&raw_query);
     }
 
-    const TTL_SHORT: Duration = Duration::from_secs(15);
-    const TTL_LONG: Duration = Duration::from_secs(60);
+
+    const TTL_SHORT: Duration = Duration::from_secs(5);
+    const TTL_LONG: Duration = Duration::from_secs(600);
     let cache_key = format!("{}?{}", tail.as_str(), raw_query);
     let is_vm = tail.as_str().starts_with("vms") && !tail.as_str().contains("/status");
     let is_runner = tail.as_str().starts_with("runners");
@@ -330,7 +331,7 @@ pub async fn generic_proxy_handler(
     let is_logs = tail.as_str().starts_with("logs");
 
     if method == warp::http::Method::GET && (is_vm || is_runner || is_usage || is_logs) {
-        let ttl = if is_usage || is_logs {
+        let ttl = if is_usage || is_logs || is_runner {
             TTL_LONG
         } else {
             TTL_SHORT
