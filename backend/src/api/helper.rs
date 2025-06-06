@@ -1,5 +1,9 @@
 use crate::{api::common::PortalRejection::Unauthorized, database::connection::get_db_pool};
-use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use artisan_middleware::dusa_collection_utils::{
+    core::logger::LogLevel,
+    log,
+};
 use serde_json::Value;
 use std::error::Error;
 use warp::{
@@ -7,7 +11,10 @@ use warp::{
     reject::{self, Rejection},
 };
 
-use super::cookie::{SessionData, lookup_session};
+use std::time::Duration;
+
+use super::cache::SESSION_CACHE;
+use super::cookie::{lookup_session, SessionData};
 
 pub fn get_base_url() -> &'static str {
     "https://api.artisanhosting.net/v1/"
@@ -18,10 +25,24 @@ pub fn with_session() -> impl Filter<Extract = (SessionData,), Error = Rejection
     // If missing, warp will generate a BadRequest rejection.
     warp::cookie("session_id").and_then(move |session_id: String| {
         async move {
-            match lookup_session(get_db_pool(), session_id).await {
-                Ok(user) => Ok(user),
+            const TTL: Duration = Duration::from_secs(30 * 60);
+            if let Some(sess) = SESSION_CACHE.get(&session_id, TTL).await {
+                log!(LogLevel::Debug, "session cache hit {}", session_id);
+                return Ok(sess);
+            }
+            match lookup_session(get_db_pool(), session_id.clone()).await {
+                Ok(user) => {
+                    log!(
+                        LogLevel::Debug,
+                        "validated session {} for user {}",
+                        user.session_id,
+                        user.user_id
+                    );
+                    SESSION_CACHE.insert(session_id.clone(), user.clone()).await;
+                    Ok(user)
+                }
                 Err(_) => {
-                    // Map to a 401 Unauthorized.
+                    log!(LogLevel::Warn, "invalid session {}", session_id);
                     Err(reject::custom(Unauthorized(
                         "Invalid session data".to_owned(),
                     )))
