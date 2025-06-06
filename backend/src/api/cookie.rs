@@ -4,7 +4,6 @@ use artisan_middleware::{
 };
 use chrono::{NaiveDateTime, Utc};
 use reqwest::Client;
-use sqlx::Row;
 use uuid::Uuid;
 
 use crate::database::connection::get_db_pool;
