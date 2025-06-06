@@ -11,6 +11,8 @@ use artisan_middleware::{
 use bytes::Bytes;
 use cookie::CookieBuilder;
 use reqwest::Client;
+use std::time::Duration;
+use crate::api::cache::{PROXY_CACHE, CachedResponse};
 use warp::hyper::Body;
 use warp::{http::header::{HeaderValue, SET_COOKIE}, reply::Response};
 use serde_json::Value as JsonValue;
@@ -20,26 +22,28 @@ use super::cookie::{SessionData, login};
 pub async fn login_handler(
     login_data: SimpleLoginRequest,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Debug, "login_handler called for {}", login_data.email);
     return match login(login_data).await {
         Ok(session) => {
-            // Use sqlx’s `query!` macro (compile‐time checked).
-            // If your table has different column names/types, change these fields accordingly.
-            sqlx::query!(
-                r#"
-        INSERT INTO sessions (session_id, user_id, auth_jwt, refresh_jwt, expires_at)
-        VALUES (?, ?, ?, ?, ?)
-        "#,
+            log!(
+                LogLevel::Info,
+                "storing session {} for user {}",
                 session.session_id,
-                session.user_id,
-                session.auth_jwt,
-                session.refresh_jwt,
-                session.expires_at
+                session.user_id
+            );
+            sqlx::query(
+                r#"INSERT INTO sessions (session_id, user_id, auth_jwt, refresh_jwt, expires_at)
+                   VALUES (?, ?, ?, ?, ?)"#,
             )
+            .bind(&session.session_id)
+            .bind(&session.user_id)
+            .bind(&session.auth_jwt)
+            .bind(&session.refresh_jwt)
+            .bind(session.expires_at)
             .execute(get_db_pool())
             .await
             .map_err(|e| {
-                eprintln!("Database insert error: {}", e);
-                // Convert to a Warp rejection (could be a custom error type)
+                log!(LogLevel::Error, "DB insert error for {}: {}", session.session_id, e);
                 warp::reject::custom(Whoops(e.to_string()))
             })?;
 
@@ -54,6 +58,8 @@ pub async fn login_handler(
             let header_value = HeaderValue::from_str(&set_cookie_header)
                 .expect("cookie.to_string() returned invalid header‐value");
 
+            log!(LogLevel::Debug, "session {} inserted in DB", session.session_id);
+
             let body = format!("Logged in as {}.", session.user_id);
             let reply = warp::reply::with_header(body, SET_COOKIE, header_value);
 
@@ -64,16 +70,26 @@ pub async fn login_handler(
 }
 
 pub async fn logout_handler(session: SessionData) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Info, "logout for session {}", session.session_id);
     // Delete the row (if it exists):
-    if let Err(e) = sqlx::query!(
+    match sqlx::query(
         "DELETE FROM sessions WHERE session_id = ?",
-        session.session_id
     )
+    .bind(&session.session_id)
     .execute(get_db_pool())
-    .await
-    {
-        log!(LogLevel::Error, "Error deleting session from DB: {}", e);
-        // We’ll ignore the error at logout time—user can still send a “clear‐cookie” header.
+    .await {
+        Ok(res) => {
+            log!(
+                LogLevel::Debug,
+                "logout removed {} rows for {}",
+                res.rows_affected(),
+                session.session_id
+            );
+        }
+        Err(e) => {
+            log!(LogLevel::Error, "Error deleting session from DB: {}", e);
+            // We’ll ignore the error at logout time—user can still send a "clear-cookie" header.
+        }
     }
 
     // Build a “clear cookie”:
@@ -88,11 +104,13 @@ pub async fn logout_handler(session: SessionData) -> Result<impl warp::Reply, wa
         .expect("clear.to_string() returned invalid header‐value");
 
     let reply = warp::reply::with_header("", SET_COOKIE, header_value);
+    log!(LogLevel::Debug, "session {} logged out", session.session_id);
     Ok(reply)
 }
 
 pub async fn whoami_handler(session: SessionData) -> Result<impl warp::Reply, warp::Rejection> {
-    match get_token(session).await {
+    log!(LogLevel::Debug, "whoami for session {}", session.session_id);
+    match get_token(session.clone()).await {
         Ok(token) => {
             let client = Client::new();
 
@@ -116,7 +134,7 @@ pub async fn whoami_handler(session: SessionData) -> Result<impl warp::Reply, wa
                         .unwrap_or("Unknown")
                         .to_string()
                 } else {
-                    log!(LogLevel::Warn, "{}", "Failed to get user ID");
+                    log!(LogLevel::Warn, "Failed to get user ID for session {}", session.session_id);
                     return Err(warp::reject::custom(Whoops(
                         "Failed to get the username".to_string(),
                     )));
@@ -139,15 +157,19 @@ pub async fn whoami_handler(session: SessionData) -> Result<impl warp::Reply, wa
 
                 if let Some(data) = json.get("you") {
                     let expires = data.get("expires").and_then(|v| v.as_u64()).unwrap_or(0);
-                    Ok(warp::reply::json(
+                    let reply = warp::reply::json(
                         &serde_json::json!({ "user_id": username, "expires": expires}),
-                    ))
+                    );
+                    log!(LogLevel::Info, "whoami success session {}", session.session_id);
+                    Ok(reply)
                 } else {
+                    log!(LogLevel::Warn, "whoami missing data for session {}", session.session_id);
                     Err(warp::reject::custom(Whoops(
                         "Failed to get the username".to_string(),
                     )))
                 }
             } else {
+                log!(LogLevel::Warn, "whoami bad status for session {}", session.session_id);
                 Err(warp::reject::custom(Whoops(
                     "Failed to de-serialize the servers response".to_string(),
                 )))
@@ -158,7 +180,8 @@ pub async fn whoami_handler(session: SessionData) -> Result<impl warp::Reply, wa
 }
 
 pub async fn me_handler(session: SessionData) -> Result<impl warp::Reply, warp::Rejection> {
-    match get_token(session).await {
+    log!(LogLevel::Debug, "me_handler for session {}", session.session_id);
+    match get_token(session.clone()).await {
         Ok(token) => {
             let client = Client::new();
 
@@ -189,16 +212,19 @@ pub async fn me_handler(session: SessionData) -> Result<impl warp::Reply, warp::
                     .to_string()
             };
 
-            Ok(warp::reply::json(
+            let reply = warp::reply::json(
                 &serde_json::json!({ "user_id": username, "email": email}),
-            ))
+            );
+            log!(LogLevel::Info, "me success session {}", session.session_id);
+            Ok(reply)
         }
         Err(err) => Err(warp::reject::custom(Whoops(err.err_mesg.to_string()))),
     }
 }
 
 pub async fn runners_handler(session: SessionData) -> Result<impl warp::Reply, warp::Rejection> {
-    match get_token(session).await {
+    log!(LogLevel::Debug, "runners_handler for session {}", session.session_id);
+    match get_token(session.clone()).await {
         Ok(token) => {
             let client = Client::new();
 
@@ -215,8 +241,10 @@ pub async fn runners_handler(session: SessionData) -> Result<impl warp::Reply, w
                     .await
                     .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
 
+                log!(LogLevel::Info, "runners success session {}", session.session_id);
                 Ok(warp::reply::json(&api_response))
             } else {
+                log!(LogLevel::Warn, "runners failed status for {}", session.session_id);
                 Err(warp::reject::custom(Whoops(
                     "The server left us on delivered".to_string(),
                 )))
@@ -241,7 +269,15 @@ pub async fn generic_proxy_handler(
     session: SessionData,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     // ─── Step 1: Turn `SessionData` → Bearer token, or reject ───────────────────
-    let token = get_token(session)
+    log!(
+        LogLevel::Debug,
+        "proxy {} {} for session {}",
+        method,
+        tail.as_str(),
+        session.session_id
+    );
+
+    let token = get_token(session.clone())
         .await
         .map_err(|err| warp::reject::custom(Whoops(err.err_mesg.to_string())))?;
 
@@ -252,6 +288,35 @@ pub async fn generic_proxy_handler(
     if !raw_query.is_empty() {
         backend_url.push('?');
         backend_url.push_str(&raw_query);
+    }
+
+    const SHORT_TTL: Duration = Duration::from_secs(10);
+    const LONG_TTL: Duration = Duration::from_secs(60);
+    let cache_key = format!("{}?{}", tail.as_str(), raw_query);
+    let is_cacheable =
+        method == warp::http::Method::GET
+            && ((tail.as_str().starts_with("vms")
+                && !tail.as_str().contains("/status"))
+                || tail.as_str().starts_with("runners")
+                || tail.as_str().starts_with("logs")
+                || tail.as_str().starts_with("usage"));
+    let ttl = if tail.as_str().starts_with("logs") || tail.as_str().starts_with("usage") {
+        LONG_TTL
+    } else {
+        SHORT_TTL
+    };
+    if is_cacheable {
+        if let Some(cached) = PROXY_CACHE.get(&cache_key, ttl).await {
+            log!(LogLevel::Debug, "proxy cache hit {}", cache_key);
+            let mut resp = Response::new(Body::from(cached.body));
+            *resp.status_mut() = warp::http::StatusCode::from_u16(cached.status)
+                .unwrap_or(warp::http::StatusCode::OK);
+            resp.headers_mut().insert(
+                "content-type",
+                HeaderValue::from_str(&cached.content_type).unwrap(),
+            );
+            return Ok(resp);
+        }
     }
 
     // ─── Step 3: Convert Warp→Reqwest Method ───────────────────────────────────
@@ -281,6 +346,7 @@ pub async fn generic_proxy_handler(
     }
 
     // ─── Step 6: Send to the real backend ──────────────────────────────────────
+    log!(LogLevel::Debug, "proxy dispatch {}", backend_url);
     let backend_resp = req_builder
         .send()
         .await
@@ -308,6 +374,7 @@ pub async fn generic_proxy_handler(
         .bytes()
         .await
         .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
+    let resp_body_vec = resp_body.clone().to_vec();
 
     // ─── Step 8: Build a full `Response<Body>` and return ───────────────────────
     //
@@ -319,6 +386,24 @@ pub async fn generic_proxy_handler(
         "content-type",
         HeaderValue::from_str(&content_type).unwrap(),
     );
+
+    if !status.is_success() {
+        log!(LogLevel::Warn, "proxy {} returned status {}", backend_url, status);
+    } else {
+        log!(LogLevel::Debug, "proxy responded {}", status);
+        if is_cacheable {
+            PROXY_CACHE
+                .insert(
+                    cache_key,
+                    CachedResponse {
+                        status: status.as_u16(),
+                        content_type: content_type.clone(),
+                        body: resp_body_vec,
+                    },
+                )
+                .await;
+        }
+    }
 
     Ok(response)
 }
