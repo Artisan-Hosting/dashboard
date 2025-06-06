@@ -322,10 +322,10 @@ pub async fn generic_proxy_handler(
         backend_url.push_str(&raw_query);
     }
 
-    const TTL: Duration = Duration::from_secs(10);
+    const TTL: Duration = Duration::from_secs(15);
     let cache_key = format!("{}?{}", tail.as_str(), raw_query);
     if method == warp::http::Method::GET
-        && (tail.as_str().starts_with("vms") || tail.as_str().starts_with("runners"))
+        && ( (tail.as_str().starts_with("vms") && !tail.as_str().contains("status") )  || tail.as_str().starts_with("runners") || tail.as_str().starts_with("usage"))
     {
         if let Some(cached) = PROXY_CACHE.get(&cache_key, TTL).await {
             log!(LogLevel::Debug, "proxy cache hit {}", cache_key);
@@ -337,6 +337,8 @@ pub async fn generic_proxy_handler(
                 HeaderValue::from_str(&cached.content_type).unwrap(),
             );
             return Ok(resp);
+        } else {
+            log!(LogLevel::Warn, "Cache Miss");
         }
     }
 
@@ -417,7 +419,7 @@ pub async fn generic_proxy_handler(
     } else {
         log!(LogLevel::Debug, "proxy responded {}", status);
         if method == warp::http::Method::GET
-            && (tail.as_str().starts_with("vms") || tail.as_str().starts_with("runners"))
+            && ( (tail.as_str().starts_with("vms") && !tail.as_str().contains("status") )  || tail.as_str().starts_with("runners") || tail.as_str().starts_with("usage"))
         {
             PROXY_CACHE
                 .insert(
