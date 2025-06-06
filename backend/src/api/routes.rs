@@ -1,7 +1,8 @@
 use artisan_middleware::api::token::SimpleLoginRequest;
 use warp::{Filter, http::header, reject::Rejection, reply::Reply};
+use artisan_middleware::dusa_collection_utils::{core::logger::LogLevel, log};
 
-use crate::api::handler::{generic_proxy_handler, me_handler, runners_handler};
+use crate::api::{handler::{generic_proxy_handler, me_handler, runners_handler}, secret::secret_routes};
 
 use super::{
     handler::{login_handler, logout_handler, whoami_handler},
@@ -9,6 +10,7 @@ use super::{
 };
 
 pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    log!(LogLevel::Debug, "creating API routes");
     let testing_origin = "http://localhost:3800";
     let deveing_origin = "http://localhost:3000";
 
@@ -63,31 +65,7 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
         .and(warp::body::bytes().or_else(|_| async { Ok::<_, warp::Rejection>((bytes::Bytes::new(),)) }))
         .and(with_session())
         .and_then(generic_proxy_handler);
-    // // refresh tokens
-    // // An expired token needs to be provided
-    // let refresh = warp::post()
-    //     .and(warp::path!("auth" / "refresh"))
-    //     .and(warp::body::json::<RefreshRequest>())
-    //     .and_then(refresh_handler);
-
-    // // me
-    // let me = warp::get()
-    //     .and(warp::path!("account" / "me"))
-    //     .and(with_auth().await)
-    //     .and_then(me_handler);
-
-    // // update pretty name
-    // let set_pretty = warp::put()
-    //     .and(warp::path!("account" / "pretty_name" / "set"))
-    //     .and(with_auth().await)
-    //     .and(warp::body::json::<UpdatePrettyName>())
-    //     .and_then(set_pretty_name_handler);
-
-    // // get pretty name
-    // let get_pretty = warp::put()
-    //     .and(warp::path!("account" / "pretty_name" / "get" / String))
-    //     .and(with_auth().await)
-    //     .and_then(get_pretty_name_handler);
+  
 
     // // update email
     // let update_email = warp::put()
@@ -115,28 +93,31 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
     //     .and(warp::body::json::<ResetPasswordResponse>())
     //     .and_then(password_reset_confirm_handler);
 
-    warp::path("api")
+    let routes = warp::path("api")
         .and(
             login
                 .or(logout)
                 .or(whoami)
                 .or(runners)
                 .or(proxy_route)
-                .or(me), // .or(get_pretty)
-                         // .or(set_pretty)
+                .or(me)
+                .or(secret_routes()), // .or(get_pretty)
                          // .or(update_email)
                          // .or(change_password)
                          // .or(pw_reset_req)
                          // .or(pw_reset_conf),
         )
         // .or(v1_preflight)
-        .with(cors)
+        .with(cors);
+
+    log!(LogLevel::Debug, "API routes ready");
+    routes
     // .or(email_conf_req)
     // .or(email_conf_cmp)
-    // .or(admin_create)
-    // .or(admin_list)
-    // .or(admin_get)
-    // .or(admin_update)
-    // .or(admin_delete)
-    // .recover(handle_rejection)
+//    // .or(admin_create)
+//    // .or(admin_list)
+//    // .or(admin_get)
+//    // .or(admin_update)
+//    // .or(admin_delete)
+//    // .recover(handle_rejection)
 }

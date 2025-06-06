@@ -1,112 +1,63 @@
-import { useState } from 'react';
-import { Sidebar } from '@/components/header';
-import { handleLogout } from '@/lib/logout';
+import { useState } from 'react'
+import { fetchWithAuth, postWithAuth } from '@/lib/api'
+import { Sidebar } from '@/components/header'
+import { handleLogout } from '@/lib/logout'
 
-interface SecretItem {
-  name: string;
-  value: string;
+interface SecretPair {
+  key: string
+  value: string
 }
 
 export default function SecretsPage() {
-  const [secrets, setSecrets] = useState<SecretItem[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newValue, setNewValue] = useState('');
+  const [runnerId, setRunnerId] = useState('')
+  const [envId, setEnvId] = useState('')
+  const [newKey, setNewKey] = useState('')
+  const [newVal, setNewVal] = useState('')
+  const [secrets, setSecrets] = useState<SecretPair[]>([])
 
-  const addSecret = () => {
-    if (!newName || !newValue) return;
-    setSecrets([...secrets, { name: newName, value: newValue }]);
-    setNewName('');
-    setNewValue('');
-    setShowForm(false);
-  };
-
-  const deleteSecret = (idx: number) => {
-    setSecrets(secrets.filter((_, i) => i !== idx));
-  };
-
-  const copySecret = async (value: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch (e) {
-      console.error('Copy failed', e);
+  const loadSecrets = async () => {
+    const res = await fetchWithAuth(`secrets/list?runner_id=${runnerId}&environment_id=${envId}`)
+    if (res && res.vals) {
+      setSecrets(res.vals.map((v: any) => ({ key: v.key, value: atob(v.value) })))
     }
-  };
+  }
+
+  const createSecret = async () => {
+    await postWithAuth('secrets/create', {
+      runner_id: runnerId,
+      environment_id: envId,
+      secret_key: newKey,
+      value: newVal,
+      actor: 'dashboard',
+    })
+    setNewKey('')
+    setNewVal('')
+    loadSecrets()
+  }
 
   return (
-    <div className="min-h-screen flex bg-page text-foreground">
+    <div className="min-h-screen flex bg-gradient-to-tr from-[#0b0c10] via-[#161b22] to-[#1f2937] text-white">
       <Sidebar onLogout={handleLogout} />
-      <main className="flex-1 p-4 sm:p-6 lg:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-brand">Secrets</h1>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-brand text-white px-4 py-2 rounded hover:bg-brand-dark"
-          >
-            {showForm ? 'Cancel' : 'New Secret'}
-          </button>
+      <main className="flex-1 p-8 space-y-6">
+        <h1 className="text-2xl font-semibold text-purple-300">Secrets</h1>
+        <div className="space-y-2">
+          <input placeholder="Runner" className="p-2 rounded bg-gray-800" value={runnerId} onChange={e => setRunnerId(e.target.value)} />
+          <input placeholder="Environment" className="p-2 rounded bg-gray-800" value={envId} onChange={e => setEnvId(e.target.value)} />
+          <button onClick={loadSecrets} className="bg-purple-600 px-4 py-2 rounded">Load</button>
         </div>
-
-        {showForm && (
-          <div className="card p-4 mb-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="name">
-                Name
-              </label>
-              <input
-                id="name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="w-full border border-gray-300 rounded px-2 py-1 dark:border-gray-600 bg-white dark:bg-gray-700"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="value">
-                Value
-              </label>
-              <input
-                id="value"
-                value={newValue}
-                onChange={(e) => setNewValue(e.target.value)}
-                className="w-full border border-gray-300 rounded px-2 py-1 dark:border-gray-600 bg-white dark:bg-gray-700"
-              />
-            </div>
-            <button
-              onClick={addSecret}
-              className="bg-brand text-white px-4 py-2 rounded hover:bg-brand-dark"
-            >
-              Save
-            </button>
-          </div>
-        )}
-
-        {secrets.length === 0 ? (
-          <p className="text-gray-500">No secrets stored yet.</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {secrets.map((s, idx) => (
-              <div key={idx} className="card-hover p-4">
-                <p className="font-semibold text-brand mb-2">{s.name}</p>
-                <p className="text-sm text-gray-400 truncate">{s.value}</p>
-                <div className="mt-4 flex gap-2">
-                  <button
-                    onClick={() => copySecret(s.value)}
-                    className="bg-brand text-white px-3 py-1 rounded text-sm hover:bg-brand-dark"
-                  >
-                    Copy
-                  </button>
-                  <button
-                    onClick={() => deleteSecret(idx)}
-                    className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="space-y-2">
+          <input placeholder="Key" className="p-2 rounded bg-gray-800" value={newKey} onChange={e => setNewKey(e.target.value)} />
+          <input placeholder="Value" className="p-2 rounded bg-gray-800" value={newVal} onChange={e => setNewVal(e.target.value)} />
+          <button onClick={createSecret} className="bg-purple-600 px-4 py-2 rounded">Create</button>
+        </div>
+        <ul className="space-y-1">
+          {secrets.map(s => (
+            <li key={s.key} className="border border-gray-700 p-2 rounded">
+              <span className="font-medium">{s.key}</span> : {s.value}
+            </li>
+          ))}
+        </ul>
       </main>
     </div>
-  );
+  )
 }
