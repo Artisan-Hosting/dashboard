@@ -321,14 +321,21 @@ pub async fn generic_proxy_handler(
         backend_url.push_str(&raw_query);
     }
 
-    const TTL: Duration = Duration::from_secs(15);
+    const TTL_SHORT: Duration = Duration::from_secs(15);
+    const TTL_LONG: Duration = Duration::from_secs(60);
     let cache_key = format!("{}?{}", tail.as_str(), raw_query);
-    if method == warp::http::Method::GET
-        && ((tail.as_str().starts_with("vms") && !tail.as_str().contains("status"))
-            || tail.as_str().starts_with("runners")
-            || tail.as_str().starts_with("usage"))
-    {
-        if let Some(cached) = PROXY_CACHE.get(&cache_key, TTL).await {
+    let is_vm = tail.as_str().starts_with("vms") && !tail.as_str().contains("/status");
+    let is_runner = tail.as_str().starts_with("runners");
+    let is_usage = tail.as_str().starts_with("usage");
+    let is_logs = tail.as_str().starts_with("logs");
+
+    if method == warp::http::Method::GET && (is_vm || is_runner || is_usage || is_logs) {
+        let ttl = if is_usage || is_logs {
+            TTL_LONG
+        } else {
+            TTL_SHORT
+        };
+        if let Some(cached) = PROXY_CACHE.get(&cache_key, ttl).await {
             log!(LogLevel::Debug, "proxy cache hit {}", cache_key);
             let mut resp = Response::new(Body::from(cached.body));
             *resp.status_mut() = warp::http::StatusCode::from_u16(cached.status)
@@ -419,11 +426,7 @@ pub async fn generic_proxy_handler(
         );
     } else {
         log!(LogLevel::Debug, "proxy responded {}", status);
-        if method == warp::http::Method::GET
-            && ((tail.as_str().starts_with("vms") && !tail.as_str().contains("status"))
-                || tail.as_str().starts_with("runners")
-                || tail.as_str().starts_with("usage"))
-        {
+        if method == warp::http::Method::GET && (is_vm || is_runner || is_usage || is_logs) {
             PROXY_CACHE
                 .insert(
                     cache_key,
