@@ -19,6 +19,7 @@ use tokio::{self, signal, time::timeout};
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 8)]
 async fn main() -> Result<(), Box<dyn Error>> {
+    dotenv::dotenv().ok();
     // —————————————————————
     // Logging / Tracing
     // —————————————————————

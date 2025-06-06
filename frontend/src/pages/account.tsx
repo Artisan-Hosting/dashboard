@@ -4,6 +4,7 @@ import { useUser } from '@/hooks/useUser'
 import { fetchWithAuth } from '@/lib/api'
 import { useRouter } from 'next/router'
 import { Sidebar } from '@/components/header'
+import LoadingOverlay from '@/components/loading'
 import { handleLogout } from '@/lib/logout'
 
 export default function AccountPage() {
@@ -24,13 +25,6 @@ export default function AccountPage() {
     }
   }, [isLoading, loadedEmail])
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0b0c10] text-white">
-        Loading user…
-      </div>
-    )
-  }
 
   if (error) {
     return (
@@ -57,23 +51,23 @@ export default function AccountPage() {
   // }
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-tr from-[#0b0c10] via-[#161b22] to-[#1f2937] text-white">
+    <div className="relative min-h-screen flex bg-page text-foreground">
       <Sidebar onLogout={handleLogout} />
 
       {/* Main content on the right */}
-      <div className="flex-1 p-8 space-y-12">
-        <h1 className="text-3xl font-bold text-purple-400">Account Settings</h1>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-12">
+        <h1 className="text-3xl font-bold text-brand">Account Settings</h1>
 
         {/* 1. User Info */}
-        <section className="bg-[#1e1e2f] p-6 rounded-xl border border-gray-700">
-          <h2 className="text-xl font-semibold text-purple-300 mb-4">User Info</h2>
+        <section className="card p-6">
+          <h2 className="text-xl font-semibold text-brand mb-4">User Info</h2>
           <div className="flex items-center space-x-4">
             <img
               src={`https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(
                 username
               )}`}
               alt="avatar"
-              className="w-14 h-14 rounded-full border border-purple-500"
+              className="w-14 h-14 rounded-full border border-brand"
             />
             <div>
               <p className="text-white font-medium">{username}</p>
@@ -83,8 +77,8 @@ export default function AccountPage() {
         </section>
 
         {/* 2. Security Settings */}
-        <section className="bg-[#1e1e2f] p-6 rounded-xl border border-gray-700 space-y-6">
-          <h2 className="text-xl font-semibold text-purple-300 mb-2">Security Settings</h2>
+        <section className="card p-6 space-y-6">
+          <h2 className="text-xl font-semibold text-brand mb-2">Security Settings</h2>
           <div className="space-y-2">
             <label className="block text-sm">New Password</label>
             <input
@@ -112,7 +106,7 @@ export default function AccountPage() {
             />
             {/* <button
               onClick={handleUpdateEmail}
-              className="mt-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded"
+              className="mt-2 px-4 py-2 bg-brand hover:bg-brand-dark rounded"
             >
               Update Email
             </button> */}
@@ -120,8 +114,8 @@ export default function AccountPage() {
         </section>
 
         {/* 3. Personalization */}
-        <section className="bg-[#1e1e2f] p-6 rounded-xl border border-gray-700">
-          <h2 className="text-xl font-semibold text-purple-300 mb-4">Personalization</h2>
+        <section className="card p-6">
+          <h2 className="text-xl font-semibold text-brand mb-4">Personalization</h2>
           <label className="block text-sm mb-2">Set Pretty Project Name</label>
           <input
             type="text"
@@ -133,7 +127,7 @@ export default function AccountPage() {
         </section>
 
         {/* 4. Danger Zone */}
-        <section className="bg-[#2a2f45] p-6 rounded-xl border border-red-600">
+        <section className="bg-brand-gradient p-6 rounded-xl border border-red-600">
           <h2 className="text-xl font-semibold text-red-400 mb-4">Danger Zone</h2>
           <div className="space-y-4">
             <button
@@ -154,6 +148,7 @@ export default function AccountPage() {
           <div className="text-sm text-green-400 mt-4">{feedback}</div>
         )}
       </div>
+      {isLoading && <LoadingOverlay />}
     </div>
   )
 }

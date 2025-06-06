@@ -25,12 +25,6 @@ pub async fn login_handler(
     log!(LogLevel::Debug, "login_handler called for {}", login_data.email);
     return match login(login_data).await {
         Ok(session) => {
-            log!(
-                LogLevel::Info,
-                "storing session {} for user {}",
-                session.session_id,
-                session.user_id
-            );
             sqlx::query(
                 r#"INSERT INTO sessions (session_id, user_id, auth_jwt, refresh_jwt, expires_at)
                    VALUES (?, ?, ?, ?, ?)"#,
@@ -72,7 +66,7 @@ pub async fn login_handler(
 pub async fn logout_handler(session: SessionData) -> Result<impl warp::Reply, warp::Rejection> {
     log!(LogLevel::Info, "logout for session {}", session.session_id);
     // Delete the row (if it exists):
-    match sqlx::query(
+    if let Err(e) = sqlx::query(
         "DELETE FROM sessions WHERE session_id = ?",
     )
     .bind(&session.session_id)
