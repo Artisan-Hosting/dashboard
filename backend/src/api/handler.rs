@@ -70,15 +70,24 @@ pub async fn login_handler(
 pub async fn logout_handler(session: SessionData) -> Result<impl warp::Reply, warp::Rejection> {
     log!(LogLevel::Info, "logout for session {}", session.session_id);
     // Delete the row (if it exists):
-    if let Err(e) = sqlx::query(
+    match sqlx::query(
         "DELETE FROM sessions WHERE session_id = ?",
     )
     .bind(&session.session_id)
     .execute(get_db_pool())
-    .await
-    {
-        log!(LogLevel::Error, "Error deleting session from DB: {}", e);
-        // We’ll ignore the error at logout time—user can still send a "clear-cookie" header.
+    .await {
+        Ok(res) => {
+            log!(
+                LogLevel::Debug,
+                "logout removed {} rows for {}",
+                res.rows_affected(),
+                session.session_id
+            );
+        }
+        Err(e) => {
+            log!(LogLevel::Error, "Error deleting session from DB: {}", e);
+            // We’ll ignore the error at logout time—user can still send a "clear-cookie" header.
+        }
     }
 
     // Build a “clear cookie”:
@@ -306,6 +315,7 @@ pub async fn generic_proxy_handler(
     }
 
     // ─── Step 6: Send to the real backend ──────────────────────────────────────
+    log!(LogLevel::Debug, "proxy dispatch {}", backend_url);
     let backend_resp = req_builder
         .send()
         .await
@@ -345,7 +355,11 @@ pub async fn generic_proxy_handler(
         HeaderValue::from_str(&content_type).unwrap(),
     );
 
-    log!(LogLevel::Debug, "proxy responded {}", status);
+    if !status.is_success() {
+        log!(LogLevel::Warn, "proxy {} returned status {}", backend_url, status);
+    } else {
+        log!(LogLevel::Debug, "proxy responded {}", status);
+    }
 
     Ok(response)
 }

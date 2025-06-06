@@ -1,5 +1,6 @@
 use artisan_middleware::api::token::SimpleLoginRequest;
 use warp::{Filter, http::header, reject::Rejection, reply::Reply};
+use artisan_middleware::dusa_collection_utils::{core::logger::LogLevel, log};
 
 use crate::api::handler::{generic_proxy_handler, me_handler, runners_handler};
 use crate::api::secret::secret_routes;
@@ -10,6 +11,7 @@ use super::{
 };
 
 pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    log!(LogLevel::Debug, "creating API routes");
     let testing_origin = "http://localhost:3800";
     let deveing_origin = "http://localhost:3000";
 
@@ -116,7 +118,7 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
     //     .and(warp::body::json::<ResetPasswordResponse>())
     //     .and_then(password_reset_confirm_handler);
 
-    warp::path("api")
+    let routes = warp::path("api")
         .and(
             login
                 .or(logout)
@@ -132,7 +134,10 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
                          // .or(pw_reset_conf),
         )
         // .or(v1_preflight)
-        .with(cors)
+        .with(cors);
+
+    log!(LogLevel::Debug, "API routes ready");
+    routes
     // .or(email_conf_req)
     // .or(email_conf_cmp)
     // .or(admin_create)

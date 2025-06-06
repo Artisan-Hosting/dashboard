@@ -31,6 +31,7 @@ pub fn secret_routes() -> impl Filter<Extract = impl warp::Reply, Error = warp::
 
 async fn grpc_client() -> Result<grpc::SecretClient, tonic::transport::Error> {
     let addr = std::env::var("SECRET_GRPC_ADDR").unwrap_or_else(|_| "http://[::1]:50051".to_string());
+    log!(LogLevel::Info, "connecting to secret gRPC {}",&addr);
     grpc::SecretClient::connect(addr).await
 }
 
