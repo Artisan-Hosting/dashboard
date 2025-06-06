@@ -22,6 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
 
     // 3) Copy the generated Rust file from OUT_DIR into src/grpc/secret_service.rs
+
     let out_dir = env::var("OUT_DIR")?;
     let generated = Path::new(&out_dir).join("secret_service.rs");
     let dest = Path::new("src/grpc/secret_service.rs");
@@ -30,3 +31,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+

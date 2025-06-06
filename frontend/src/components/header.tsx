@@ -63,6 +63,7 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
           <button onClick={() => router.push('/secrets')} className="text-left hover:text-brand">Secrets</button>
           <button onClick={() => router.push('/account')} className="text-left hover:text-brand">Account</button>
           <button onClick={() => router.push('/billing')} className="text-left hover:text-brand">Billing</button>
+
           <button onClick={onLogout} className="text-left text-red-400 hover:text-red-500 font-semibold mt-auto">Logout</button>
         </nav>
       </aside>
