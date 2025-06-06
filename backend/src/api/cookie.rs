@@ -10,8 +10,8 @@ use uuid::Uuid;
 use crate::database::connection::get_db_pool;
 
 use super::helper::{get_base_url, peek_exp_from_jwt_unverified, peek_sub_from_jwt_unverified};
-
 use serde::{Deserialize, Serialize, de};
+
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SessionData {
@@ -42,6 +42,22 @@ where
         .ok_or_else(|| serde::de::Error::custom("invalid timestamp"))
 }
 
+fn timestamp_to_u64<S>(dt: &NaiveDateTime, s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    s.serialize_u64(dt.timestamp() as u64)
+}
+
+fn timestamp_from_u64<'de, D>(d: D) -> Result<NaiveDateTime, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let ts = u64::deserialize(d)?;
+    NaiveDateTime::from_timestamp_opt(ts as i64, 0)
+        .ok_or_else(|| serde::de::Error::custom("invalid timestamp"))
+}
+
 pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
     // Log entry into login function (at Debug level).
     log!(
@@ -49,6 +65,7 @@ pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
         "login(): received request for email={}",
         request.email
     );
+
 
     let client = Client::new();
 
@@ -149,6 +166,7 @@ pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
                     user_id,
                     session_id
                 );
+
                 return Ok(session);
             }
             _ => {
@@ -165,6 +183,7 @@ pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
             "login failed with status {}",
             response.status()
         );
+
         return Err("Login failed".into());
     }
 }
