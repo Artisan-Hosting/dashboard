@@ -9,7 +9,7 @@ static DB_POOL: OnceCell<MySqlPool> = OnceCell::new();
 /// FOR THE LOVE OF GOD call this *exactly once* at application startup!
 pub async fn init_db_pool() -> Result<(), sqlx::Error> {
     let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| {
-        "mysql://artisan:Danny9518!@database-0.arhst.net:3306/ArtisanRbac".into()
+        "mysql://invalid.addr".into()
     });
 
     log!(LogLevel::Info, "connecting DB...");

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchVmList, sendVmAction } from '@/lib/api';
 import { VmListItem, VmActionType } from '@/lib/types';
 import { Sidebar } from '@/components/header';
+import LoadingOverlay from '@/components/loading';
 import { handleLogout } from '@/lib/logout';
 
 export default function VmListPage() {
@@ -57,27 +58,26 @@ export default function VmListPage() {
     }
   };
 
-  if (loading) return <p>Loading VMs…</p>;
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-tr from-[#0b0c10] via-[#161b22] to-[#1f2937] text-white">
+    <div className="relative min-h-screen flex bg-page text-foreground">
       <Sidebar onLogout={handleLogout} />
 
-      <main className="flex-1 p-8">
-        <h2 className="text-2xl font-semibold mb-6 text-purple-300">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <h2 className="text-2xl font-semibold mb-6 text-brand">
           Virtual Machines
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {vms.map((vm) => {
             const isBusy = actionLoading[vm.vmid] ?? false;
 
             return (
               <div
                 key={vm.vmid}
-                className="bg-[#1e1e2f] border border-gray-700 p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300"
+                className="card-hover p-6"
               >
-                <h3 className="text-xl font-semibold text-purple-200">
+                <h3 className="text-xl font-semibold text-brand">
                   VM {vm.vmid}
                 </h3>
                 <p
@@ -112,7 +112,7 @@ export default function VmListPage() {
                           ${
                             isBusy
                               ? 'bg-gray-500 cursor-not-allowed'
-                              : 'bg-purple-600 hover:bg-purple-700'
+                              : 'bg-brand hover:bg-brand-dark'
                           }
                         `}
                       >
@@ -126,6 +126,7 @@ export default function VmListPage() {
           })}
         </div>
       </main>
+      {loading && <LoadingOverlay />}
     </div>
   );
 }
