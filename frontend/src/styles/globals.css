@@ -1,26 +1,78 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #111827;
+  --background-alt: #e5e7eb;
+  --accent: #1E3A8A; /* brand color */
+  --gradient-start: #f3f4f6;
+  --gradient-end: #e5e7eb;
+  --font-sans: 'Roboto', sans-serif;
+  --font-mono: 'Source Code Pro', monospace;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #1f2937;
+    --background-alt: #111827;
+    --foreground: #e5e7eb;
+    --gradient-start: #374151;
+    --gradient-end: #1f2937;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* Utility classes used across pages */
+.bg-page {
+  @apply bg-gradient-to-br from-[color:var(--gradient-start)] via-[color:var(--background-alt)] to-[color:var(--gradient-end)];
+}
+
+.bg-brand-gradient {
+  background-image: linear-gradient(to bottom right, var(--gradient-start), var(--gradient-end));
+}
+
+.card {
+  @apply bg-white dark:bg-[#1e1e2f] border border-gray-200 dark:border-gray-700 rounded-2xl shadow overflow-x-auto;
+}
+
+.card-hover {
+  @apply bg-white dark:bg-[#1e1e2f] border rounded-2xl shadow hover:shadow-xl transform transition hover:-translate-y-1;
+  border-color: var(--accent);
+}
+
+.text-foreground {
+  color: var(--foreground);
+}
+
+/* Brand color utilities */
+.text-brand {
+  color: var(--accent);
+}
+
+.hover\:text-brand:hover {
+  color: var(--accent);
+}
+
+.bg-brand {
+  background-color: var(--accent);
+}
+
+.hover\:bg-brand-dark:hover {
+  background-color: color-mix(in srgb, var(--accent), black 20%);
+}
+
+.border-brand {
+  border-color: var(--accent);
 }
