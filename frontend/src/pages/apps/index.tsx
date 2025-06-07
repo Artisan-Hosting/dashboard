@@ -24,10 +24,11 @@ export default function Dashboard() {
   const router = useRouter();
   const [userName, setUserName] = useState<string>("Loading...");
   const [runners, setRunners] = useState<RunnerCard[]>([]);
-  const [loading, setLoading] = useState(true);
+  const loading = false;
+  // const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const res = await fetchWithAuth("proxy/runners");
       const list: RunnerSummary[] = res.data || [];
@@ -51,7 +52,7 @@ export default function Dashboard() {
     } catch (err) {
       console.error("Dashboard load error", err);
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   }, [router]);
 
