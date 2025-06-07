@@ -49,7 +49,7 @@ export default function LoginPage() {
         );
 
         if (res.ok) {
-            router.push("/account");
+            router.push("/apps");
         }
     };
 
