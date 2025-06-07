@@ -308,3 +308,27 @@ pub async fn update_session_auth(auth: String, session_id: String) -> Result<Str
         }
     }
 }
+
+pub async fn load_active_sessions(
+    pool: &sqlx::Pool<sqlx::MySql>,
+) -> Result<Vec<SessionData>, sqlx::Error> {
+    let rows = sqlx::query(
+        r#"SELECT session_id, user_id, auth_jwt, refresh_jwt, expires_at
+        FROM sessions
+        WHERE expires_at > NOW()"#,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut sessions = Vec::new();
+    for row in rows {
+        sessions.push(SessionData {
+            session_id: row.try_get("session_id")?,
+            user_id: row.try_get("user_id")?,
+            auth_jwt: row.try_get("auth_jwt")?,
+            refresh_jwt: row.try_get("refresh_jwt")?,
+            expires_at: row.try_get("expires_at")?,
+        });
+    }
+    Ok(sessions)
+}

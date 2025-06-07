@@ -5,7 +5,7 @@ use artisan_middleware::dusa_collection_utils::{core::logger::LogLevel, log};
 use crate::api::{handler::{generic_proxy_handler, me_handler, runners_handler}, secret::secret_routes};
 
 use super::{
-    handler::{login_handler, logout_handler, whoami_handler},
+    handler::{login_handler, logout_handler, logout_all_handler, whoami_handler},
     helper::with_session,
 };
 
@@ -41,6 +41,11 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
         .and(warp::path!("auth" / "logout"))
         .and(with_session())
         .and_then(logout_handler);
+
+    let logout_all = warp::post()
+        .and(warp::path!("auth" / "logout_all"))
+        .and(with_session())
+        .and_then(logout_all_handler);
 
     let whoami = warp::get()
         .and(warp::path!("auth" / "whoami"))
@@ -97,6 +102,7 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
         .and(
             login
                 .or(logout)
+                .or(logout_all)
                 .or(whoami)
                 .or(runners)
                 .or(proxy_route)

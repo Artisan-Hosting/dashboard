@@ -1,4 +1,4 @@
-use crate::api::cache::{CachedResponse, PROXY_CACHE};
+use crate::api::cache::{CachedResponse, PROXY_CACHE, SESSION_CACHE};
 use crate::{
     api::{common::PortalRejection::Whoops, helper::get_base_url},
     auth::token::get_token,
@@ -90,6 +90,8 @@ pub async fn logout_handler(session: SessionData) -> Result<impl warp::Reply, wa
         // don't send an error so the frontend still clears the cookie
     }
 
+    SESSION_CACHE.remove(&session.session_id).await;
+
     // Build a “clear cookie”:
     let clear = cookie::Cookie::build("session_id")
         .max_age(cookie::time::Duration::seconds(0))
@@ -105,6 +107,32 @@ pub async fn logout_handler(session: SessionData) -> Result<impl warp::Reply, wa
 
     let reply = warp::reply::with_header("", SET_COOKIE, header_value);
     log!(LogLevel::Debug, "session {} logged out", session.session_id);
+    Ok(reply)
+}
+
+pub async fn logout_all_handler(session: SessionData) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Info, "logout all for user {}", session.user_id);
+    if let Err(e) = sqlx::query("DELETE FROM sessions WHERE user_id = ?")
+        .bind(&session.user_id)
+        .execute(get_db_pool())
+        .await
+    {
+        log!(LogLevel::Error, "Error deleting sessions from DB: {}", e);
+    }
+
+    SESSION_CACHE.remove_user(&session.user_id).await;
+
+    let clear = cookie::Cookie::build("session_id")
+        .max_age(cookie::time::Duration::seconds(0))
+        .path("/")
+        .http_only(true)
+        .secure(true);
+
+    let header_value = HeaderValue::from_str(&clear.to_string())
+        .expect("clear.to_string() returned invalid header‐value");
+
+    let reply = warp::reply::with_header("", SET_COOKIE, header_value);
+    log!(LogLevel::Debug, "all sessions logged out for {}", session.user_id);
     Ok(reply)
 }
 
@@ -321,14 +349,21 @@ pub async fn generic_proxy_handler(
         backend_url.push_str(&raw_query);
     }
 
-    const TTL: Duration = Duration::from_secs(15);
+    const TTL_SHORT: Duration = Duration::from_secs(15);
+    const TTL_LONG: Duration = Duration::from_secs(60);
     let cache_key = format!("{}?{}", tail.as_str(), raw_query);
-    if method == warp::http::Method::GET
-        && ((tail.as_str().starts_with("vms") && !tail.as_str().contains("status"))
-            || tail.as_str().starts_with("runners")
-            || tail.as_str().starts_with("usage"))
-    {
-        if let Some(cached) = PROXY_CACHE.get(&cache_key, TTL).await {
+    let is_vm = tail.as_str().starts_with("vms") && !tail.as_str().contains("/status");
+    let is_runner = tail.as_str().starts_with("runners");
+    let is_usage = tail.as_str().starts_with("usage");
+    let is_logs = tail.as_str().starts_with("logs");
+
+    if method == warp::http::Method::GET && (is_vm || is_runner || is_usage || is_logs) {
+        let ttl = if is_usage || is_logs {
+            TTL_LONG
+        } else {
+            TTL_SHORT
+        };
+        if let Some(cached) = PROXY_CACHE.get(&cache_key, ttl).await {
             log!(LogLevel::Debug, "proxy cache hit {}", cache_key);
             let mut resp = Response::new(Body::from(cached.body));
             *resp.status_mut() = warp::http::StatusCode::from_u16(cached.status)
@@ -419,11 +454,7 @@ pub async fn generic_proxy_handler(
         );
     } else {
         log!(LogLevel::Debug, "proxy responded {}", status);
-        if method == warp::http::Method::GET
-            && ((tail.as_str().starts_with("vms") && !tail.as_str().contains("status"))
-                || tail.as_str().starts_with("runners")
-                || tail.as_str().starts_with("usage"))
-        {
+        if method == warp::http::Method::GET && (is_vm || is_runner || is_usage || is_logs) {
             PROXY_CACHE
                 .insert(
                     cache_key,
