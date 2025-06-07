@@ -10,7 +10,7 @@ async fn refresh_endpoint(path: &str, token: &str) {
     let url = format!("{}{}", get_base_url(), path);
     let client = get_state().http_client.clone();
     match client.get(&url).bearer_auth(token).send().await {
-        Ok(mut resp) => {
+        Ok(resp) => {
             let status = resp.status();
             let headers = resp.headers().clone();
             match resp.bytes().await {
@@ -57,7 +57,11 @@ pub fn spawn_session_refresh(session: SessionData) {
                 refresh_endpoint("vms", &token).await;
                 refresh_endpoint("apps", &token).await;
             } else {
-                log!(LogLevel::Warn, "failed to get token for {}", session.session_id);
+                log!(
+                    LogLevel::Warn,
+                    "failed to get token for {}",
+                    session.session_id
+                );
             }
 
             sleep(Duration::from_secs(30)).await;

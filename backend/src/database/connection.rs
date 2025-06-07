@@ -1,16 +1,15 @@
-use once_cell::sync::OnceCell;
-use sqlx::{mysql::MySqlPoolOptions, MySqlPool};
-use std::env;
 use artisan_middleware::dusa_collection_utils::{core::logger::LogLevel, log};
+use once_cell::sync::OnceCell;
+use sqlx::{MySqlPool, mysql::MySqlPoolOptions};
+use std::env;
 
 static DB_POOL: OnceCell<MySqlPool> = OnceCell::new();
 
 /// Initialize the global pool.
 /// FOR THE LOVE OF GOD call this *exactly once* at application startup!
 pub async fn init_db_pool() -> Result<(), sqlx::Error> {
-    let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| {
-        "mysql://invalid.addr".into()
-    });
+    let database_url = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "mysql://artisan:Danny9518!@database-0.arhst.net/ArtisanRbac".into());
 
     log!(LogLevel::Info, "connecting DB...");
 
