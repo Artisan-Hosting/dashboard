@@ -55,7 +55,7 @@ export function Sidebar({ onLogout, onLogoutAll }: { onLogout: () => void; onLog
           {menuOpen && (
             <div className="absolute left-0 mt-2 w-full bg-gray-900 rounded shadow-lg z-50 flex flex-col text-sm">
               <button onClick={() => { router.push('/account'); setMenuOpen(false); }} className="px-4 py-2 text-left hover:bg-gray-700">Account</button>
-              <button onClick={() => { onLogoutAll(); setMenuOpen(false); }} className="px-4 py-2 text-left hover:bg-gray-700">Logout of All Devices</button>
+              {/* <button onClick={() => { onLogoutAll(); setMenuOpen(false); }} className="px-4 py-2 text-left hover:bg-gray-700">Logout of All Devices</button> */}
               <button onClick={() => { onLogout(); setMenuOpen(false); }} className="px-4 py-2 text-left text-red-400 hover:bg-gray-700">Logout</button>
             </div>
           )}
