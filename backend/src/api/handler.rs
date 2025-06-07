@@ -1,4 +1,6 @@
-use crate::api::cache::{CachedResponse, PROXY_CACHE, SESSION_CACHE};
+use crate::api::cache::CachedResponse;
+use crate::state::get_state;
+use crate::updater::spawn_session_refresh;
 use crate::{
     api::{common::PortalRejection::Whoops, helper::get_base_url},
     auth::token::get_token,
@@ -11,7 +13,6 @@ use artisan_middleware::{
 };
 use bytes::Bytes;
 use cookie::CookieBuilder;
-use reqwest::Client;
 use serde_json::Value as JsonValue;
 use std::time::{Duration, Instant};
 use warp::hyper::Body;
@@ -53,6 +54,12 @@ pub async fn login_handler(
                 warp::reject::custom(Whoops(e.to_string()))
             })?;
 
+            get_state()
+                .session_cache
+                .insert(session.session_id.clone(), session.clone())
+                .await;
+            spawn_session_refresh(session.clone());
+
             let cookie = CookieBuilder::new("session_id", session.session_id.clone())
                 .http_only(true)
                 .path("/")
@@ -90,7 +97,7 @@ pub async fn logout_handler(session: SessionData) -> Result<impl warp::Reply, wa
         // don't send an error so the frontend still clears the cookie
     }
 
-    SESSION_CACHE.remove(&session.session_id).await;
+    get_state().session_cache.remove(&session.session_id).await;
 
     // Build a “clear cookie”:
     let clear = cookie::Cookie::build("session_id")
@@ -120,7 +127,10 @@ pub async fn logout_all_handler(session: SessionData) -> Result<impl warp::Reply
         log!(LogLevel::Error, "Error deleting sessions from DB: {}", e);
     }
 
-    SESSION_CACHE.remove_user(&session.user_id).await;
+    get_state()
+        .session_cache
+        .remove_user(&session.user_id)
+        .await;
 
     let clear = cookie::Cookie::build("session_id")
         .max_age(cookie::time::Duration::seconds(0))
@@ -132,7 +142,11 @@ pub async fn logout_all_handler(session: SessionData) -> Result<impl warp::Reply
         .expect("clear.to_string() returned invalid header‐value");
 
     let reply = warp::reply::with_header("", SET_COOKIE, header_value);
-    log!(LogLevel::Debug, "all sessions logged out for {}", session.user_id);
+    log!(
+        LogLevel::Debug,
+        "all sessions logged out for {}",
+        session.user_id
+    );
     Ok(reply)
 }
 
@@ -140,7 +154,7 @@ pub async fn whoami_handler(session: SessionData) -> Result<impl warp::Reply, wa
     log!(LogLevel::Debug, "whoami for session {}", session.session_id);
     match get_token(session.clone()).await {
         Ok(token) => {
-            let client = Client::new();
+            let client = get_state().http_client.clone();
 
             // First: get user_id
             let response_me = client
@@ -231,7 +245,7 @@ pub async fn me_handler(session: SessionData) -> Result<impl warp::Reply, warp::
     );
     match get_token(session.clone()).await {
         Ok(token) => {
-            let client = Client::new();
+            let client = get_state().http_client.clone();
 
             // First: get user_id
             let response_me = client
@@ -277,7 +291,7 @@ pub async fn runners_handler(session: SessionData) -> Result<impl warp::Reply, w
     );
     match get_token(session.clone()).await {
         Ok(token) => {
-            let client = Client::new();
+            let client = get_state().http_client.clone();
 
             let response = client
                 .get(&format!("{}runners", get_base_url()))
@@ -363,7 +377,7 @@ pub async fn generic_proxy_handler(
         } else {
             TTL_SHORT
         };
-        if let Some(cached) = PROXY_CACHE.get(&cache_key, ttl).await {
+        if let Some(cached) = get_state().proxy_cache.get(&cache_key, ttl).await {
             log!(LogLevel::Debug, "proxy cache hit {}", cache_key);
             let mut resp = Response::new(Body::from(cached.body));
             *resp.status_mut() = warp::http::StatusCode::from_u16(cached.status)
@@ -383,7 +397,7 @@ pub async fn generic_proxy_handler(
         .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
 
     // ─── Step 4: Start building the Reqwest request ───────────────────────────
-    let client = Client::new();
+    let client = get_state().http_client.clone();
     let mut req_builder = client
         .request(reqwest_method, &backend_url)
         .bearer_auth(token);
@@ -455,7 +469,8 @@ pub async fn generic_proxy_handler(
     } else {
         log!(LogLevel::Debug, "proxy responded {}", status);
         if method == warp::http::Method::GET && (is_vm || is_runner || is_usage || is_logs) {
-            PROXY_CACHE
+            get_state()
+                .proxy_cache
                 .insert(
                     cache_key,
                     CachedResponse {
