@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use artisan_middleware::dusa_collection_utils::core::types::rwarc::LockWithTimeout;
-use once_cell::sync::Lazy;
 
 #[derive(Clone)]
 pub struct CachedResponse {
@@ -37,8 +36,6 @@ impl Cache {
         }
     }
 }
-
-pub static PROXY_CACHE: Lazy<Cache> = Lazy::new(|| Cache::new());
 
 use crate::api::cookie::SessionData;
 
@@ -78,7 +75,7 @@ impl SessionCache {
             );
         }
     }
-  
+
     pub async fn remove(&self, key: &str) {
         if let Ok(mut guard) = self.inner.try_write().await {
             guard.remove(key);
@@ -91,5 +88,3 @@ impl SessionCache {
         }
     }
 }
-
-pub static SESSION_CACHE: Lazy<SessionCache> = Lazy::new(|| SessionCache::new());
