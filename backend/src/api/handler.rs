@@ -1,5 +1,6 @@
 use crate::api::cache::CachedResponse;
 use crate::state::get_state;
+use crate::updater::spawn_session_refresh;
 use crate::{
     api::{common::PortalRejection::Whoops, helper::get_base_url},
     auth::token::get_token,
@@ -52,6 +53,12 @@ pub async fn login_handler(
                 );
                 warp::reject::custom(Whoops(e.to_string()))
             })?;
+
+            get_state()
+                .session_cache
+                .insert(session.session_id.clone(), session.clone())
+                .await;
+            spawn_session_refresh(session.clone());
 
             let cookie = CookieBuilder::new("session_id", session.session_id.clone())
                 .http_only(true)
