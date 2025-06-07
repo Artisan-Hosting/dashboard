@@ -188,7 +188,7 @@ pub async fn whoami_handler(session: SessionData) -> Result<impl warp::Reply, wa
                     .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
 
                 if let Some(data) = json.get("you") {
-                    let expires = data.get("expires").and_then(|v| v.as_u64()).unwrap_or(0);
+                    let expires = data.get("expires").and_then(|v| v.as_u64()).unwrap_or(30);
                     let reply = warp::reply::json(
                         &serde_json::json!({ "user_id": username, "expires": expires}),
                     );
@@ -350,14 +350,14 @@ pub async fn generic_proxy_handler(
     }
 
     const TTL_SHORT: Duration = Duration::from_secs(5);
-    const TTL_LONG: Duration = Duration::from_secs(600);
+    const TTL_LONG: Duration = Duration::from_secs(30);
     let cache_key = format!("{}?{}", tail.as_str(), raw_query);
-    let is_vm = tail.as_str().starts_with("vms") && !tail.as_str().contains("/status");
+    let is_vm = tail.as_str().starts_with("vms") && !tail.as_str().contains("status");
     let is_runner = tail.as_str().starts_with("runners");
     let is_usage = tail.as_str().starts_with("usage");
     let is_logs = tail.as_str().starts_with("logs");
 
-    if method == warp::http::Method::GET && (is_vm || is_runner || is_usage || is_logs) {
+    if method == warp::http::Method::GET && (is_runner || is_usage || is_logs) {
         let ttl = if is_usage || is_logs || is_runner {
             TTL_LONG
         } else {
