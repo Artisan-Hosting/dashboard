@@ -56,13 +56,13 @@ pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
     // Log that we are about to send the HTTP request.
     log!(
         LogLevel::Debug,
-        "login(): sending POST to {}/auth/login",
+        "login(): sending POST to {}auth/login",
         get_base_url()
     );
 
     let response = client
         .post(&format!("{}auth/login", get_base_url()))
-        .json(&serde_json::json!({ "email": request.email, "password": "<REDACTED>" }))
+        .json(&serde_json::json!({ "email": request.email, "password": request.password }))
         .send()
         .await
         .map_err(|err| {
