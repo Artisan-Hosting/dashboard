@@ -1,11 +1,14 @@
 use artisan_middleware::api::token::SimpleLoginRequest;
-use warp::{Filter, http::header, reject::Rejection, reply::Reply};
 use artisan_middleware::dusa_collection_utils::{core::logger::LogLevel, log};
+use warp::{Filter, http::header, reject::Rejection, reply::Reply};
 
-use crate::api::{handler::{generic_proxy_handler, me_handler, runners_handler}, secret::secret_routes};
+use crate::api::{
+    handler::{generic_proxy_handler, me_handler, runners_handler},
+    secret::secret_routes,
+};
 
 use super::{
-    handler::{login_handler, logout_handler, logout_all_handler, whoami_handler},
+    handler::{login_handler, logout_all_handler, logout_handler, whoami_handler},
     helper::with_session,
 };
 
@@ -67,10 +70,12 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
         .and(warp::path::tail())
         .and(warp::method())
         .and(warp::query::raw().or_else(|_| async { Ok::<_, warp::Rejection>((String::new(),)) }))
-        .and(warp::body::bytes().or_else(|_| async { Ok::<_, warp::Rejection>((bytes::Bytes::new(),)) }))
+        .and(
+            warp::body::bytes()
+                .or_else(|_| async { Ok::<_, warp::Rejection>((bytes::Bytes::new(),)) }),
+        )
         .and(with_session())
         .and_then(generic_proxy_handler);
-  
 
     // // update email
     // let update_email = warp::put()
@@ -108,10 +113,10 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
                 .or(proxy_route)
                 .or(me)
                 .or(secret_routes()), // .or(get_pretty)
-                         // .or(update_email)
-                         // .or(change_password)
-                         // .or(pw_reset_req)
-                         // .or(pw_reset_conf),
+                                      // .or(update_email)
+                                      // .or(change_password)
+                                      // .or(pw_reset_req)
+                                      // .or(pw_reset_conf),
         )
         // .or(v1_preflight)
         .with(cors);
@@ -120,10 +125,10 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
     routes
     // .or(email_conf_req)
     // .or(email_conf_cmp)
-//    // .or(admin_create)
-//    // .or(admin_list)
-//    // .or(admin_get)
-//    // .or(admin_update)
-//    // .or(admin_delete)
-//    // .recover(handle_rejection)
+    //    // .or(admin_create)
+    //    // .or(admin_list)
+    //    // .or(admin_get)
+    //    // .or(admin_update)
+    //    // .or(admin_delete)
+    //    // .recover(handle_rejection)
 }
