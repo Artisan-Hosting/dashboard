@@ -1,9 +1,9 @@
+use crate::state::get_state;
 use artisan_middleware::{
     api::token::SimpleLoginRequest,
     dusa_collection_utils::{core::logger::LogLevel, log},
 };
 use chrono::{DateTime, Utc};
-use reqwest::Client;
 use sqlx::Row;
 use uuid::Uuid;
 
@@ -11,7 +11,6 @@ use crate::database::connection::get_db_pool;
 
 use super::helper::{get_base_url, peek_exp_from_jwt_unverified, peek_sub_from_jwt_unverified};
 use serde::{Deserialize, Serialize};
-
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SessionData {
@@ -50,8 +49,7 @@ pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
         request.email
     );
 
-
-    let client = Client::new();
+    let client = get_state().http_client.clone();
 
     // Log that we are about to send the HTTP request.
     log!(
@@ -222,7 +220,11 @@ pub async fn lookup_session(
             ()
         })?;
         let expires_at: DateTime<Utc> = r.try_get("expires_at").map_err(|e| {
-            log!(LogLevel::Error, "lookup_session column expires_at error: {}", e);
+            log!(
+                LogLevel::Error,
+                "lookup_session column expires_at error: {}",
+                e
+            );
             ()
         })?;
 
