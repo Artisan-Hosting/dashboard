@@ -11,8 +11,10 @@ use artisan_middleware::dusa_collection_utils::{
 };
 use database::connection::{get_db_pool, init_db_pool};
 mod state;
+mod updater;
 use api::cookie::load_active_sessions;
 use state::{get_state, init_state};
+use updater::spawn_session_refresh;
 use warp::Filter;
 // use database::{caching::{orgid_cache_cleaning_loop, permission_cache_cleaning_loop}, connections::init_db_pool};
 // use global::GLOBAL_STATE;
@@ -46,7 +48,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let count = sessions.len();
             let cache = &get_state().session_cache;
             for s in sessions {
-                cache.insert(s.session_id.clone(), s).await;
+                cache.insert(s.session_id.clone(), s.clone()).await;
+                spawn_session_refresh(s);
             }
             log!(LogLevel::Info, "prefilled {} session cache entries", count);
         }
