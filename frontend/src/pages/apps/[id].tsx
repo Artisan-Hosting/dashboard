@@ -17,6 +17,9 @@ function formatBytes(bytes: number): string {
 }
 
 
+export const truncate = (str: string, max = 10) =>
+  str.length > max ? str.slice(12, max) + '…' : str;
+
 export default function ProjectPage() {
   const router = useRouter();
   const { id: runnerId } = router.query as { id?: string };
@@ -184,8 +187,8 @@ export default function ProjectPage() {
                 >
                   <div className="flex justify-between items-center mb-2">
                     <div>
-                      <h2 className="text-xl font-semibold text-brand">
-                        {details.id}
+                      <h2 className="text-xl font-semibold text-brand text-pretty">
+                        {truncate(String(details.id), 24) || "huh"}
                       </h2>
                       <p className={`text-sm ${statusColorMap[details.status as StatusType] || 'text-black'}`}>
                         {details.status}
