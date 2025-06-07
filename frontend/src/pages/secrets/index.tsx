@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/header';
 import { fetchWithAuth } from '@/lib/api';
-import { handleLogout } from '@/lib/logout';
+import { handleLogout, handleLogoutAll } from '@/lib/logout';
 
 interface SecretItem {
   name: string;
@@ -69,7 +69,7 @@ export default function SecretsPage() {
 
   return (
     <div className="min-h-screen flex bg-page text-foreground">
-      <Sidebar onLogout={handleLogout} />
+      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
       <main className="flex-1 p-4 sm:p-6 lg:p-8">
         <h1 className="text-3xl font-bold text-brand mb-6">Secrets</h1>
 

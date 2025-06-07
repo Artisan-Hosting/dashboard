@@ -3,7 +3,7 @@ import { fetchVmList, sendVmAction } from '@/lib/api';
 import { VmListItem, VmActionType } from '@/lib/types';
 import { Sidebar } from '@/components/header';
 import LoadingOverlay from '@/components/loading';
-import { handleLogout } from '@/lib/logout';
+import { handleLogout, handleLogoutAll } from '@/lib/logout';
 
 export default function VmListPage() {
   const [vms, setVms] = useState<VmListItem[]>([]);
@@ -61,7 +61,7 @@ export default function VmListPage() {
 
   return (
     <div className="relative min-h-screen flex bg-page text-foreground">
-      <Sidebar onLogout={handleLogout} />
+      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
       <main className="flex-1 p-4 sm:p-6 lg:p-8">
         <h2 className="text-2xl font-semibold mb-6 text-brand">

@@ -5,7 +5,7 @@ import { fetchWithAuth } from '@/lib/api'
 import { useRouter } from 'next/router'
 import { Sidebar } from '@/components/header'
 import LoadingOverlay from '@/components/loading'
-import { handleLogout } from '@/lib/logout'
+import { handleLogout, handleLogoutAll } from '@/lib/logout'
 
 export default function AccountPage() {
   const router = useRouter()
@@ -52,7 +52,7 @@ export default function AccountPage() {
 
   return (
     <div className="relative min-h-screen flex bg-page text-foreground">
-      <Sidebar onLogout={handleLogout} />
+      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
       {/* Main content on the right */}
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-12">
@@ -131,12 +131,10 @@ export default function AccountPage() {
           <h2 className="text-xl font-semibold text-red-400 mb-4">Danger Zone</h2>
           <div className="space-y-4">
             <button
-              onClick={() => {
-                router.push('/login')
-              }}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded opacity-50 cursor-not-allowed"
+              onClick={handleLogoutAll}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
             >
-              Logout of All Devices (Coming Soon)
+              Logout of All Devices
             </button>
             <button className="px-4 py-2 bg-red-700 hover:bg-red-800 rounded opacity-50 cursor-not-allowed">
               Delete Account (Coming Soon)

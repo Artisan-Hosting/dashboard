@@ -5,7 +5,7 @@ import { fetchBilling, fetchWithAuth, postWithAuth } from '@/lib/api';
 import { UsageSummary, BillingCosts, RunnerSummary } from '@/lib/types';
 import { Sidebar } from '@/components/header';
 import LoadingOverlay from '@/components/loading';
-import { handleLogout } from '@/lib/logout';
+import { handleLogout, handleLogoutAll } from '@/lib/logout';
 
 interface BillingBlock {
   name: string;
@@ -58,7 +58,7 @@ export default function BillingPage() {
 
   return (
     <div className="relative min-h-screen flex bg-page text-foreground">
-      <Sidebar onLogout={handleLogout} />
+      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
 
       <main className="flex-1 p-4 sm:p-6 lg:p-8">

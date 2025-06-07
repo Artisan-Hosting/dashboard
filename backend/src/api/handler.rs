@@ -1,4 +1,4 @@
-use crate::api::cache::{CachedResponse, PROXY_CACHE};
+use crate::api::cache::{CachedResponse, PROXY_CACHE, SESSION_CACHE};
 use crate::{
     api::{common::PortalRejection::Whoops, helper::get_base_url},
     auth::token::get_token,
@@ -90,6 +90,8 @@ pub async fn logout_handler(session: SessionData) -> Result<impl warp::Reply, wa
         // don't send an error so the frontend still clears the cookie
     }
 
+    SESSION_CACHE.remove(&session.session_id).await;
+
     // Build a “clear cookie”:
     let clear = cookie::Cookie::build("session_id")
         .max_age(cookie::time::Duration::seconds(0))
@@ -105,6 +107,32 @@ pub async fn logout_handler(session: SessionData) -> Result<impl warp::Reply, wa
 
     let reply = warp::reply::with_header("", SET_COOKIE, header_value);
     log!(LogLevel::Debug, "session {} logged out", session.session_id);
+    Ok(reply)
+}
+
+pub async fn logout_all_handler(session: SessionData) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Info, "logout all for user {}", session.user_id);
+    if let Err(e) = sqlx::query("DELETE FROM sessions WHERE user_id = ?")
+        .bind(&session.user_id)
+        .execute(get_db_pool())
+        .await
+    {
+        log!(LogLevel::Error, "Error deleting sessions from DB: {}", e);
+    }
+
+    SESSION_CACHE.remove_user(&session.user_id).await;
+
+    let clear = cookie::Cookie::build("session_id")
+        .max_age(cookie::time::Duration::seconds(0))
+        .path("/")
+        .http_only(true)
+        .secure(true);
+
+    let header_value = HeaderValue::from_str(&clear.to_string())
+        .expect("clear.to_string() returned invalid header‐value");
+
+    let reply = warp::reply::with_header("", SET_COOKIE, header_value);
+    log!(LogLevel::Debug, "all sessions logged out for {}", session.user_id);
     Ok(reply)
 }
 
@@ -320,7 +348,6 @@ pub async fn generic_proxy_handler(
         backend_url.push('?');
         backend_url.push_str(&raw_query);
     }
-
 
     const TTL_SHORT: Duration = Duration::from_secs(5);
     const TTL_LONG: Duration = Duration::from_secs(600);

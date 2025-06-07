@@ -7,3 +7,11 @@ export async function handleLogout() {
     });
     router.push('/');
 }
+
+export async function handleLogoutAll() {
+    await fetch(`${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/auth/logout_all`, {
+        method: "POST",
+        credentials: "include",
+    });
+    router.push('/');
+}
