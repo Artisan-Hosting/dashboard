@@ -78,7 +78,7 @@ impl SessionCache {
             );
         }
     }
-
+  
     pub async fn remove(&self, key: &str) {
         if let Ok(mut guard) = self.inner.try_write().await {
             guard.remove(key);
