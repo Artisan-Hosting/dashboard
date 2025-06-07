@@ -78,6 +78,18 @@ impl SessionCache {
             );
         }
     }
+  
+    pub async fn remove(&self, key: &str) {
+        if let Ok(mut guard) = self.inner.try_write().await {
+            guard.remove(key);
+        }
+    }
+
+    pub async fn remove_user(&self, user_id: &str) {
+        if let Ok(mut guard) = self.inner.try_write().await {
+            guard.retain(|_, v| v.data.user_id != user_id);
+        }
+    }
 }
 
 pub static SESSION_CACHE: Lazy<SessionCache> = Lazy::new(|| SessionCache::new());

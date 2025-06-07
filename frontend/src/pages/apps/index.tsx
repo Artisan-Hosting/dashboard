@@ -9,7 +9,7 @@ import {
 } from "@/lib/types";
 import { Sidebar } from "@/components/header";
 import LoadingOverlay from "@/components/loading";
-import { handleLogout } from "@/lib/logout";
+import { handleLogout, handleLogoutAll } from "@/lib/logout";
 
 const REFRESH_INTERVAL = 10_000; // 10s
 
@@ -66,7 +66,7 @@ export default function Dashboard() {
   return (
     <div className="relative min-h-screen flex bg-page text-foreground">
       {/* Sidebar should be a sibling of <main>, not a child */}
-      <Sidebar onLogout={handleLogout} />
+      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
       {/* Content area */}
       <main className="flex-1 p-4 sm:p-6 lg:p-8">

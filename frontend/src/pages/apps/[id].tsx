@@ -2,7 +2,7 @@
 import { Sidebar } from '@/components/header';
 import LoadingOverlay from '@/components/loading';
 import { fetchWithAuth, fetchBilling, postWithAuth } from '@/lib/api';
-import { handleLogout } from '@/lib/logout';
+import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { FullInstance, RunnerDetails, UsageSummary, BillingCosts, LogEntry, statusColorMap, StatusType } from '@/lib/types';
 import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
@@ -167,7 +167,7 @@ export default function ProjectPage() {
   return (
     <div className="relative min-h-screen flex bg-page text-foreground">
       <Toaster position="bottom-right" />
-      <Sidebar onLogout={handleLogout} />
+      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
       <main className="flex-1 overflow-y-auto p-4 sm:p-6">
         <h1 className="text-3xl font-bold text-brand mb-6">Project: {runnerId}</h1>
