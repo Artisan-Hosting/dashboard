@@ -1,0 +1,13 @@
+[Unit]
+Description=Artisan Dashboard
+After=network.target
+
+[Service]
+ExecStart=/opt/dashboard/bin
+WorkingDirectory=/opt/dashboard/static
+Restart=on-failure
+RestartSec=5
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=multi-user.target
