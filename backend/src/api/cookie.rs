@@ -314,6 +314,13 @@ pub async fn update_session_auth(auth: String, session_id: String) -> Result<Str
 pub async fn load_active_sessions(
     pool: &sqlx::Pool<sqlx::MySql>,
 ) -> Result<Vec<SessionData>, sqlx::Error> {
+    // we delete the old session data here because I can't be vexed to learn triggers on a mysql db
+    sqlx::query(
+        r#"DELETE FROM sessions WHERE expires_at <= NOW()"#,
+    )
+    .execute(pool)
+    .await?;
+
     let rows = sqlx::query(
         r#"SELECT session_id, user_id, auth_jwt, refresh_jwt, expires_at
         FROM sessions
