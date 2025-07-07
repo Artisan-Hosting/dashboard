@@ -81,7 +81,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // —————————————————————
 
     let out_dir =
-        "/home/dwhitfield/Developer/Artisan_Hosting/Platform/artisan_dashboard/frontend/out";
+        "/opt/dashboard/static";
 
     let static_fs = warp::fs::dir(out_dir);
 

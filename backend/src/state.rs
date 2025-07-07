@@ -18,7 +18,7 @@ static APP_STATE: OnceCell<AppState> = OnceCell::new();
 
 pub async fn init_state() -> Result<(), Box<dyn std::error::Error>> {
     let secret_addr = std::env::var("SECRET_GRPC_ADDR")
-        .unwrap_or_else(|_| "http://100.104.233.80:50051".to_string());
+        .unwrap_or_else(|_| "http://10.2.0.3:50052".to_string());
     log!(LogLevel::Info, "connecting to secret gRPC {}", &secret_addr);
     let secret_client = grpc::SecretClient::connect(secret_addr).await?;
 
