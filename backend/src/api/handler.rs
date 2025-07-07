@@ -60,6 +60,7 @@ pub async fn login_handler(
                 .await;
             spawn_session_refresh(session.clone());
 
+            #[allow(deprecated)]
             let cookie = CookieBuilder::new("session_id", session.session_id.clone())
                 .http_only(true)
                 .path("/")
@@ -101,6 +102,7 @@ pub async fn logout_handler(session: SessionData) -> Result<impl warp::Reply, wa
     get_state().session_cache.remove(&session.session_id).await;
 
     // Build a “clear cookie”:
+    #[allow(deprecated)]
     let clear = cookie::Cookie::build("session_id")
         .max_age(cookie::time::Duration::seconds(0))
         .path("/")
