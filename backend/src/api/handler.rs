@@ -63,7 +63,8 @@ pub async fn login_handler(
             let cookie = CookieBuilder::new("session_id", session.session_id.clone())
                 .http_only(true)
                 .path("/")
-                .secure(true);
+                .secure(true)
+                .finish();
 
             let set_cookie_header = cookie.to_string();
 
@@ -104,8 +105,8 @@ pub async fn logout_handler(session: SessionData) -> Result<impl warp::Reply, wa
         .max_age(cookie::time::Duration::seconds(0))
         .path("/")
         .http_only(true)
-        .secure(true);
-    // .finish();
+        .secure(true)
+        .finish();
 
     let set_clear_header = clear.to_string();
 

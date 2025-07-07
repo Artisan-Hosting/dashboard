@@ -15,11 +15,11 @@ use super::{
 pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     log!(LogLevel::Debug, "creating API routes");
     let testing_origin = "http://localhost:3800";
-    let deveing_origin = "http://localhost:3000";
+    let release = "https://dashboard.artisanhosting.net";
 
     let cors = warp::cors()
         .allow_origin(testing_origin)
-        .allow_origin(deveing_origin)
+        .allow_origin(release)
         .allow_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
         .allow_headers(vec![
             header::CONTENT_TYPE,
