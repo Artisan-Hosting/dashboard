@@ -14,13 +14,10 @@ mod state;
 mod updater;
 use api::cookie::load_active_sessions;
 use state::{get_state, init_state};
-use updater::spawn_session_refresh;
-use warp::Filter;
-// use database::{caching::{orgid_cache_cleaning_loop, permission_cache_cleaning_loop}, connections::init_db_pool};
-// use global::GLOBAL_STATE;
-// use service::AuthService;
 use std::{error::Error, net::SocketAddr, time::Duration};
 use tokio::{self, signal, time::timeout};
+use updater::spawn_session_refresh;
+use warp::Filter;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 8)]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -59,29 +56,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // —————————————————————
-    // Cache Cleanup (runs forever in background)
-    // // —————————————————————
-    // {
-    //     let perm_cache = GLOBAL_STATE.get_permission_cache();
-    //     let orgid_cache = GLOBAL_STATE.get_org_id_cache();
-    //     tokio::spawn(async move {
-    //         if let Err(e) = permission_cache_cleaning_loop(perm_cache).await {
-    //             log!(LogLevel::Error, "Permission‐cache cleaner failed: {}", e);
-    //         }
-    //     });
-    //     tokio::spawn(async move {
-    //         if let Err(e) = orgid_cache_cleaning_loop(orgid_cache).await {
-    //             log!(LogLevel::Error, "OrgID‐cache cleaner failed: {}", e);
-    //         }
-    //     });
-    // }
-
-    // —————————————————————
     // HTTP (Warp) Server
     // —————————————————————
 
-    let out_dir =
-        "/opt/dashboard/static";
+    let out_dir = "/opt/dashboard/static";
 
     let static_fs = warp::fs::dir(out_dir);
 
@@ -117,7 +95,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     });
 
     let routes = api_routes.or(try_html_fallback).or(static_fs);
-    // .recover(handle_rejection);
 
     let http_addr: SocketAddr = "0.0.0.0:3800".parse()?;
     let http_server = tokio::spawn(async move {
