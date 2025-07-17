@@ -1,14 +1,12 @@
 // 'use client'
 import { useState, useEffect } from 'react'
 import { useUser } from '@/hooks/useUser'
-import { fetchWithAuth } from '@/lib/api'
-import { useRouter } from 'next/router'
+
 import { Sidebar } from '@/components/header'
 import LoadingOverlay from '@/components/loading'
 import { handleLogout, handleLogoutAll } from '@/lib/logout'
 
 export default function AccountPage() {
-  const router = useRouter()
   const { username, email: loadedEmail, isLoading, error } = useUser()
 
   // Editable state for email:
@@ -17,6 +15,58 @@ export default function AccountPage() {
   const [confirmPassword, setConfirmPassword] = useState<string>('')
   const [prettyName, setPrettyName] = useState<string>('')
   const [feedback, setFeedback] = useState<string>('')
+
+  const handleUpdateEmail = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/account/email`,
+        {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        }
+      )
+      if (res.ok) {
+        setFeedback('Email updated.')
+      } else {
+        setFeedback('Error updating email.')
+      }
+    } catch {
+      setFeedback('Error updating email.')
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (password !== confirmPassword) {
+      setFeedback('Passwords do not match.')
+      return
+    }
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/account/password`,
+        {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ password }),
+        }
+      )
+      if (res.ok) {
+        setFeedback('Password updated.')
+        setPassword('')
+        setConfirmPassword('')
+      } else {
+        setFeedback('Error updating password.')
+      }
+    } catch {
+      setFeedback('Error updating password.')
+    }
+  }
 
   // Once useUser finishes loading, seed `email` input field:
   useEffect(() => {
@@ -34,21 +84,6 @@ export default function AccountPage() {
     )
   }
 
-  // const handleUpdateEmail = async () => {
-  //   try {
-  //     const res = await fetchWithAuth('account/email', {
-  //       method: 'PUT',
-  //       body: JSON.stringify({ email }),
-  //     })
-  //     if (res?.status === 'success') {
-  //       setFeedback('Email updated.')
-  //     } else {
-  //       setFeedback('Error updating email.')
-  //     }
-  //   } catch {
-  //     setFeedback('Error updating email.')
-  //   }
-  // }
 
   return (
     <div className="relative min-h-screen flex bg-page text-foreground">
@@ -94,7 +129,12 @@ export default function AccountPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
-            {/* <button …>Change Password</button> */}
+            <button
+              onClick={handleChangePassword}
+              className="mt-2 px-4 py-2 bg-brand hover:bg-brand-dark rounded"
+            >
+              Change Password
+            </button>
           </div>
           <div className="space-y-2">
             <label className="block text-sm">Update Email</label>
@@ -104,12 +144,12 @@ export default function AccountPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-            {/* <button
+            <button
               onClick={handleUpdateEmail}
               className="mt-2 px-4 py-2 bg-brand hover:bg-brand-dark rounded"
             >
               Update Email
-            </button> */}
+            </button>
           </div>
         </section>
 
