@@ -1,44 +1,63 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { fetchVmList, sendVmAction } from '@/lib/api';
 import { VmListItem, VmActionType } from '@/lib/types';
 import { Sidebar } from '@/components/header';
 import LoadingOverlay from '@/components/loading';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
+import { toast, Toaster } from 'react-hot-toast';
 
 export default function VmListPage() {
   const [vms, setVms] = useState<VmListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const previousStatusRef = useRef<Record<number, string>>({});
 
   // When we perform an action, we may want to show a quick “loading” state per‐VM:
   const [actionLoading, setActionLoading] = useState<Record<number, boolean>>({});
 
-  useEffect(() => {
-    (async () => {
+  const updateVmList = useCallback(
+    async (notify = false) => {
       try {
         const list = await fetchVmList();
-        if (list) {
-          setVms(list);
+        if (!list) return;
+
+        if (notify) {
+          list.forEach((vm) => {
+            const prev = previousStatusRef.current[vm.vmid];
+            if (prev && prev !== vm.status) {
+              toast(`VM ${vm.vmid} is now ${vm.status}`, {
+                icon: vm.status === 'running' ? '✅' : '⚠️',
+              });
+            }
+            previousStatusRef.current[vm.vmid] = vm.status;
+          });
         } else {
-          console.error('Error fetching VMs');
+          list.forEach((vm) => {
+            previousStatusRef.current[vm.vmid] = vm.status;
+          });
         }
+
+        setVms(list);
       } catch (err) {
-        console.error(err);
+        console.error(notify ? 'Error refreshing VMs:' : 'Error fetching VMs', err);
       } finally {
-        setLoading(false);
+        if (!notify) setLoading(false);
       }
-    })();
-  }, []);
+    },
+    []
+  );
+
+  useEffect(() => {
+    updateVmList(false);
+  }, [updateVmList]);
+
+  useEffect(() => {
+    const iv = setInterval(() => updateVmList(true), 5000);
+    return () => clearInterval(iv);
+  }, [updateVmList]);
 
   // If you want to refresh the VM list after an action, call this helper:
   const reloadVmList = async () => {
-    try {
-      const list = await fetchVmList();
-      if (list) {
-        setVms(list);
-      }
-    } catch (err) {
-      console.error('Error reloading VMs:', err);
-    }
+    await updateVmList(true);
   };
 
   // Called when one of the action buttons is clicked:
@@ -61,6 +80,7 @@ export default function VmListPage() {
 
   return (
     <div className="relative min-h-screen flex bg-page text-foreground">
+      <Toaster position="bottom-right" />
       <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
       <main className="flex-1 p-4 sm:p-6 lg:p-8">
