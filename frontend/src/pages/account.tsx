@@ -1,0 +1,192 @@
+// 'use client'
+import { useState, useEffect } from 'react'
+import { useUser } from '@/hooks/useUser'
+
+import { Sidebar } from '@/components/header'
+import LoadingOverlay from '@/components/loading'
+import { handleLogout, handleLogoutAll } from '@/lib/logout'
+
+export default function AccountPage() {
+  const { username, email: loadedEmail, isLoading, error } = useUser()
+
+  // Editable state for email:
+  const [email, setEmail] = useState<string>('')
+  const [password, setPassword] = useState<string>('')
+  const [confirmPassword, setConfirmPassword] = useState<string>('')
+  const [prettyName, setPrettyName] = useState<string>('')
+  const [feedback, setFeedback] = useState<string>('')
+
+  const handleUpdateEmail = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/account/email`,
+        {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        }
+      )
+      if (res.ok) {
+        setFeedback('Email updated.')
+      } else {
+        setFeedback('Error updating email.')
+      }
+    } catch {
+      setFeedback('Error updating email.')
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (password !== confirmPassword) {
+      setFeedback('Passwords do not match.')
+      return
+    }
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/account/password`,
+        {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ password }),
+        }
+      )
+      if (res.ok) {
+        setFeedback('Password updated.')
+        setPassword('')
+        setConfirmPassword('')
+      } else {
+        setFeedback('Error updating password.')
+      }
+    } catch {
+      setFeedback('Error updating password.')
+    }
+  }
+
+  // Once useUser finishes loading, seed `email` input field:
+  useEffect(() => {
+    if (!isLoading && loadedEmail) {
+      setEmail(loadedEmail)
+    }
+  }, [isLoading, loadedEmail])
+
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#0b0c10] text-red-400">
+        Error loading user info: {error.message}
+      </div>
+    )
+  }
+
+
+  return (
+    <div className="relative min-h-screen flex bg-page text-foreground">
+      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+
+      {/* Main content on the right */}
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-12">
+        <h1 className="text-3xl font-bold text-brand">Account Settings</h1>
+
+        {/* 1. User Info */}
+        <section className="card p-6">
+          <h2 className="text-xl font-semibold text-brand mb-4">User Info</h2>
+          <div className="flex items-center space-x-4">
+            <img
+              src={`https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(
+                username
+              )}`}
+              alt="avatar"
+              className="w-14 h-14 rounded-full border border-brand"
+            />
+            <div>
+              <p className="text-white font-medium">{username}</p>
+              <p className="text-sm text-gray-400">{loadedEmail}</p>
+            </div>
+          </div>
+        </section>
+
+        {/* 2. Security Settings */}
+        <section className="card p-6 space-y-6">
+          <h2 className="text-xl font-semibold text-brand mb-2">Security Settings</h2>
+          <div className="space-y-2">
+            <label className="block text-sm">New Password</label>
+            <input
+              type="password"
+              className="w-full p-2 rounded bg-gray-800 text-white"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <label className="block text-sm mt-2">Confirm Password</label>
+            <input
+              type="password"
+              className="w-full p-2 rounded bg-gray-800 text-white"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+            <button
+              onClick={handleChangePassword}
+              className="mt-2 px-4 py-2 bg-brand hover:bg-brand-dark rounded"
+            >
+              Change Password
+            </button>
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm">Update Email</label>
+            <input
+              type="email"
+              className="w-full p-2 rounded bg-gray-800 text-white"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <button
+              onClick={handleUpdateEmail}
+              className="mt-2 px-4 py-2 bg-brand hover:bg-brand-dark rounded"
+            >
+              Update Email
+            </button>
+          </div>
+        </section>
+
+        {/* 3. Personalization */}
+        <section className="card p-6">
+          <h2 className="text-xl font-semibold text-brand mb-4">Personalization</h2>
+          <label className="block text-sm mb-2">Set Pretty Project Name</label>
+          <input
+            type="text"
+            className="w-full p-2 rounded bg-gray-800 text-white mb-2"
+            value={prettyName}
+            onChange={(e) => setPrettyName(e.target.value)}
+          />
+          {/* <button …>Save Pretty Name</button> */}
+        </section>
+
+        {/* 4. Danger Zone */}
+        <section className="bg-brand-gradient p-6 rounded-xl border border-red-600">
+          <h2 className="text-xl font-semibold text-red-400 mb-4">Danger Zone</h2>
+          <div className="space-y-4">
+            <button
+              onClick={handleLogoutAll}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
+            >
+              Logout of All Devices
+            </button>
+            <button className="px-4 py-2 bg-red-700 hover:bg-red-800 rounded opacity-50 cursor-not-allowed">
+              Delete Account (Coming Soon)
+            </button>
+          </div>
+        </section>
+
+        {feedback && (
+          <div className="text-sm text-green-400 mt-4">{feedback}</div>
+        )}
+      </div>
+      {isLoading && <LoadingOverlay />}
+    </div>
+  )
+}

@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f3f4f6;
+  --foreground: #111827;
+  --background-alt: #e2e8f0;
+  --accent: #1E3A8A; /* brand color */
+  --gradient-start: #e5e7eb;
+  --gradient-end: #d1d5db;
+  --font-sans: 'Roboto', sans-serif;
+  --font-mono: 'Source Code Pro', monospace;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #111827;
+    --background-alt: #1f2937;
+    --foreground: #e5e7eb;
+    --gradient-start: #1f2937;
+    --gradient-end: #0f172a;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+/* Utility classes used across pages */
+.bg-page {
+  @apply bg-gradient-to-br from-[color:var(--gradient-start)] via-[color:var(--background-alt)] to-[color:var(--gradient-end)];
+}
+
+.bg-brand-gradient {
+  background-image: linear-gradient(to bottom right, var(--gradient-start), var(--gradient-end));
+}
+
+.card {
+  @apply bg-white dark:bg-[#1e1e2f] border border-gray-200 dark:border-gray-700 rounded-2xl shadow overflow-x-auto;
+}
+
+.card-hover {
+  @apply bg-white dark:bg-[#1e1e2f] border rounded-2xl shadow hover:shadow-xl transform transition hover:-translate-y-1;
+  border-color: var(--accent);
+}
+
+.text-foreground {
+  color: var(--foreground);
+}
+
+/* Brand color utilities */
+.text-brand {
+  color: var(--accent);
+}
+
+.hover\:text-brand:hover {
+  color: var(--accent);
+}
+
+.bg-brand {
+  background-color: var(--accent);
+}
+
+.hover\:bg-brand-dark:hover {
+  background-color: color-mix(in srgb, var(--accent), black 20%);
+}
+
+.border-brand {
+  border-color: var(--accent);
+}
