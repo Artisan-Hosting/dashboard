@@ -6,8 +6,6 @@ target
 .react-router
 frontend/build/
 node_modules
-.env
-.env.local
 .next
 out
 backend/src/grpc/secret_service.rs

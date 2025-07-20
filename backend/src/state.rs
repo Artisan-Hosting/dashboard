@@ -17,8 +17,7 @@ pub struct AppState {
 static APP_STATE: OnceCell<AppState> = OnceCell::new();
 
 pub async fn init_state() -> Result<(), Box<dyn std::error::Error>> {
-    let secret_addr =
-        std::env::var("SECRET_GRPC_ADDR").unwrap_or_else(|_| "http://10.2.0.3:50052".to_string());
+    let secret_addr = std::env::var("SECRET_GRPC_ADDR").expect("SECRET_GRPC_ADDR must be set");
     log!(LogLevel::Info, "connecting to secret gRPC {}", &secret_addr);
     let secret_client = grpc::SecretClient::connect(secret_addr).await?;
 

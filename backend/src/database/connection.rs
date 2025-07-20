@@ -8,8 +8,7 @@ static DB_POOL: OnceCell<MySqlPool> = OnceCell::new();
 /// Initialize the global pool.
 /// FOR THE LOVE OF GOD call this *exactly once* at application startup!
 pub async fn init_db_pool() -> Result<(), sqlx::Error> {
-    let database_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "mysql://artisan:Danny9518!@database-0.arhst.net/ArtisanRbac".into());
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
     log!(LogLevel::Info, "connecting DB...");
 
