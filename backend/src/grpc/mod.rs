@@ -34,4 +34,20 @@ impl SecretClient {
         log!(LogLevel::Debug, "gRPC get_all_secrets");
         Ok(self.client.get_all_secrets(req).await?.into_inner())
     }
+
+    pub async fn update_secret(
+        &mut self,
+        req: secret_service::UpdateSecretRequest,
+    ) -> Result<secret_service::SimpleSecretResponse, tonic::Status> {
+        log!(LogLevel::Debug, "gRPC update_secret");
+        Ok(self.client.update_secret(req).await?.into_inner())
+    }
+
+    pub async fn delete_secret(
+        &mut self,
+        req: secret_service::DeleteSecretRequest,
+    ) -> Result<secret_service::SimpleSecretResponse, tonic::Status> {
+        log!(LogLevel::Debug, "gRPC delete_secret");
+        Ok(self.client.delete_secret(req).await?.into_inner())
+    }
 }

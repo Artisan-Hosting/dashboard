@@ -47,6 +47,58 @@ export async function postWithAuth(endpoint: string, body?: any) {
   return res.json();
 }
 
+export async function putWithAuth(endpoint: string, body?: any) {
+  const opts: RequestInit = {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
+
+  if (body !== undefined) {
+    opts.body = JSON.stringify(body);
+  }
+
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/${endpoint}`,
+    opts
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API Error: ${res.status} ${text}`);
+  }
+
+  return res.json();
+}
+
+export async function deleteWithAuth(endpoint: string, body?: any) {
+  const opts: RequestInit = {
+    method: "DELETE",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
+
+  if (body !== undefined) {
+    opts.body = JSON.stringify(body);
+  }
+
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/${endpoint}`,
+    opts
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API Error: ${res.status} ${text}`);
+  }
+
+  return res.json();
+}
+
 
 export async function fetchBilling(
   usage: UsageSummary
