@@ -41,27 +41,42 @@ export default function SecretsPage() {
 
   const envValue = selectedEnv === '__custom__' ? customEnv : selectedEnv;
 
-  const loadSecrets = useCallback(async () => {
-    if (!selectedRunner || !envValue) {
-      setItems([]);
-      return;
-    }
-    try {
-      const res = await fetchWithAuth(
-        `secrets/list?runner_id=${selectedRunner}&environment_id=${envValue}`
-      );
-      const list: SecretItem[] = (res.vals || []).map((kv: any) => ({
-        name: kv.key,
-        value:
-          typeof atob === 'function'
-            ? atob(kv.value)
-            : Buffer.from(kv.value, 'base64').toString('utf8'),
-      }));
-      setItems(list);
-    } catch (err) {
-      console.error('Failed to load secrets', err);
-    }
-  }, [selectedRunner, envValue]);
+const loadSecrets = useCallback(async () => {
+  if (!selectedRunner || !envValue) {
+    setItems([]);
+    return;
+  }
+
+  try {
+    const res = await fetchWithAuth(
+      `secrets/list?runner_id=${selectedRunner}&environment_id=${envValue}`
+    );
+
+    const list: SecretItem[] = (res.vals || []).map((kv: any) => {
+      let value = '';
+
+      // Handle byte array as decimal string
+      if (typeof kv.value === 'string' && /^\d+$/.test(kv.value)) {
+        // Split into chunks representing ASCII codes
+        const byteArray = kv.value.match(/.{1,3}/g)?.map(Number) || [];
+        value = String.fromCharCode(...byteArray);
+      } else if (Array.isArray(kv.value)) {
+        // If it's actually an array of numbers
+        value = String.fromCharCode(...kv.value);
+      } else {
+        // Fallback: treat as string
+        value = String(kv.value ?? '');
+      }
+
+      return { name: kv.key, value };
+    });
+
+    setItems(list);
+  } catch (err) {
+    console.error('Failed to load secrets', err);
+  }
+}, [selectedRunner, envValue]);
+
 
   useEffect(() => {
     loadSecrets();

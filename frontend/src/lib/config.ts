@@ -1,1 +1,1 @@
-export const API_URL = "http://localhost:3800";
+export const API_URL = "https://dashboard.artisanhosting.net/api";
