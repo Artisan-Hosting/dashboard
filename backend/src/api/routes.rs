@@ -14,7 +14,7 @@ use super::{
 
 pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     log!(LogLevel::Debug, "creating API routes");
-    let testing_origin = "http://localhost:3800";
+    let testing_origin = "http://localhost:3000";
     let release = "https://dashboard.artisanhosting.net";
 
     let cors = warp::cors()

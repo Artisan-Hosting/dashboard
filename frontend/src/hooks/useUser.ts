@@ -1,5 +1,6 @@
 // /hooks/useUser.ts
 import { useState, useEffect } from 'react'
+import { BACKEND_URL } from '@/lib/config'
 
 export function useUser() {
     const [username, setUsername] = useState<string>('')
@@ -12,7 +13,7 @@ export function useUser() {
 
         async function fetchUser() {
             try {
-                const meRes = await fetch(`${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/auth/me`, {
+                const meRes = await fetch(`${BACKEND_URL}/auth/me`, {
                     method: 'GET',
                     credentials: "include", // ← send the cookie
                     headers: {

@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { jwtDecode } from "jwt-decode";
 import logo from "../img/logo.webp";
 import LoadingOverlay from "@/components/loading";
+import { BACKEND_URL } from "@/lib/config";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -13,7 +14,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         // This effect will run only once, on mount
-        fetch(`${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/auth/whoami`, {
+        fetch(`${BACKEND_URL}/auth/whoami`, {
             method: "GET",
             credentials: "include",
         })
@@ -39,7 +40,7 @@ export default function LoginPage() {
         e.preventDefault();
 
         const res = await fetch(
-            `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/auth/login`,
+            `${BACKEND_URL}/auth/login`,
             {
                 method: "POST",
                 credentials: "include",            // ← tell the browser to accept & store the Set-Cookie

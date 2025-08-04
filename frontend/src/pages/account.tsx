@@ -5,6 +5,7 @@ import { useUser } from '@/hooks/useUser'
 import { Sidebar } from '@/components/header'
 import LoadingOverlay from '@/components/loading'
 import { handleLogout, handleLogoutAll } from '@/lib/logout'
+import { BACKEND_URL } from '@/lib/config'
 
 export default function AccountPage() {
   const { username, email: loadedEmail, isLoading, error } = useUser()
@@ -19,7 +20,7 @@ export default function AccountPage() {
   const handleUpdateEmail = async () => {
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/account/email`,
+        `${BACKEND_URL}/account/email`,
         {
           method: 'PUT',
           credentials: 'include',
@@ -46,7 +47,7 @@ export default function AccountPage() {
     }
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/account/password`,
+        `${BACKEND_URL}/account/password`,
         {
           method: 'PUT',
           credentials: 'include',

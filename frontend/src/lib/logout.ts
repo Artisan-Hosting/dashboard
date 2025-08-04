@@ -1,7 +1,8 @@
 import router from "next/router";
+import { BACKEND_URL } from "./config";
 
 export async function handleLogout() {
-    await fetch(`${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/auth/logout`, {
+    await fetch(`${BACKEND_URL}/auth/logout`, {
         method: "POST",
         credentials: "include",
     });
@@ -9,7 +10,7 @@ export async function handleLogout() {
 }
 
 export async function handleLogoutAll() {
-    await fetch(`${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/auth/logout_all`, {
+    await fetch(`${BACKEND_URL}/auth/logout_all`, {
         method: "POST",
         credentials: "include",
     });
