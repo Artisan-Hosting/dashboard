@@ -1,9 +1,10 @@
 // src/lib/api.ts
 import { BillingCosts, RefreshRequest, RefreshResponse, UsageSummary, VmActionRequest, VmActionType, VmListItem, VmStatusDetail } from "./types";
+import { API_URL } from "./config";
 
 export async function fetchWithAuth(endpoint: string) {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/${endpoint}`,
+    `${API_URL}/${endpoint}`,
     {
       method: "GET",
       credentials: "include", // ← send the server‐issued cookie
@@ -35,7 +36,7 @@ export async function postWithAuth(endpoint: string, body?: any) {
   }
 
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/${endpoint}`,
+    `${API_URL}/${endpoint}`,
     opts
   );
 
@@ -61,7 +62,7 @@ export async function putWithAuth(endpoint: string, body?: any) {
   }
 
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/${endpoint}`,
+    `${API_URL}/${endpoint}`,
     opts
   );
 
@@ -87,7 +88,7 @@ export async function deleteWithAuth(endpoint: string, body?: any) {
   }
 
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/${endpoint}`,
+    `${API_URL}/${endpoint}`,
     opts
   );
 
@@ -104,7 +105,7 @@ export async function fetchBilling(
   usage: UsageSummary
 ): Promise<BillingCosts> {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_PRIMARY_API_URL}/proxy/billing/calculate?instances=${usage.instances}`,
+    `${API_URL}/proxy/billing/calculate?instances=${usage.instances}`,
     {
       method: "POST",
       credentials: "include", // ← send the cookie
