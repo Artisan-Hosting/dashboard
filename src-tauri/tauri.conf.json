@@ -1,0 +1,24 @@
+{
+  "build": {
+    "beforeDevCommand": "npm run dev --prefix frontend",
+    "beforeBuildCommand": "npm run export --prefix frontend",
+    "devPath": "http://localhost:3000",
+    "distDir": "../frontend/out"
+  },
+  "package": {
+    "productName": "Dashboard",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "bundle": {
+      "identifier": "com.example.dashboard"
+    },
+    "windows": [
+      {
+        "title": "Dashboard",
+        "width": 800,
+        "height": 600
+      }
+    ]
+  }
+}
