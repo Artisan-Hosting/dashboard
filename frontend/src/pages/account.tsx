@@ -132,7 +132,7 @@ export default function AccountPage() {
             />
             <button
               onClick={handleChangePassword}
-              className="mt-2 px-4 py-2 bg-brand hover:bg-brand-dark rounded"
+              className="mt-2 px-4 py-2 btn-brand rounded"
             >
               Change Password
             </button>
@@ -147,7 +147,7 @@ export default function AccountPage() {
             />
             <button
               onClick={handleUpdateEmail}
-              className="mt-2 px-4 py-2 bg-brand hover:bg-brand-dark rounded"
+              className="mt-2 px-4 py-2 btn-brand rounded"
             >
               Update Email
             </button>
@@ -168,7 +168,7 @@ export default function AccountPage() {
         </section>
 
         {/* 4. Danger Zone */}
-        <section className="bg-brand-gradient p-6 rounded-xl border border-red-600">
+        <section className="bg-brand-gradient text-white p-6 rounded-xl border border-red-600">
           <h2 className="text-xl font-semibold text-red-400 mb-4">Danger Zone</h2>
           <div className="space-y-4">
             <button

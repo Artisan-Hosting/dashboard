@@ -1,14 +1,123 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Fonts — self-hosted woff2 subsets, pulled from artisanhosting.net so the
+   dashboard renders in the same type system as the marketing site.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/source-sans-3-400-700-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/source-sans-3-400-700-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/fraunces-400-700-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/fraunces-400-700-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-400-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-500-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-500-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ==========================================================================
+   Tokens — brand primitives and derived values, ported from
+   artisanhosting.net's base.css.
+   ========================================================================== */
+
 :root {
-  --background: #f3f4f6;
-  --foreground: #111827;
-  --background-alt: #e2e8f0;
-  --accent: #1E3A8A; /* brand color */
-  --gradient-start: #e5e7eb;
-  --gradient-end: #d1d5db;
-  --font-sans: 'Roboto', sans-serif;
-  --font-mono: 'Source Code Pro', monospace;
+  /* Brand primitives — the six colors everything else derives from. */
+  --sky: #a7c7e7;
+  --navy: #0b132b;
+  --charcoal: #1f2430;
+  --paper: #f6f7fb;
+  --wine: #912f40;
+  --warm: #e7e7a7;
+
+  --background: var(--paper);
+  --foreground: var(--charcoal);
+  --background-alt: #eef2f7;
+  --accent: var(--wine);
+  --gradient-start: #eef2f7;
+  --gradient-end: #d8dee9;
+
+  /* The sidebar is a permanent dark panel regardless of page theme (same
+     idea as artisanhosting.net's always-dark nav accents), so it isn't
+     re-themed in the dark-mode block below. */
+  --sidebar-start: var(--navy);
+  --sidebar-end: var(--charcoal);
+
+  /* Primary button tokens — mirrors --btn-primary-* on the marketing site,
+     flipping bg/text together so contrast always holds. */
+  --btn-primary-bg: var(--navy);
+  --btn-primary-hover: #0f1a3d;
+  --btn-primary-text: var(--paper);
+
+  --font-sans: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: 'Fraunces', ui-serif, Georgia, 'Times New Roman', Times, serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 }
 
 @theme inline {
@@ -20,11 +129,16 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #111827;
-    --background-alt: #1f2937;
-    --foreground: #e5e7eb;
-    --gradient-start: #1f2937;
-    --gradient-end: #0f172a;
+    --background: var(--navy);
+    --background-alt: #1a2440;
+    --foreground: var(--paper);
+    --accent: var(--warm);
+    --gradient-start: #121b33;
+    --gradient-end: #0e1628;
+
+    --btn-primary-bg: var(--sky);
+    --btn-primary-hover: #93b9e0;
+    --btn-primary-text: var(--navy);
   }
 }
 
@@ -34,21 +148,25 @@ body {
   font-family: var(--font-sans);
 }
 
+h1, h2 {
+  font-family: var(--font-serif);
+}
+
 /* Utility classes used across pages */
 .bg-page {
   @apply bg-gradient-to-br from-[color:var(--gradient-start)] via-[color:var(--background-alt)] to-[color:var(--gradient-end)];
 }
 
 .bg-brand-gradient {
-  background-image: linear-gradient(to bottom right, var(--gradient-start), var(--gradient-end));
+  background-image: linear-gradient(to bottom right, var(--sidebar-start), var(--sidebar-end));
 }
 
 .card {
-  @apply bg-white dark:bg-[#1e1e2f] border border-gray-200 dark:border-gray-700 rounded-2xl shadow overflow-x-auto;
+  @apply bg-white dark:bg-[#121b33] border border-gray-200 dark:border-gray-700 rounded-2xl shadow overflow-x-auto;
 }
 
 .card-hover {
-  @apply bg-white dark:bg-[#1e1e2f] border rounded-2xl shadow hover:shadow-xl transform transition hover:-translate-y-1;
+  @apply bg-white dark:bg-[#121b33] border rounded-2xl shadow hover:shadow-xl transform transition hover:-translate-y-1;
   border-color: var(--accent);
 }
 
@@ -56,7 +174,7 @@ body {
   color: var(--foreground);
 }
 
-/* Brand color utilities */
+/* Brand accent utilities — headings, hover states, decorative borders */
 .text-brand {
   color: var(--accent);
 }
@@ -65,14 +183,18 @@ body {
   color: var(--accent);
 }
 
-.bg-brand {
-  background-color: var(--accent);
-}
-
-.hover\:bg-brand-dark:hover {
-  background-color: color-mix(in srgb, var(--accent), black 20%);
-}
-
 .border-brand {
   border-color: var(--accent);
+}
+
+/* Primary action button — bg/text pair always stays in contrast, in both
+   themes (see --btn-primary-* above). Use in place of the old
+   bg-brand + hover:bg-brand-dark + text-white combo. */
+.btn-brand {
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+}
+
+.btn-brand:hover {
+  background-color: var(--btn-primary-hover);
 }

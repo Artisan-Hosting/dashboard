@@ -196,7 +196,7 @@ const loadSecrets = useCallback(async () => {
                   <div className="mt-2 flex gap-2">
                     <button
                       onClick={() => copySecret(s.value)}
-                      className="bg-brand text-white px-3 py-1 rounded text-sm hover:bg-brand-dark"
+                      className="btn-brand px-3 py-1 rounded text-sm"
                     >
                       Copy
                     </button>
@@ -238,7 +238,7 @@ const loadSecrets = useCallback(async () => {
             </div>
             <button
               onClick={addSecret}
-              className="bg-brand text-white px-4 py-2 rounded hover:bg-brand-dark"
+              className="btn-brand px-4 py-2 rounded"
             >
               Save
             </button>

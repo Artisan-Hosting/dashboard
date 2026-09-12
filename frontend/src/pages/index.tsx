@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { jwtDecode } from "jwt-decode";
-import logo from "../img/logo.webp";
 import LoadingOverlay from "@/components/loading";
 import { API_URL } from "@/lib/config";
 
@@ -59,7 +58,16 @@ export default function LoginPage() {
         <div className="relative flex min-h-screen items-center justify-center bg-page">
             <div className="w-full max-w-sm card p-6 sm:p-8">
                 <div className="mb-6 flex justify-center">
-                    <img src="/logo.webp" alt="Artisan Hosting" className="h-36 w-auto" />
+                    <img
+                        src="/imgs/artisan-studios__lockup__dark__2048w.webp"
+                        alt="Artisan Hosting"
+                        className="h-10 w-auto max-w-full dark:hidden"
+                    />
+                    <img
+                        src="/imgs/artisan-studios__lockup__light__2048w.webp"
+                        alt="Artisan Hosting"
+                        className="hidden h-10 w-auto max-w-full dark:block"
+                    />
                 </div>
 
                 {/* <h1 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-gray-100">

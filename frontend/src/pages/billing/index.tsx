@@ -76,7 +76,7 @@ export default function BillingPage() {
                         query: { instances: block.instanceIds.join(',') },
                       })
                     }
-                    className="bg-brand hover:bg-brand-dark text-white text-sm px-4 py-2 rounded-full"
+                    className="btn-brand text-sm px-4 py-2 rounded-full"
                   >
                     View Daily Breakdown
                   </button>

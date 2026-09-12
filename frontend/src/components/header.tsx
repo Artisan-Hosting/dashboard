@@ -36,6 +36,11 @@ export function Sidebar({ onLogout, onLogoutAll }: { onLogout: () => void; onLog
         className={`bg-brand-gradient text-white p-6 shadow-xl flex flex-col lg:static fixed top-0 left-0 h-full w-64 z-40 transform transition-transform duration-300 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"
           } lg:min-h-screen`}
       >
+        <img
+          src="/imgs/artisan-studios__lockup__light__2048w.webp"
+          alt="Artisan Hosting"
+          className="mb-6 h-8 w-auto max-w-full"
+        />
         <div className="relative mb-6">
           <div
             className="bg-white/10 p-4 rounded-xl cursor-pointer hover:bg-white/20 transition"

@@ -5,12 +5,11 @@ export default function Document() {
     <Html lang="en">
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Source+Code+Pro:wght@400;500&display=swap"
-          rel="stylesheet"
-        />
+        <meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#0b132b" media="(prefers-color-scheme: dark)" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="preload" href="/fonts/source-sans-3-400-700-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
+        <link rel="preload" href="/fonts/fraunces-400-700-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
       </Head>
       <body className="antialiased">
         <Main />
