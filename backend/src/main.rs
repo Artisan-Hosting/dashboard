@@ -59,7 +59,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // HTTP (Warp) Server
     // —————————————————————
 
-    let out_dir = "/opt/dashboard/static";
+    let out_dir = "/opt/dashboard/frontend/out";
 
     let static_fs = warp::fs::dir(out_dir);
 
