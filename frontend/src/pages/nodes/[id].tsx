@@ -11,6 +11,7 @@ import {
   reloadNode,
   fetchGitConfig,
   setGitConfig,
+  auditGitConfig,
   fetchWatchdogConfig,
   setWatchdogConfig,
 } from '@/lib/api';
@@ -48,6 +49,7 @@ function NodeDetailPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [repoForm, setRepoForm] = useState(emptyRepoForm);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [auditing, setAuditing] = useState(false);
 
   const [application, setApplication] = useState('');
   const [kind, setKind] = useState<WatchdogConfigKind>('config');
@@ -166,6 +168,25 @@ function NodeDetailPage() {
     }
   };
 
+  const handleAudit = async () => {
+    setAuditing(true);
+    try {
+      const outcome = await auditGitConfig(nodeId);
+      toast(
+        `Audit: ${outcome.repos_considered} repo(s) considered, ` +
+          `${outcome.stale_checkouts_removed} stale checkout(s) removed, ` +
+          `${outcome.stale_state_files_removed} stale state file(s) removed`,
+        { icon: outcome.errors.length === 0 ? '✅' : '⚠️' },
+      );
+      outcome.errors.forEach((err) => toast.error(err));
+    } catch (err) {
+      console.error('Failed to run repo audit', err);
+      toast.error('Failed to run repo audit');
+    } finally {
+      setAuditing(false);
+    }
+  };
+
   const removeRepo = async (repoId: string) => {
     if (!confirm(`Remove repo ${repoId}?`)) return;
     try {
@@ -255,14 +276,24 @@ function NodeDetailPage() {
 
             {/* Git config editor */}
             <div className="card p-6 mb-8">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
                 <h2 className="text-xl font-bold text-brand">Git Config</h2>
-                <button
-                  onClick={openAddForm}
-                  className="btn-brand px-3 py-1 rounded-full text-sm"
-                >
-                  Add Repo
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAudit}
+                    disabled={auditing}
+                    title="Force a resync/clean of every configured checkout, and purge stale state files for repos no longer configured"
+                    className="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-full text-sm disabled:opacity-50"
+                  >
+                    {auditing ? 'Auditing…' : 'Recent Repositories'}
+                  </button>
+                  <button
+                    onClick={openAddForm}
+                    className="btn-brand px-3 py-1 rounded-full text-sm"
+                  >
+                    Add Repo
+                  </button>
+                </div>
               </div>
 
               {!gitLoading && (

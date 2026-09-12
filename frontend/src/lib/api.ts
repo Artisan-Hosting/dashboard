@@ -1,5 +1,6 @@
 // src/lib/api.ts
 import {
+  AuditOutcome,
   BillingCosts,
   GitConfigOp,
   LogEntry,
@@ -245,6 +246,14 @@ export async function setGitConfig(
 ): Promise<ReposResponse> {
   const res = await postWithAuth(`proxy/node/${nodeId}/git-config`, { op, ...body });
   return res.data as ReposResponse;
+}
+
+// `GitReposAudit` doesn't touch git.cf, so it answers with an `AuditOutcome`,
+// not a `ReposResponse` -- kept separate from `setGitConfig` rather than
+// widening that function's return type for one op.
+export async function auditGitConfig(nodeId: number): Promise<AuditOutcome> {
+  const res = await postWithAuth(`proxy/node/${nodeId}/git-config`, { op: 'audit' });
+  return res.data as AuditOutcome;
 }
 
 // --- Watchdog config ---

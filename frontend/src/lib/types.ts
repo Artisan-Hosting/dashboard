@@ -290,7 +290,17 @@ export interface ReposResponse extends ReposEnvelope {
   moved?: MovedId;
 }
 
-export type GitConfigOp = 'set' | 'add' | 'update' | 'remove';
+export type GitConfigOp = 'set' | 'add' | 'update' | 'remove' | 'audit';
+
+// Result of a `GitReposAudit` run: a force-resync/force-clean of every
+// configured checkout, plus a purge of any stale `/opt/artisan/tmp` state
+// file left over from a repo no longer in git.cf.
+export interface AuditOutcome {
+  repos_considered: number;
+  stale_checkouts_removed: number;
+  stale_state_files_removed: number;
+  errors: string[];
+}
 
 // --- watchdog config editor ---
 
