@@ -3,7 +3,10 @@ use artisan_middleware::dusa_collection_utils::{core::logger::LogLevel, log};
 use warp::{Filter, http::header, reject::Rejection, reply::Reply};
 
 use crate::api::{
-    handler::{generic_proxy_handler, me_handler, runners_handler},
+    handler::{
+        ResetPasswordRequest, ResetPasswordResponse, generic_proxy_handler, me_handler,
+        password_reset_confirm_handler, password_reset_request_handler, runners_handler,
+    },
     secret::secret_routes,
 };
 
@@ -91,17 +94,17 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
     //     .and(warp::body::json::<UpdatePassword>())
     //     .and_then(change_password_handler);
 
-    // // password reset request
-    // let pw_reset_req = warp::post()
-    //     .and(warp::path!("auth" / "password-reset" / "request"))
-    //     .and(warp::body::json::<ResetPasswordRequest>())
-    //     .and_then(password_reset_request_handler);
+    // password reset request
+    let pw_reset_req = warp::post()
+        .and(warp::path!("auth" / "password-reset" / "request"))
+        .and(warp::body::json::<ResetPasswordRequest>())
+        .and_then(password_reset_request_handler);
 
-    // // password reset confirm
-    // let pw_reset_conf = warp::post()
-    //     .and(warp::path!("auth" / "password-reset" / "confirm"))
-    //     .and(warp::body::json::<ResetPasswordResponse>())
-    //     .and_then(password_reset_confirm_handler);
+    // password reset confirm
+    let pw_reset_conf = warp::post()
+        .and(warp::path!("auth" / "password-reset" / "confirm"))
+        .and(warp::body::json::<ResetPasswordResponse>())
+        .and_then(password_reset_confirm_handler);
 
     let routes = warp::path("api")
         .and(
@@ -112,11 +115,11 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
                 .or(runners)
                 .or(proxy_route)
                 .or(me)
+                .or(pw_reset_req)
+                .or(pw_reset_conf)
                 .or(secret_routes()), // .or(get_pretty)
                                       // .or(update_email)
                                       // .or(change_password)
-                                      // .or(pw_reset_req)
-                                      // .or(pw_reset_conf),
         )
         // .or(v1_preflight)
         .with(cors);

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { jwtDecode } from "jwt-decode";
 import LoadingOverlay from "@/components/loading";
 import { API_URL } from "@/lib/config";
@@ -119,6 +120,13 @@ export default function LoginPage() {
                     >
                         Log In
                     </button>
+
+                    <Link
+                        href="/forgot-password"
+                        className="block text-center text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                    >
+                        Forgot password?
+                    </Link>
 
                     <button
                         type="reset"

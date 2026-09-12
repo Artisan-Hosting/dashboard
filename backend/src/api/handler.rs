@@ -13,6 +13,7 @@ use artisan_middleware::{
 };
 use bytes::Bytes;
 use cookie::CookieBuilder;
+use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use std::time::{Duration, Instant};
 use warp::hyper::Body;
@@ -22,6 +23,93 @@ use warp::{
 };
 
 use super::cookie::{SessionData, login};
+
+#[derive(Debug, Deserialize)]
+pub struct ResetPasswordRequest {
+    pub email: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResetPasswordResponse {
+    pub password: String,
+    pub password_token: String,
+}
+
+/// Copies an upstream `ais_auth` response (status, content-type, body)
+/// straight through to the dashboard frontend, the same way
+/// `generic_proxy_handler` does for the proxy route below. Used for the two
+/// password-reset endpoints, which are unauthenticated (no session cookie
+/// yet) so they don't go through that proxy.
+async fn forward_response(resp: reqwest::Response) -> Result<Response, warp::Rejection> {
+    let status = warp::http::StatusCode::from_u16(resp.status().as_u16())
+        .unwrap_or(warp::http::StatusCode::INTERNAL_SERVER_ERROR);
+    let content_type = resp
+        .headers()
+        .get("content-type")
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("text/plain; charset=utf-8")
+        .to_string();
+    let body = resp
+        .bytes()
+        .await
+        .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
+
+    let mut response = Response::new(Body::from(body));
+    *response.status_mut() = status;
+    response.headers_mut().insert(
+        "content-type",
+        HeaderValue::from_str(&content_type).unwrap(),
+    );
+    Ok(response)
+}
+
+/// Kicks off a password reset: forwards `{email}` to `ais_auth`, which emails
+/// a reset link if the address has an account. Always returns whatever
+/// generic acknowledgement `ais_auth` sends back (it deliberately looks the
+/// same whether or not the address exists), so this handler doesn't need to
+/// know or care -- it's a pure pass-through, unauthenticated like `login`.
+pub async fn password_reset_request_handler(
+    req: ResetPasswordRequest,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(
+        LogLevel::Debug,
+        "password_reset_request_handler for {}",
+        req.email
+    );
+    let client = get_state().http_client.clone();
+
+    let response = client
+        .post(&format!("{}auth/password-reset/request", get_base_url()))
+        .json(&serde_json::json!({ "email": req.email }))
+        .send()
+        .await
+        .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
+
+    forward_response(response).await
+}
+
+/// Completes a password reset: forwards the reset token (from the emailed
+/// link) and the new password to `ais_auth`, which validates the token and
+/// updates the password. Also unauthenticated -- the token itself is the
+/// credential here, same as `login`.
+pub async fn password_reset_confirm_handler(
+    req: ResetPasswordResponse,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Debug, "password_reset_confirm_handler called");
+    let client = get_state().http_client.clone();
+
+    let response = client
+        .post(&format!("{}auth/password-reset/confirm", get_base_url()))
+        .json(&serde_json::json!({
+            "password_token": req.password_token,
+            "password": req.password,
+        }))
+        .send()
+        .await
+        .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
+
+    forward_response(response).await
+}
 
 pub async fn login_handler(
     login_data: SimpleLoginRequest,
