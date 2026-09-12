@@ -4,6 +4,8 @@ import {
   BillingCosts,
   GitConfigOp,
   LogEntry,
+  MultiNodeConfigResponse,
+  MultiNodeConfigSetResponse,
   NodeDetails,
   NodeInfo,
   NodeReloadResult,
@@ -213,6 +215,30 @@ export async function fetchInstanceLogs(instanceId: string, limit: number): Prom
 
 export async function sendRunnerControl(instanceId: string, command: string): Promise<any> {
   return fetchWithAuth(`proxy/control/${instanceId}/${command}`);
+}
+
+// --- multi-node app config (Apps page) ---
+
+export async function fetchMultiNodeConfig(
+  application: string,
+  kind: WatchdogConfigKind,
+): Promise<MultiNodeConfigResponse> {
+  const res = await fetchWithAuth(`proxy/runner/${application}/config?kind=${kind}`);
+  return res.data as MultiNodeConfigResponse;
+}
+
+export async function setMultiNodeConfig(
+  application: string,
+  kind: WatchdogConfigKind,
+  content: string,
+  expectedShas: Record<string, string>,
+): Promise<MultiNodeConfigSetResponse> {
+  const res = await postWithAuth(`proxy/runner/${application}/config`, {
+    kind,
+    content,
+    expected_shas: expectedShas,
+  });
+  return res.data as MultiNodeConfigSetResponse;
 }
 
 // ======= Nodes (Admin/Super only) =======

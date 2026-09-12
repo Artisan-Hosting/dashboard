@@ -319,3 +319,35 @@ export interface WatchdogSetConfigResponse {
   message: string;
   backup_file: string;
 }
+
+// --- multi-node app config editor (Apps page) ---
+
+export interface NodeConfigEntry {
+  node_id: number;
+  hostname: string;
+  found: boolean;
+  content?: string | null;
+  sha256?: string | null;
+  error?: string | null;
+}
+
+export interface MultiNodeConfigResponse {
+  application: string;
+  kind: string;
+  nodes: NodeConfigEntry[];
+  // True only when every node that answered has byte-identical content.
+  all_match: boolean;
+}
+
+export interface NodeConfigSetResult {
+  node_id: number;
+  hostname: string;
+  accepted: boolean;
+  message: string;
+}
+
+export interface MultiNodeConfigSetResponse {
+  application: string;
+  kind: string;
+  results: NodeConfigSetResult[];
+}

@@ -7,10 +7,12 @@ import {
   fetchInstanceLogs,
   fetchInstanceUsage,
   fetchRunnerDetails,
+  fetchMultiNodeConfig,
+  setMultiNodeConfig,
   sendRunnerControl,
 } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
-import { FullInstance, RunnerDetails, UsageSummary, BillingCosts, LogEntry, statusColorMap, StatusType } from '@/lib/types';
+import { FullInstance, RunnerDetails, UsageSummary, BillingCosts, LogEntry, statusColorMap, StatusType, MultiNodeConfigResponse, NodeConfigEntry, WatchdogConfigKind } from '@/lib/types';
 import { resolveRunnerLabel } from '@/lib/repoLabel';
 import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
@@ -56,6 +58,79 @@ export default function ProjectPage() {
       cancelled = true;
     };
   }, [router.isReady, runnerId]);
+
+  // --- application config, applied across every node running this app ---
+  const [configKind, setConfigKind] = useState<WatchdogConfigKind>('config');
+  const [configData, setConfigData] = useState<MultiNodeConfigResponse | null>(null);
+  const [configContent, setConfigContent] = useState('');
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configSaving, setConfigSaving] = useState(false);
+
+  const loadAppConfig = async () => {
+    if (!runnerId) return;
+    setConfigLoading(true);
+    try {
+      const data = await fetchMultiNodeConfig(runnerId, configKind);
+      setConfigData(data);
+      if (data.all_match) {
+        setConfigContent(data.nodes.find((n) => n.found)?.content ?? '');
+      } else {
+        setConfigContent('');
+      }
+    } catch (err) {
+      console.error('Failed to load app config', err);
+      toast.error('Failed to load app config');
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const useNodeVersion = (node: NodeConfigEntry) => {
+    setConfigContent(node.content ?? '');
+  };
+
+  const saveAppConfig = async () => {
+    if (!runnerId || !configData) return;
+    const targets = configData.nodes.filter((n) => n.found && n.sha256);
+    if (targets.length === 0) {
+      toast.error('No nodes available to save to');
+      return;
+    }
+
+    if (!configData.all_match) {
+      const names = targets.map((n) => n.hostname).join(', ');
+      if (
+        !confirm(
+          `Configs currently differ across nodes. Saving will overwrite ${targets.length} node(s): ${names}. Continue?`,
+        )
+      ) {
+        return;
+      }
+    }
+
+    const expectedShas: Record<string, string> = {};
+    targets.forEach((n) => {
+      expectedShas[String(n.node_id)] = n.sha256 as string;
+    });
+
+    setConfigSaving(true);
+    try {
+      const result = await setMultiNodeConfig(runnerId, configKind, configContent, expectedShas);
+      const failed = result.results.filter((r) => !r.accepted);
+      if (failed.length === 0) {
+        toast.success(`Config applied to ${result.results.length} node(s)`);
+      } else {
+        toast.error(`${failed.length} of ${result.results.length} node(s) rejected the update`);
+        failed.forEach((f) => toast.error(`${f.hostname}: ${f.message}`));
+      }
+      await loadAppConfig();
+    } catch (err) {
+      console.error('Failed to save app config', err);
+      toast.error('Failed to save app config');
+    } finally {
+      setConfigSaving(false);
+    }
+  };
 
   const HISTORICAL_LOG_LINES = 1000;
 
@@ -336,6 +411,83 @@ export default function ProjectPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {!loading && (
+          <div className="mt-10 card p-6">
+            <h2 className="text-xl font-bold mb-4 text-brand">Application Config</h2>
+            <p className="text-sm text-gray-400 mb-3">
+              Reads and writes the watchdog config for every instance of this app at once.
+            </p>
+            <div className="flex flex-wrap gap-2 mb-3">
+              <select
+                value={configKind}
+                onChange={(e) => setConfigKind(e.target.value as WatchdogConfigKind)}
+                className="bg-gray-800 rounded px-2 py-1 text-sm"
+              >
+                <option value="config">config</option>
+                <option value="overrides">overrides</option>
+              </select>
+              <button
+                onClick={loadAppConfig}
+                disabled={configLoading}
+                className="btn-brand px-3 py-1 rounded text-sm disabled:opacity-50"
+              >
+                {configLoading ? 'Loading…' : 'Load Config'}
+              </button>
+            </div>
+
+            {configData && !configData.all_match && (
+              <div className="mb-3 p-3 rounded border border-yellow-600 bg-yellow-900/20 text-sm">
+                <p className="text-yellow-400 font-semibold mb-2">
+                  Configs differ across nodes — pick a version below before saving.
+                </p>
+                <div className="space-y-2">
+                  {configData.nodes.map((node) => (
+                    <div key={node.node_id} className="flex flex-wrap items-center justify-between gap-2 border-b border-yellow-800/50 pb-2">
+                      <div className="text-gray-300">
+                        <span className="font-medium text-white">{node.hostname}</span>{' '}
+                        {node.found ? (
+                          <span className="text-xs text-gray-500">({(node.content ?? '').length} bytes)</span>
+                        ) : (
+                          <span className="text-xs text-red-400">{node.error ?? 'unavailable'}</span>
+                        )}
+                      </div>
+                      {node.found && (
+                        <button
+                          onClick={() => useNodeVersion(node)}
+                          className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs"
+                        >
+                          Use this version
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {configData && configData.nodes.length === 0 && (
+              <p className="text-sm text-gray-400 mb-3">No nodes are currently running this app.</p>
+            )}
+
+            <textarea
+              value={configContent}
+              onChange={(e) => setConfigContent(e.target.value)}
+              rows={14}
+              className="w-full bg-black text-green-400 text-xs p-2 rounded border border-gray-700 font-mono"
+              placeholder="Load a config to edit it"
+            />
+            <div className="mt-3">
+              <button
+                onClick={saveAppConfig}
+                disabled={configSaving || !configData || configData.nodes.every((n) => !n.found)}
+                className="btn-brand px-3 py-1 rounded text-sm disabled:opacity-50"
+              >
+                {configSaving ? 'Saving…' : 'Save to all instances'}
+              </button>
+            </div>
           </div>
         )}
 
