@@ -6,6 +6,7 @@ import { UsageSummary } from "@/lib/types";
 import { Sidebar } from "@/components/header";
 import LoadingOverlay from "@/components/loading";
 import { handleLogout, handleLogoutAll } from "@/lib/logout";
+import { resolveRunnerLabel } from "@/lib/repoLabel";
 
 const REFRESH_INTERVAL = 10_000; // 10s
 
@@ -19,6 +20,7 @@ export default function Dashboard() {
   const router = useRouter();
   const [userName, setUserName] = useState<string>("Loading...");
   const [runners, setRunners] = useState<RunnerCard[]>([]);
+  const [labels, setLabels] = useState<Record<string, string>>({});
   const loading = false;
   // const [loading, setLoading] = useState(true);
   const inFlight = useRef(false);
@@ -59,6 +61,20 @@ export default function Dashboard() {
     return () => clearInterval(iv);
   }, [loadData]);
 
+  useEffect(() => {
+    let cancelled = false;
+    runners.forEach((r) => {
+      if (labels[r.name]) return;
+      resolveRunnerLabel(r.name).then((label) => {
+        if (cancelled) return;
+        setLabels((prev) => (prev[r.name] ? prev : { ...prev, [r.name]: label }));
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [runners]);
+
   return (
     <div className="relative min-h-screen flex bg-page text-foreground">
       {/* Sidebar should be a sibling of <main>, not a child */}
@@ -80,7 +96,7 @@ export default function Dashboard() {
                 <div className="flex justify-between items-center mb-4">
                   <div>
                     <p className="text-xl font-semibold text-brand">
-                      {r.name}
+                      {labels[r.name] ?? r.name}
                     </p>
                     <p
                       className={`text-sm mt-1 ${

@@ -8,6 +8,7 @@ import {
   deleteWithAuth,
 } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
+import { resolveRunnerLabel } from '@/lib/repoLabel';
 
 interface SecretItem {
   name: string;
@@ -16,6 +17,7 @@ interface SecretItem {
 
 export default function SecretsPage() {
   const [runnerIds, setRunnerIds] = useState<string[]>([]);
+  const [runnerLabels, setRunnerLabels] = useState<Record<string, string>>({});
   const [selectedRunner, setSelectedRunner] = useState('');
   const [selectedEnv, setSelectedEnv] = useState('prod');
   const [customEnv, setCustomEnv] = useState('');
@@ -38,6 +40,20 @@ export default function SecretsPage() {
     }
     loadRunners();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    runnerIds.forEach((id) => {
+      if (runnerLabels[id]) return;
+      resolveRunnerLabel(id).then((label) => {
+        if (cancelled) return;
+        setRunnerLabels((prev) => (prev[id] ? prev : { ...prev, [id]: label }));
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [runnerIds]);
 
   const envValue = selectedEnv === '__custom__' ? customEnv : selectedEnv;
 
@@ -156,7 +172,7 @@ const loadSecrets = useCallback(async () => {
             >
               {runnerIds.map((id) => (
                 <option key={id} value={id}>
-                  {id}
+                  {runnerLabels[id] ?? id}
                 </option>
               ))}
             </select>

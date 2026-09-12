@@ -177,6 +177,24 @@ export async function fetchRunnerDetails(runnerId: string): Promise<RunnerDetail
   return (res.data ?? []) as RunnerDetails[];
 }
 
+export interface RunnerGitInfo {
+  user: string;
+  repo: string;
+  branch: string;
+}
+
+// Returns null if the id has no git repo behind it (a system app) or the
+// caller isn't permitted to see it — either is a normal "fall back to the
+// raw id" case for the resolver in `@/lib/repoLabel`, not an error to surface.
+export async function fetchRunnerGitInfo(runnerId: string): Promise<RunnerGitInfo | null> {
+  try {
+    const res = await fetchWithAuth(`proxy/runner/${runnerId}/git-info`);
+    return (res.data ?? null) as RunnerGitInfo | null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchGroupUsage(runnerId: string): Promise<UsageSummary> {
   const res = await fetchWithAuth(`proxy/usage/group/${runnerId}`);
   return res.data as UsageSummary;

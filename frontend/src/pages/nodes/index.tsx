@@ -58,17 +58,17 @@ function NodesListPage() {
         {!loading && (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {nodes.map((node) => (
-              <div key={node.identity.id} className="card-hover p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <p className="text-xl font-semibold text-brand">{node.hostname}</p>
+              <div key={node.identity.id} className="card-hover p-6 min-w-0">
+                <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+                  <div className="min-w-0">
+                    <p className="text-xl font-semibold text-brand truncate">{node.hostname}</p>
                     <p className={`text-sm mt-1 ${nodeStatusColorMap[node.status] ?? 'text-gray-400'}`}>
                       {node.status}
                     </p>
                   </div>
                   <button
                     onClick={() => router.push(`/nodes/${node.identity.id}`)}
-                    className="btn-brand px-4 py-2 rounded-full text-sm font-medium"
+                    className="btn-brand px-4 py-2 rounded-full text-sm font-medium shrink-0"
                   >
                     Details →
                   </button>

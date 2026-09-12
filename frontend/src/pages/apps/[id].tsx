@@ -11,6 +11,7 @@ import {
 } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { FullInstance, RunnerDetails, UsageSummary, BillingCosts, LogEntry, statusColorMap, StatusType } from '@/lib/types';
+import { resolveRunnerLabel } from '@/lib/repoLabel';
 import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
 import { Menu } from 'lucide-react';
@@ -41,6 +42,35 @@ export default function ProjectPage() {
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const previousStatusRef = useRef<Record<string, string>>({});
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [historicalLogs, setHistoricalLogs] = useState<Record<string, LogEntry[]>>({});
+  const [historicalLoading, setHistoricalLoading] = useState<Record<string, boolean>>({});
+  const [runnerLabel, setRunnerLabel] = useState<string>('');
+
+  useEffect(() => {
+    if (!router.isReady || !runnerId) return;
+    let cancelled = false;
+    resolveRunnerLabel(runnerId).then((label) => {
+      if (!cancelled) setRunnerLabel(label);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [router.isReady, runnerId]);
+
+  const HISTORICAL_LOG_LINES = 1000;
+
+  const loadHistoricalLogs = async (instanceId: string) => {
+    setHistoricalLoading((prev) => ({ ...prev, [instanceId]: true }));
+    try {
+      const lines = await fetchInstanceLogs(instanceId, HISTORICAL_LOG_LINES);
+      setHistoricalLogs((prev) => ({ ...prev, [instanceId]: lines }));
+    } catch (e) {
+      toast.error(`Failed to load historical logs for ${instanceId}`);
+      console.error(`Failed to load historical logs for ${instanceId}`, e);
+    } finally {
+      setHistoricalLoading((prev) => ({ ...prev, [instanceId]: false }));
+    }
+  };
 
   const handleCommand = async (instanceId: string, command: string) => {
     try {
@@ -180,7 +210,7 @@ export default function ProjectPage() {
       <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
       <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-        <h1 className="text-3xl font-bold text-brand mb-6">Project: {runnerId}</h1>
+        <h1 className="text-3xl font-bold text-brand mb-6">Project: {runnerLabel || runnerId}</h1>
 
         {!loading && (
           <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
@@ -195,8 +225,11 @@ export default function ProjectPage() {
                   <div className="flex justify-between items-center mb-2">
                     <div>
                       <h2 className="text-xl font-semibold text-brand text-pretty">
-                        {truncate(String(details.id), 24) || "huh"}
+                        {runnerLabel || runnerId}
                       </h2>
+                      <p className="text-xs text-gray-500 truncate" title={String(details.id)}>
+                        Instance {String(details.id).slice(-8)}
+                      </p>
                       <p className={`text-sm ${statusColorMap[details.status as StatusType] || 'text-black'}`}>
                         {details.status}
                       </p>
@@ -263,6 +296,42 @@ export default function ProjectPage() {
                       </div>
                     </details>
                   )}
+
+                  <div className="mt-3">
+                    <button
+                      onClick={() => loadHistoricalLogs(details.id)}
+                      disabled={!!historicalLoading[details.id]}
+                      className="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-white text-xs disabled:opacity-50"
+                    >
+                      {historicalLoading[details.id] ? 'Loading…' : `Load last ${HISTORICAL_LOG_LINES} lines`}
+                    </button>
+
+                    {historicalLogs[details.id] && (
+                      <details className="mt-2" open>
+                        <summary className="cursor-pointer font-semibold text-sm mb-2 text-brand flex items-center justify-between">
+                          <span>Historical Logs ({historicalLogs[details.id].length} lines)</span>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setHistoricalLogs((prev) => {
+                                const next = { ...prev };
+                                delete next[details.id];
+                                return next;
+                              });
+                            }}
+                            className="text-gray-400 hover:text-white text-xs ml-2"
+                          >
+                            Close
+                          </button>
+                        </summary>
+                        <div className="max-h-96 overflow-y-auto bg-black text-green-400 text-xs p-2 rounded border border-gray-700">
+                          {historicalLogs[details.id].map((log, i) => (
+                            <pre key={i} className="whitespace-pre-wrap">[{log.timestamp}] {log.message}</pre>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                  </div>
 
                 </div>
               );

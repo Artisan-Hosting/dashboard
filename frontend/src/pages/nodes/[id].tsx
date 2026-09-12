@@ -20,6 +20,7 @@ import {
   GitServer,
   WatchdogConfigKind,
 } from '@/lib/types';
+import { resolveRunnerLabel } from '@/lib/repoLabel';
 
 const emptyRepoForm = { user: '', repo: '', branch: '', serverKind: 'GitHub' as 'GitHub' | 'GitLab' | 'Custom', customUrl: '', token: '' };
 
@@ -54,6 +55,7 @@ function NodeDetailPage() {
   const [sha256, setSha256] = useState<string | null>(null);
   const [watchdogLoading, setWatchdogLoading] = useState(false);
   const [watchdogSaving, setWatchdogSaving] = useState(false);
+  const [runnerLabels, setRunnerLabels] = useState<Record<string, string>>({});
 
   const loadNode = useCallback(async () => {
     if (Number.isNaN(nodeId)) return;
@@ -87,6 +89,22 @@ function NodeDetailPage() {
     loadNode();
     loadGitConfig();
   }, [router.isReady, loadNode, loadGitConfig]);
+
+  useEffect(() => {
+    if (!node) return;
+    let cancelled = false;
+    node.runners.forEach((r) => {
+      const key = r.replace('ais_', '');
+      if (runnerLabels[key]) return;
+      resolveRunnerLabel(key).then((label) => {
+        if (cancelled) return;
+        setRunnerLabels((prev) => (prev[key] ? prev : { ...prev, [key]: label }));
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [node]);
 
   const handleReload = async () => {
     setReloading(true);
@@ -215,12 +233,12 @@ function NodeDetailPage() {
         {!loading && node && (
           <>
             <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-              <div>
-                <h1 className="text-3xl font-bold text-brand">{node.manager_data.hostname}</h1>
-                <p className="text-sm text-gray-300 mt-1">
+              <div className="min-w-0">
+                <h1 className="text-3xl font-bold text-brand truncate">{node.manager_data.hostname}</h1>
+                <p className="text-sm text-gray-300 mt-1 break-words">
                   ID {node.identity.id} · {node.status} · Uptime {node.manager_data.uptime}s
                 </p>
-                <p className="text-sm text-gray-300">
+                <p className="text-sm text-gray-300 break-words">
                   System apps: {node.manager_data.system_apps} · Client apps: {node.manager_data.client_apps} · Warnings: {node.manager_data.warning}
                 </p>
               </div>
@@ -228,7 +246,7 @@ function NodeDetailPage() {
                 <button
                   onClick={handleReload}
                   disabled={reloading}
-                  className="btn-brand px-4 py-2 rounded-full text-sm font-medium disabled:opacity-50"
+                  className="btn-brand px-4 py-2 rounded-full text-sm font-medium disabled:opacity-50 shrink-0"
                 >
                   {reloading ? 'Reloading…' : 'Reload Node'}
                 </button>
@@ -256,7 +274,10 @@ function NodeDetailPage() {
                         @ {r.branch} · {serverToDisplay(r.server)} · {r.token ? '•••• set' : 'no token'}
                         <span className="text-gray-500"> ({r.id})</span>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        {r.id && (
+                          <button onClick={() => router.push(`/apps/${r.id}`)} className="px-2 py-1 rounded bg-blue-700 hover:bg-blue-600 text-xs">Open Controls</button>
+                        )}
                         <button onClick={() => openEditForm(r)} className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs">Edit</button>
                         <button onClick={() => r.id && removeRepo(r.id)} className="px-2 py-1 rounded bg-red-700 hover:bg-red-600 text-xs">Remove</button>
                       </div>
@@ -296,9 +317,12 @@ function NodeDetailPage() {
               <div className="flex flex-wrap gap-2 mb-3">
                 <select value={application} onChange={(e) => setApplication(e.target.value)} className="bg-gray-800 rounded px-2 py-1 text-sm">
                   <option value="">Select application…</option>
-                  {node.runners.map((r) => (
-                    <option key={r} value={r.replace('ais_', '')}>{r.replace('ais_', '')}</option>
-                  ))}
+                  {node.runners.map((r) => {
+                    const key = r.replace('ais_', '');
+                    return (
+                      <option key={r} value={key}>{runnerLabels[key] ?? key}</option>
+                    );
+                  })}
                 </select>
                 <select value={kind} onChange={(e) => setKind(e.target.value as WatchdogConfigKind)} className="bg-gray-800 rounded px-2 py-1 text-sm">
                   <option value="config">config</option>

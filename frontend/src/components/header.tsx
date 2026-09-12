@@ -32,6 +32,14 @@ export function Sidebar({ onLogout, onLogoutAll }: { onLogout: () => void; onLog
         </button>
       </div>
 
+      {open && (
+        <div
+          className="lg:hidden fixed inset-0 z-30 bg-black/50"
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       <aside
         className={`bg-brand-gradient text-white p-6 shadow-xl flex flex-col lg:static fixed top-0 left-0 h-full w-64 z-40 transform transition-transform duration-300 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"
           } lg:min-h-screen`}
