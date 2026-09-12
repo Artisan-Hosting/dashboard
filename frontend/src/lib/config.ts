@@ -1,1 +1,1 @@
-export const API_URL = "https://dashboard.artisanhosting.net/api";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
