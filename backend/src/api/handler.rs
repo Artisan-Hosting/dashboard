@@ -444,10 +444,23 @@ pub async fn generic_proxy_handler(
 
     // ─── Step 6: Send to the real backend ──────────────────────────────────────
     log!(LogLevel::Debug, "proxy dispatch {}", backend_url);
-    let backend_resp = req_builder
-        .send()
-        .await
-        .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
+    let upstream_start = Instant::now();
+    let backend_resp = req_builder.send().await.map_err(|e| {
+        log!(
+            LogLevel::Warn,
+            "proxy upstream error after {:?} for {}: {}",
+            upstream_start.elapsed(),
+            backend_url,
+            e
+        );
+        warp::reject::custom(Whoops(e.to_string()))
+    })?;
+    log!(
+        LogLevel::Info,
+        "proxy upstream responded in {:?} for {}",
+        upstream_start.elapsed(),
+        backend_url
+    );
 
     // ─── Step 7: Grab status + content‐type + body bytes ────────────────────────
     //
