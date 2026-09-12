@@ -3,6 +3,13 @@ use std::time::{Duration, Instant};
 
 use artisan_middleware::dusa_collection_utils::core::types::rwarc::LockWithTimeout;
 
+/// Builds the proxy cache key exactly as `generic_proxy_handler` does, so every
+/// reader/writer of `proxy_cache` (including the background pre-warmer) agrees
+/// on the same key for the same request.
+pub fn proxy_cache_key(tail: &str, raw_query: &str) -> String {
+    format!("{}?{}", tail, raw_query)
+}
+
 #[derive(Clone)]
 pub struct CachedResponse {
     pub status: u16,

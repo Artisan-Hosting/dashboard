@@ -1,4 +1,4 @@
-use crate::api::cache::CachedResponse;
+use crate::api::cache::{proxy_cache_key, CachedResponse};
 use crate::state::get_state;
 use crate::updater::spawn_session_refresh;
 use crate::{
@@ -250,13 +250,20 @@ pub async fn me_handler(session: SessionData) -> Result<impl warp::Reply, warp::
         Ok(token) => {
             let client = get_state().http_client.clone();
 
-            // First: get user_id
-            let response_me = client
+            // `account/me` and `whoami` are independent given the token, so
+            // run them concurrently instead of paying two sequential upstream
+            // round trips.
+            let me_fut = client
                 .get(&format!("{}account/me", get_base_url()))
                 .bearer_auth(token.clone())
-                .send()
-                .await
-                .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
+                .send();
+            let role_fut = client
+                .post(&format!("{}whoami", get_base_url()))
+                .bearer_auth(token)
+                .send();
+            let (me_result, role_result) = tokio::join!(me_fut, role_fut);
+
+            let response_me = me_result.map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
 
             let json: serde_json::Value = response_me
                 .json()
@@ -279,23 +286,16 @@ pub async fn me_handler(session: SessionData) -> Result<impl warp::Reply, warp::
 
             // Role is best-effort: a hiccup here shouldn't fail the whole
             // `/auth/me` call, since username/email are still useful without it.
-            let role = {
-                let role_resp = client
-                    .post(&format!("{}whoami", get_base_url()))
-                    .bearer_auth(token)
-                    .send()
-                    .await;
-                match role_resp {
-                    Ok(resp) if resp.status().is_success() => {
-                        let json: serde_json::Value = resp.json().await.unwrap_or_default();
-                        json.get("you")
-                            .and_then(|v| v.get("roles"))
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("none")
-                            .to_string()
-                    }
-                    _ => "none".to_string(),
+            let role = match role_result {
+                Ok(resp) if resp.status().is_success() => {
+                    let json: serde_json::Value = resp.json().await.unwrap_or_default();
+                    json.get("you")
+                        .and_then(|v| v.get("roles"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("none")
+                        .to_string()
                 }
+                _ => "none".to_string(),
             };
 
             let reply = warp::reply::json(
@@ -390,9 +390,11 @@ pub async fn generic_proxy_handler(
 
     const TTL_SHORT: Duration = Duration::from_secs(5);
     const TTL_LONG: Duration = Duration::from_secs(30);
-    let cache_key = format!("{}?{}", tail.as_str(), raw_query);
+    let cache_key = proxy_cache_key(tail.as_str(), &raw_query);
     let is_vm = tail.as_str().starts_with("vms") && !tail.as_str().contains("status");
-    let is_runner = tail.as_str().starts_with("runners");
+    // "runner" (not just "runners") also matches the singular `runner/{name}`
+    // detail route, which is just as expensive on the portal side as the list.
+    let is_runner = tail.as_str().starts_with("runner");
     let is_usage = tail.as_str().starts_with("usage");
     let is_logs = tail.as_str().starts_with("logs");
 

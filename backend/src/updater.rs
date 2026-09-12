@@ -1,4 +1,8 @@
-use crate::api::{cache::CachedResponse, cookie::SessionData, helper::get_base_url};
+use crate::api::{
+    cache::{proxy_cache_key, CachedResponse},
+    cookie::SessionData,
+    helper::get_base_url,
+};
 use crate::auth::token::get_token;
 use crate::state::get_state;
 use artisan_middleware::dusa_collection_utils::{core::logger::LogLevel, log};
@@ -23,7 +27,7 @@ async fn refresh_endpoint(path: &str, token: &str) {
                     get_state()
                         .proxy_cache
                         .insert(
-                            path.to_string(),
+                            proxy_cache_key(path, ""),
                             CachedResponse {
                                 status: status.as_u16(),
                                 content_type,
