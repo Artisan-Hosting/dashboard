@@ -1,12 +1,20 @@
 # Makefile
 
-.PHONY: all backend frontend dev dev-backend dev-frontend serve
+.PHONY: all backend frontend install dev dev-backend dev-frontend serve
 
 # By default, build both back- and front-end
 all:
 	@$(MAKE) backend & \
 	$(MAKE) frontend & \
 	wait
+
+# Install whatever the Next.js frontend needs (node_modules), matching
+# package-lock.json exactly. Run this once on a new host before any other
+# frontend target (frontend, dev-frontend, dev, serve). Requires Node.js/npm
+# to already be present on the host.
+install:
+	cd frontend && \
+	npm ci
 
 # Build Rust backend
 backend:
