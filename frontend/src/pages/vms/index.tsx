@@ -6,6 +6,15 @@ import LoadingOverlay from '@/components/loading';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { toast, Toaster } from 'react-hot-toast';
 
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
 export default function VmListPage() {
   const [vms, setVms] = useState<VmListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,17 +119,15 @@ export default function VmListPage() {
                   {vm.status.toUpperCase()}
                 </p>
 
-                {vm.metrics && (
-                  <div className="mt-2 text-sm text-gray-300 space-y-1 mb-4">
-                    <p>CPU: {vm.metrics.cpu_percent.toFixed(1)}%</p>
-                    <p>RAM: {vm.metrics.memory_percent.toFixed(1)}%</p>
-                    <p>Uptime: {vm.metrics.uptime_seconds}s</p>
-                  </div>
-                )}
+                <div className="mt-2 text-sm text-gray-300 space-y-1 mb-4">
+                  <p>CPU: {(vm.cpu * 100).toFixed(1)}%</p>
+                  <p>RAM: {vm.maxmem > 0 ? ((vm.mem / vm.maxmem) * 100).toFixed(1) : '0.0'}%</p>
+                  <p>Uptime: {formatUptime(vm.uptime)}</p>
+                </div>
 
                 {/* Action buttons */}
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {(['start', 'stop', 'reboot', 'shutdown'] as VmActionType[]).map(
+                  {(['start', 'stop', 'restart', 'shutdown'] as VmActionType[]).map(
                     (action) => (
                       <button
                         key={action}
@@ -132,7 +139,7 @@ export default function VmListPage() {
                           ${
                             isBusy
                               ? 'bg-gray-500 cursor-not-allowed'
-                              : 'bg-brand hover:bg-brand-dark'
+                              : 'btn-brand'
                           }
                         `}
                       >

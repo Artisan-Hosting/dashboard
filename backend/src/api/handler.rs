@@ -277,8 +277,30 @@ pub async fn me_handler(session: SessionData) -> Result<impl warp::Reply, warp::
                     .to_string()
             };
 
-            let reply =
-                warp::reply::json(&serde_json::json!({ "user_id": username, "email": email}));
+            // Role is best-effort: a hiccup here shouldn't fail the whole
+            // `/auth/me` call, since username/email are still useful without it.
+            let role = {
+                let role_resp = client
+                    .post(&format!("{}whoami", get_base_url()))
+                    .bearer_auth(token)
+                    .send()
+                    .await;
+                match role_resp {
+                    Ok(resp) if resp.status().is_success() => {
+                        let json: serde_json::Value = resp.json().await.unwrap_or_default();
+                        json.get("you")
+                            .and_then(|v| v.get("roles"))
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("none")
+                            .to_string()
+                    }
+                    _ => "none".to_string(),
+                }
+            };
+
+            let reply = warp::reply::json(
+                &serde_json::json!({ "user_id": username, "email": email, "role": role }),
+            );
             log!(LogLevel::Info, "me success session {}", session.session_id);
             Ok(reply)
         }

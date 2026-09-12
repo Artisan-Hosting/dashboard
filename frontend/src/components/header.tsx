@@ -2,11 +2,12 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
+import { isAdminRole } from "@/components/requireAdmin";
 
 export function Sidebar({ onLogout, onLogoutAll }: { onLogout: () => void; onLogoutAll: () => void }) {
   const router = useRouter();
   // 1) Grab username + email from our custom hook:
-  const { username, email: loadedEmail, isLoading, error } = useUser()
+  const { username, email: loadedEmail, role, isLoading, error } = useUser()
 
   // 2) Local state for the email-input field (so we can edit it):
   const [email, setEmail] = useState<string>('')
@@ -64,6 +65,9 @@ export function Sidebar({ onLogout, onLogoutAll }: { onLogout: () => void; onLog
           <button onClick={() => router.push('/vms')} className="text-left hover:text-brand">Vms</button>
           <button onClick={() => router.push('/secrets')} className="text-left hover:text-brand">Secrets</button>
           <button onClick={() => router.push('/billing')} className="text-left hover:text-brand">Billing</button>
+          {isAdminRole(role) && (
+            <button onClick={() => router.push('/nodes')} className="text-left hover:text-brand">Nodes</button>
+          )}
           <div className="mt-auto" />
         </nav>
       </aside>

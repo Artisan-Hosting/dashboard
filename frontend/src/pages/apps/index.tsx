@@ -1,12 +1,8 @@
 // src/components/Dashboard.tsx
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/router";
-import { fetchWithAuth } from "@/lib/api";
-import {
-  RunnerSummary,
-  UsageSummary,
-  Metrics,
-} from "@/lib/types";
+import { fetchRunners, fetchGroupUsage } from "@/lib/api";
+import { UsageSummary } from "@/lib/types";
 import { Sidebar } from "@/components/header";
 import LoadingOverlay from "@/components/loading";
 import { handleLogout, handleLogoutAll } from "@/lib/logout";
@@ -16,7 +12,6 @@ const REFRESH_INTERVAL = 10_000; // 10s
 interface RunnerCard {
   name: string;
   status: string;
-  live?: Metrics;
   summary?: UsageSummary;
 }
 
@@ -30,20 +25,16 @@ export default function Dashboard() {
   const loadData = useCallback(async () => {
     // setLoading(true);
     try {
-      const res = await fetchWithAuth("proxy/runners");
-      const list: RunnerSummary[] = res.data || [];
+      const list = await fetchRunners();
 
       const cards: RunnerCard[] = await Promise.all(
         list.map(async (r) => {
           const name = r.name.replace("ais_", "");
-          const sumRes = await fetchWithAuth(
-            `proxy/usage/group/${name}`
-          );
+          const summary = await fetchGroupUsage(name);
           return {
             name,
             status: r.status,
-            live: r.metrics,
-            summary: sumRes.data as UsageSummary,
+            summary,
           };
         })
       );
@@ -99,7 +90,7 @@ export default function Dashboard() {
                   </div>
                   <button
                     onClick={() => router.push(`/apps/${r.name}`)}
-                    className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-full text-sm font-medium"
+                    className="btn-brand px-4 py-2 rounded-full text-sm font-medium"
                   >
                     Details →
                   </button>
@@ -130,10 +121,6 @@ export default function Dashboard() {
                     </p>
                   </div>
                 )}
-
-                <div className="h-28 bg-gradient-to-r from-[color:var(--gradient-start)]/20 to-[color:var(--gradient-end)]/40 rounded-lg flex items-center justify-center text-sm italic text-gray-400">
-                  [Realtime graph coming soon]
-                </div>
               </div>
             ))}
           </div>

@@ -1,7 +1,14 @@
 // src/pages/dashboard/[id].tsx
 import { Sidebar } from '@/components/header';
 import LoadingOverlay from '@/components/loading';
-import { fetchWithAuth, fetchBilling, postWithAuth } from '@/lib/api';
+import {
+  fetchBilling,
+  fetchGroupUsage,
+  fetchInstanceLogs,
+  fetchInstanceUsage,
+  fetchRunnerDetails,
+  sendRunnerControl,
+} from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { FullInstance, RunnerDetails, UsageSummary, BillingCosts, LogEntry, statusColorMap, StatusType } from '@/lib/types';
 import { useRouter } from 'next/router';
@@ -37,7 +44,7 @@ export default function ProjectPage() {
 
   const handleCommand = async (instanceId: string, command: string) => {
     try {
-      const res = await fetchWithAuth(`proxy/control/${instanceId}/${command}`);
+      const res = await sendRunnerControl(instanceId, command);
       toast.success(`${command} sent to ${instanceId}`);
       console.log(`${command} sent to ${instanceId}`, res);
     } catch (e) {
@@ -52,22 +59,17 @@ export default function ProjectPage() {
     (async () => {
       try {
 
-        const runnersRes = await fetchWithAuth(`proxy/runner/${runnerId}`);
-        const details: RunnerDetails[] = runnersRes.data || [];
+        const details = await fetchRunnerDetails(runnerId);
         setDetailsList(details);
 
-        const grpRes = await fetchWithAuth(`proxy/usage/group/${runnerId}`);
-        const grpUsage: UsageSummary = grpRes.data;
+        const grpUsage = await fetchGroupUsage(runnerId);
         setGroupUsage(grpUsage);
 
         const full: FullInstance[] = await Promise.all(
-          details.map(async (inst) => {
-            const uxRes = await fetchWithAuth(`proxy/usage/single/${inst.id}`);
-            return {
-              details: inst,
-              usage: uxRes.data as UsageSummary,
-            };
-          })
+          details.map(async (inst) => ({
+            details: inst,
+            usage: await fetchInstanceUsage(inst.id),
+          }))
         );
         setInstances(full);
 
@@ -91,8 +93,7 @@ export default function ProjectPage() {
         await Promise.all(
           details.map(async (inst) => {
             try {
-              const logRes = await fetchWithAuth(`proxy/logs/${inst.id}/500`);
-              logMap[inst.id] = logRes.data?.lines || [];
+              logMap[inst.id] = await fetchInstanceLogs(inst.id, 500);
             } catch (e) {
               console.error(`Failed logs for ${inst.id}`, e);
             }
@@ -117,14 +118,12 @@ export default function ProjectPage() {
       try {
         const updated: FullInstance[] = await Promise.all(
           detailsList.map(async (inst) => {
-            const latestDetailsRes = await fetchWithAuth(`proxy/runner/${runnerId}`);
-            const latestDetailsList: RunnerDetails[] = latestDetailsRes.data || [];
+            const latestDetailsList = await fetchRunnerDetails(String(runnerId));
             const updatedDetails = latestDetailsList.find(d => d.id === inst.id) || inst;
 
-            const uxRes = await fetchWithAuth(`proxy/usage/single/${inst.id}`);
             return {
               details: updatedDetails,
-              usage: uxRes.data as UsageSummary,
+              usage: await fetchInstanceUsage(inst.id),
             };
           })
         );
@@ -148,8 +147,7 @@ export default function ProjectPage() {
         await Promise.all(
           detailsList.map(async (inst) => {
             try {
-              const logRes = await fetchWithAuth(`proxy/logs/${inst.id}/100`);
-              logMap[inst.id] = logRes.data?.lines || [];
+              logMap[inst.id] = await fetchInstanceLogs(inst.id, 100);
             } catch (e) {
               console.error(`Polling failed logs for ${inst.id}`, e);
             }
@@ -197,12 +195,12 @@ export default function ProjectPage() {
                     <div className="hidden sm:flex gap-2">
                       <button onClick={() => handleCommand(details.id, 'start')} className="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-white text-sm">Start</button>
                       <button onClick={() => handleCommand(details.id, 'stop')} className="bg-yellow-500 hover:bg-yellow-600 px-2 py-1 rounded text-white text-sm">Stop</button>
-                      <button onClick={() => handleCommand(details.id, 'restart')} className="bg-brand hover:bg-brand-dark px-2 py-1 rounded text-white text-sm">Restart</button>
+                      <button onClick={() => handleCommand(details.id, 'restart')} className="btn-brand px-2 py-1 rounded text-sm">Restart</button>
                     </div>
                     <div className="relative sm:hidden">
                       <button
                         onClick={() => setOpenMenu(openMenu === details.id ? null : details.id)}
-                        className="p-2 bg-brand rounded text-white"
+                        className="p-2 btn-brand rounded"
                       >
                         <Menu className="w-5 h-5" />
                       </button>

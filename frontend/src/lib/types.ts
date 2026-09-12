@@ -1,12 +1,3 @@
-// Represents a project listed on the Dashboard
-export interface Project {
-  name: string;      // From runner.name (without "ais_" prefix)
-  status: string;    // Runner status ("Running", "Stopped", etc.)
-  usage?: UsageSummary; // Fetched separately via `usage/group/{runner_id}`
-  cost?: BillingCosts;
-  live?: Metrics;
-}
-
 // Represents summarized usage data from /usage/group/{runner_id}
 export interface UsageSummary {
   runner_id: string;
@@ -124,20 +115,6 @@ export interface ProjectCostSummary {
 }
 
 /**
- * Live/summary metrics for a runner (optional).
- */
-export interface Metrics {
-  /** Current CPU usage, e.g. "12.34%" */
-  cpu_usage: string;
-  /** Current RAM usage, e.g. "256 MB" */
-  ram_usage: string;
-  /** Total bytes transmitted by the runner */
-  tx_bytes: number;
-  /** Total bytes received by the runner */
-  rx_bytes: number;
-}
-
-/**
  * A minimal summary of a runner group for listing.
  * Mirrors the Rust `RunnerSummary`:
  */
@@ -157,8 +134,6 @@ export interface RunnerSummary {
   nodes: number[];
   /** Total seconds this runner has been active (optional) */
   uptime?: number;
-  /** Optional live metrics from the runner */
-  metrics?: Metrics;
 }
 
 /**
@@ -188,48 +163,149 @@ export const statusColorMap: Record<StatusType, string> = {
   Building: 'text-blue-400',
 };
 
-export interface VmMetrics {
-  cpu_percent: number;      // e.g. 12.5
-  memory_percent: number;   // e.g. 34.2
-  uptime_seconds: number;   // e.g. 123456
-}
-
+// Mirrors the Rust `SmallVMStatus` returned by `ais_vm` — a flat struct, no
+// nested "metrics" object and no "name" field.
 export interface VmListItem {
-  vmid: number;       // numeric VM ID
-  name: string;       // e.g. "web-server-01"
-  status: string;     // e.g. "running" | "stopped"
-  // if your JSON sometimes omits metrics, mark it optional or nullable:
-  metrics?: VmMetrics | null;
-}
-
-export interface VmStatusDetail {
   vmid: number;
-  name: string;
-  status: string;            // e.g. "running"
-  uptime_seconds: number;    // how long it’s been up
-
-  // CPU usage percent (e.g. 5.2)
-  cpu_pc: number;
-
-  // memory in megabytes
-  memory_total_mb: number;
-  memory_used_mb: number;
-
-  // cumulative disk I/O (in KB)
-  disk_read_kb: number;
-  disk_write_kb: number;
-
-  // cumulative network I/O (in KB)
-  net_rx_kb: number;
-  net_tx_kb: number;
-
-  // …add any extra fields your backend actually returns
+  status: string;      // e.g. "running" | "stopped"
+  cpu: number;          // fraction 0..1 (e.g. 0.17 -> 17%)
+  mem: number;           // bytes
+  maxmem: number;        // bytes
+  disk_read: number;     // bytes, cumulative since VM start
+  disk_write: number;    // bytes, cumulative since VM start
+  net_in: number;        // bytes, cumulative since VM start
+  net_out: number;       // bytes, cumulative since VM start
+  uptime: number;        // seconds
 }
 
-export type VmActionType = 'start' | 'stop' | 'reboot' | 'shutdown';
+export type VmActionType = 'start' | 'stop' | 'restart' | 'shutdown';
 
 export interface VmActionRequest {
   action: VmActionType;
   // optional flags, e.g. force shutdown
   force?: boolean;
+}
+
+// ======= Nodes / Admin Types =======
+
+export interface Identifier {
+  id: number;
+  _signature: string;
+}
+
+export type NodeStatus =
+  | 'Starting'
+  | 'Running'
+  | 'Idle'
+  | 'Stopping'
+  | 'Stopped'
+  | 'Unknown'
+  | 'Warning'
+  | 'Building';
+
+export interface NodeInfo {
+  identity: Identifier;
+  hostname: string;
+  status: NodeStatus;
+  ip_address: string;
+  runners: string[];
+  created_at: string;
+  last_updated: string;
+}
+
+export type GitServer = 'GitHub' | 'GitLab' | { Custom: string };
+
+export interface GitAuth {
+  user: string;
+  repo: string;
+  branch: string;
+  server: GitServer;
+  token: string | null;
+}
+
+export interface GitCredentials {
+  auth_items: GitAuth[];
+}
+
+export interface ManagerData {
+  identity: Identifier;
+  version: SoftwareVersion;
+  git_config: GitCredentials;
+  hostname: string;
+  address: string;
+  system_apps: number;
+  client_apps: number;
+  warning: number;
+  uptime: number;
+}
+
+export interface NodeDetails {
+  identity: Identifier;
+  status: NodeStatus;
+  runners: string[];
+  created_at: string;
+  last_updated: string;
+  manager_data: ManagerData;
+}
+
+export interface NodeReloadResult {
+  id: string;
+  reloaded: boolean;
+}
+
+// --- git-config editor ---
+
+export interface RepoEntry {
+  id?: string | null;
+  user: string;
+  repo: string;
+  branch: string;
+  server: GitServer;
+  token?: string | null;
+}
+
+export interface ReposEnvelope {
+  schema: number;
+  hostname?: string | null;
+  exported_at?: number | null;
+  path?: string | null;
+  repos: RepoEntry[];
+}
+
+export interface ReloadOutcome {
+  attempted: boolean;
+  ok: boolean;
+  method: string;
+  message?: string | null;
+}
+
+export interface MovedId {
+  old_id: string;
+  new_id: string;
+  note: string;
+}
+
+export interface ReposResponse extends ReposEnvelope {
+  reload: ReloadOutcome;
+  moved?: MovedId;
+}
+
+export type GitConfigOp = 'set' | 'add' | 'update' | 'remove';
+
+// --- watchdog config editor ---
+
+export type WatchdogConfigKind = 'config' | 'overrides';
+
+export interface WatchdogGetConfigResponse {
+  found: boolean;
+  created: boolean;
+  path: string;
+  content: string;
+  sha256: string;
+}
+
+export interface WatchdogSetConfigResponse {
+  accepted: boolean;
+  message: string;
+  backup_file: string;
 }

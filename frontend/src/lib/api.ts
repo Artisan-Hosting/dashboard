@@ -1,5 +1,23 @@
 // src/lib/api.ts
-import { BillingCosts, RefreshRequest, RefreshResponse, UsageSummary, VmActionRequest, VmActionType, VmListItem, VmStatusDetail } from "./types";
+import {
+  BillingCosts,
+  GitConfigOp,
+  LogEntry,
+  NodeDetails,
+  NodeInfo,
+  NodeReloadResult,
+  ReposEnvelope,
+  ReposResponse,
+  RunnerDetails,
+  RunnerSummary,
+  UsageSummary,
+  VmActionRequest,
+  VmActionType,
+  VmListItem,
+  WatchdogConfigKind,
+  WatchdogGetConfigResponse,
+  WatchdogSetConfigResponse,
+} from "./types";
 import { API_URL } from "./config";
 
 export async function fetchWithAuth(endpoint: string) {
@@ -139,18 +157,103 @@ export async function sendVmAction(
   }
 }
 
-export async function fetchVmStatus(vmid: number): Promise<VmStatusDetail> {
-  const res = await fetchWithAuth(`proxy/vms/${vmid}/status`);
-  if (res.status !== 'ok' || !res.data) {
-    throw new Error(res.errors.join(', '));
-  }
-  return res.data;
-}
-
 export async function fetchVmList(): Promise<VmListItem[]> {
   const res = await fetchWithAuth('proxy/vms');
   if (res.status !== 'ok' || !res.data) {
     throw new Error(res.errors.join(', '));
   }
   return res.data;
+}
+
+// ======= Runners =======
+
+export async function fetchRunners(): Promise<RunnerSummary[]> {
+  const res = await fetchWithAuth('proxy/runners');
+  return (res.data ?? []) as RunnerSummary[];
+}
+
+export async function fetchRunnerDetails(runnerId: string): Promise<RunnerDetails[]> {
+  const res = await fetchWithAuth(`proxy/runner/${runnerId}`);
+  return (res.data ?? []) as RunnerDetails[];
+}
+
+export async function fetchGroupUsage(runnerId: string): Promise<UsageSummary> {
+  const res = await fetchWithAuth(`proxy/usage/group/${runnerId}`);
+  return res.data as UsageSummary;
+}
+
+export async function fetchInstanceUsage(instanceId: string): Promise<UsageSummary> {
+  const res = await fetchWithAuth(`proxy/usage/single/${instanceId}`);
+  return res.data as UsageSummary;
+}
+
+export async function fetchInstanceLogs(instanceId: string, limit: number): Promise<LogEntry[]> {
+  const res = await fetchWithAuth(`proxy/logs/${instanceId}/${limit}`);
+  return res.data?.lines ?? [];
+}
+
+export async function sendRunnerControl(instanceId: string, command: string): Promise<any> {
+  return fetchWithAuth(`proxy/control/${instanceId}/${command}`);
+}
+
+// ======= Nodes (Admin/Super only) =======
+
+export async function fetchNodes(): Promise<NodeInfo[]> {
+  const res = await fetchWithAuth('proxy/nodes');
+  return (res.data ?? []) as NodeInfo[];
+}
+
+export async function fetchNodeDetails(nodeId: number): Promise<NodeDetails> {
+  const res = await fetchWithAuth(`proxy/node/${nodeId}`);
+  return res.data as NodeDetails;
+}
+
+export async function reloadNode(nodeId: number): Promise<NodeReloadResult> {
+  const res = await fetchWithAuth(`proxy/node_reload/${nodeId}`);
+  return res.data as NodeReloadResult;
+}
+
+// --- Git config ---
+
+export async function fetchGitConfig(nodeId: number): Promise<ReposEnvelope> {
+  const res = await fetchWithAuth(`proxy/node/${nodeId}/git-config`);
+  return res.data as ReposEnvelope;
+}
+
+export async function setGitConfig(
+  nodeId: number,
+  op: GitConfigOp,
+  body: object,
+): Promise<ReposResponse> {
+  const res = await postWithAuth(`proxy/node/${nodeId}/git-config`, { op, ...body });
+  return res.data as ReposResponse;
+}
+
+// --- Watchdog config ---
+
+export async function fetchWatchdogConfig(
+  nodeId: number,
+  application: string,
+  kind: WatchdogConfigKind,
+  createIfMissing = false,
+): Promise<WatchdogGetConfigResponse> {
+  const qs = `application=${encodeURIComponent(application)}&kind=${kind}&create_if_missing=${createIfMissing}`;
+  const res = await fetchWithAuth(`proxy/node/${nodeId}/watchdog/config?${qs}`);
+  return res.data as WatchdogGetConfigResponse;
+}
+
+export async function setWatchdogConfig(
+  nodeId: number,
+  application: string,
+  kind: WatchdogConfigKind,
+  content: string,
+  expectedPreviousSha256: string,
+): Promise<WatchdogSetConfigResponse> {
+  const res = await postWithAuth(`proxy/node/${nodeId}/watchdog/config`, {
+    application,
+    kind,
+    content,
+    expected_previous_sha256: expectedPreviousSha256,
+  });
+  return res.data as WatchdogSetConfigResponse;
 }
