@@ -1,5 +1,6 @@
 use once_cell::sync::OnceCell;
 use reqwest::Client;
+use std::time::Duration;
 
 use crate::{
     api::cache::{Cache, SessionCache},
@@ -21,10 +22,15 @@ pub async fn init_state() -> Result<(), Box<dyn std::error::Error>> {
     log!(LogLevel::Info, "connecting to secret gRPC {}", &secret_addr);
     let secret_client = grpc::SecretClient::connect(secret_addr).await?;
 
+    let http_client = Client::builder()
+        .timeout(Duration::from_secs(15))
+        .build()
+        .expect("failed to build http client");
+
     let state = AppState {
         proxy_cache: Cache::new(),
         session_cache: SessionCache::new(),
-        http_client: Client::new(),
+        http_client,
         secret_client,
     };
 

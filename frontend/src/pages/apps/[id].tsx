@@ -108,12 +108,19 @@ export default function ProjectPage() {
     })();
   }, [router.isReady, runnerId]);
 
+  const pollInFlight = useRef(false);
+
   useEffect(() => {
     const pollInterval = 5_000;
     let poller: NodeJS.Timeout;
 
     const poll = async () => {
       // if (!runnerId || detailsList.length === 0) return;
+
+      // Skip this tick if the previous poll hasn't finished, so a slow
+      // upstream can't pile up overlapping batches of requests.
+      if (pollInFlight.current) return;
+      pollInFlight.current = true;
 
       try {
         const updated: FullInstance[] = await Promise.all(
@@ -156,6 +163,8 @@ export default function ProjectPage() {
         setLogs(logMap);
       } catch (e) {
         console.error('Polling error:', e);
+      } finally {
+        pollInFlight.current = false;
       }
     };
 

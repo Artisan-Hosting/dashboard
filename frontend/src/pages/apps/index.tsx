@@ -1,5 +1,5 @@
 // src/components/Dashboard.tsx
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
 import { fetchRunners, fetchGroupUsage } from "@/lib/api";
 import { UsageSummary } from "@/lib/types";
@@ -21,29 +21,33 @@ export default function Dashboard() {
   const [runners, setRunners] = useState<RunnerCard[]>([]);
   const loading = false;
   // const [loading, setLoading] = useState(true);
+  const inFlight = useRef(false);
 
   const loadData = useCallback(async () => {
-    // setLoading(true);
+    // Skip this tick if the previous poll is still running, so a slow
+    // upstream can't pile up overlapping batches of requests.
+    if (inFlight.current) return;
+    inFlight.current = true;
     try {
       const list = await fetchRunners();
 
-      const cards: RunnerCard[] = await Promise.all(
-        list.map(async (r) => {
+      const results = await Promise.allSettled(
+        list.map(async (r): Promise<RunnerCard> => {
           const name = r.name.replace("ais_", "");
           const summary = await fetchGroupUsage(name);
-          return {
-            name,
-            status: r.status,
-            summary,
-          };
+          return { name, status: r.status, summary };
         })
       );
+
+      const cards: RunnerCard[] = results
+        .filter((r): r is PromiseFulfilledResult<RunnerCard> => r.status === "fulfilled")
+        .map((r) => r.value);
 
       setRunners(cards);
     } catch (err) {
       console.error("Dashboard load error", err);
     } finally {
-      // setLoading(false);
+      inFlight.current = false;
     }
   }, [router]);
 
