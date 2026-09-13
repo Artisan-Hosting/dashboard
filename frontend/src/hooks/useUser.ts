@@ -6,6 +6,7 @@ export function useUser() {
     const [username, setUsername] = useState<string>('')
     const [email, setEmail] = useState<string>('')
     const [role, setRole] = useState<string>('none')
+    const [orgId, setOrgId] = useState<string>('')
     const [isLoading, setIsLoading] = useState<boolean>(true)
     const [error, setError] = useState<Error | null>(null)
 
@@ -27,6 +28,7 @@ export function useUser() {
                     setUsername(meBody.user_id);
                     setEmail(meBody.email)
                     setRole(meBody.role ?? 'none')
+                    setOrgId(meBody.org_id ?? '')
                 }
             } catch (err) {
                 if (isMounted) setError(err as Error)
@@ -41,5 +43,5 @@ export function useUser() {
         }
     }, [])
 
-    return { username, email, role, isLoading, error }
+    return { username, email, role, orgId, isLoading, error }
 }

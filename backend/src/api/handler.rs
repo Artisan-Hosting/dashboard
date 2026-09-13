@@ -372,23 +372,34 @@ pub async fn me_handler(session: SessionData) -> Result<impl warp::Reply, warp::
                     .to_string()
             };
 
-            // Role is best-effort: a hiccup here shouldn't fail the whole
-            // `/auth/me` call, since username/email are still useful without it.
-            let role = match role_result {
+            // Role/org_id are best-effort: a hiccup here shouldn't fail the
+            // whole `/auth/me` call, since username/email are still useful
+            // without them.
+            let (role, org_id) = match role_result {
                 Ok(resp) if resp.status().is_success() => {
                     let json: serde_json::Value = resp.json().await.unwrap_or_default();
-                    json.get("you")
+                    let you = json.get("you");
+                    let role = you
                         .and_then(|v| v.get("roles"))
                         .and_then(|v| v.as_str())
                         .unwrap_or("none")
-                        .to_string()
+                        .to_string();
+                    let org_id = you
+                        .and_then(|v| v.get("org_id"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    (role, org_id)
                 }
-                _ => "none".to_string(),
+                _ => ("none".to_string(), String::new()),
             };
 
-            let reply = warp::reply::json(
-                &serde_json::json!({ "user_id": username, "email": email, "role": role }),
-            );
+            let reply = warp::reply::json(&serde_json::json!({
+                "user_id": username,
+                "email": email,
+                "role": role,
+                "org_id": org_id,
+            }));
             log!(LogLevel::Info, "me success session {}", session.session_id);
             Ok(reply)
         }
