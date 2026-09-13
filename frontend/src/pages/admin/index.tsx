@@ -19,6 +19,15 @@ interface UserSummary {
   org_id: string;
 }
 
+interface Invite {
+  id: string;
+  email: string;
+  org_id: string;
+  role: string;
+  created_at: number;
+  expires_at: number;
+}
+
 const ROLE_OPTIONS = ['SUPER', 'admin', 'controller', 'viewer', 'audit', 'none'];
 
 /// Step-up auth: an elevated token is only ever held in memory (state, not
@@ -70,6 +79,11 @@ export default function AdminPage() {
   const [usersError, setUsersError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [invitesError, setInvitesError] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('viewer');
+
   const loadOrgs = useCallback(async () => {
     if (!isSuper) return;
     try {
@@ -111,6 +125,25 @@ export default function AdminPage() {
     loadUsers(selectedOrgId);
   }, [selectedOrgId, loadUsers]);
 
+  const loadInvites = useCallback(async (orgId: string) => {
+    if (!orgId) {
+      setInvites([]);
+      return;
+    }
+    try {
+      const res = await fetchWithAuth(`proxy/admin/invites?org_id=${encodeURIComponent(orgId)}`);
+      setInvites(res.data || []);
+      setInvitesError(null);
+    } catch (err) {
+      setInvitesError('Failed to load invites for that organization.');
+      setInvites([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadInvites(selectedOrgId);
+  }, [selectedOrgId, loadInvites]);
+
   const createOrg = async () => {
     if (!newOrgName.trim() || !elevated.token) return;
     setStatusMessage(null);
@@ -140,6 +173,38 @@ export default function AdminPage() {
       loadUsers(selectedOrgId);
     } catch (err) {
       setStatusMessage('Failed to update user -- check the role/org and your access level.');
+    }
+  };
+
+  const createInvite = async () => {
+    if (!inviteEmail.trim() || !selectedOrgId || !elevated.token) return;
+    setStatusMessage(null);
+    try {
+      await postWithAuth('proxy/admin/invites', {
+        elevated_token: elevated.token,
+        email: inviteEmail.trim(),
+        org_id: selectedOrgId,
+        role: inviteRole,
+      });
+      setInviteEmail('');
+      setStatusMessage(`Invited ${inviteEmail.trim()}.`);
+      loadInvites(selectedOrgId);
+    } catch (err) {
+      setStatusMessage('Failed to create invite -- check the role and your access level.');
+    }
+  };
+
+  const revokeInvite = async (inviteId: string) => {
+    if (!elevated.token) return;
+    setStatusMessage(null);
+    try {
+      await postWithAuth(`proxy/admin/invites/${inviteId}/revoke`, {
+        elevated_token: elevated.token,
+      });
+      setStatusMessage('Invite revoked.');
+      loadInvites(selectedOrgId);
+    } catch (err) {
+      setStatusMessage('Failed to revoke invite.');
     }
   };
 
@@ -281,6 +346,74 @@ export default function AdminPage() {
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Pending invites for the selected org */}
+          <div className="card p-6 space-y-4">
+            <h2 className="font-semibold text-brand">
+              Invites{selectedOrgId ? ` -- org ${selectedOrgId}` : ''}
+            </h2>
+            {invitesError && <p className="text-sm text-red-500">{invitesError}</p>}
+            {!selectedOrgId && <p className="text-gray-500 text-sm">Select an organization above.</p>}
+
+            {selectedOrgId && (
+              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center border-b border-gray-300 dark:border-gray-700 pb-4">
+                <input
+                  type="email"
+                  placeholder="Email to invite"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  className="w-full sm:w-64 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
+                />
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value)}
+                  className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-sm"
+                >
+                  {(isSuper ? ROLE_OPTIONS : ROLE_OPTIONS.filter((r) => r !== 'SUPER')).map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={createInvite}
+                  disabled={!elevated.isElevated || !inviteEmail.trim()}
+                  className="btn-brand px-4 py-2 rounded disabled:opacity-50"
+                  title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
+                >
+                  Invite
+                </button>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {invites.map((invite) => (
+                <div
+                  key={invite.id}
+                  className="card-hover p-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">{invite.email}</p>
+                    <p className="text-xs text-gray-400">
+                      {invite.role} -- expires{' '}
+                      {new Date(invite.expires_at * 1000).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => revokeInvite(invite.id)}
+                    disabled={!elevated.isElevated}
+                    className="text-sm text-red-500 hover:text-red-600 disabled:opacity-50"
+                    title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
+                  >
+                    Revoke
+                  </button>
+                </div>
+              ))}
+              {invites.length === 0 && selectedOrgId && !invitesError && (
+                <p className="text-gray-500 text-sm">No pending invites.</p>
+              )}
             </div>
           </div>
         </main>

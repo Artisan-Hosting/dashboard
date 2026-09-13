@@ -22,7 +22,7 @@ use warp::{
     reply::Response,
 };
 
-use super::cookie::{SessionData, login};
+use super::cookie::{SessionData, accept_invite, login};
 
 #[derive(Debug, Deserialize)]
 pub struct ResetPasswordRequest {
@@ -119,60 +119,89 @@ pub async fn login_handler(
         "login_handler called for {}",
         login_data.email
     );
-    return match login(login_data).await {
-        Ok(session) => {
-            sqlx::query(
-                r#"INSERT INTO sessions (session_id, user_id, auth_jwt, refresh_jwt, expires_at)
-                   VALUES (?, ?, ?, ?, ?)"#,
-            )
-            .bind(&session.session_id)
-            .bind(&session.user_id)
-            .bind(&session.auth_jwt)
-            .bind(&session.refresh_jwt)
-            .bind(session.expires_at)
-            .execute(get_db_pool())
-            .await
-            .map_err(|e| {
-                log!(
-                    LogLevel::Error,
-                    "DB insert error for {}: {}",
-                    session.session_id,
-                    e
-                );
-                warp::reject::custom(Whoops(e.to_string()))
-            })?;
-
-            get_state()
-                .session_cache
-                .insert(session.session_id.clone(), session.clone())
-                .await;
-            spawn_session_refresh(session.clone());
-
-            #[allow(deprecated)]
-            let cookie = CookieBuilder::new("session_id", session.session_id.clone())
-                .http_only(true)
-                .path("/")
-                .secure(true)
-                .finish();
-
-            let set_cookie_header = cookie.to_string();
-
-            let header_value = HeaderValue::from_str(&set_cookie_header)
-                .expect("cookie.to_string() returned invalid header‐value");
-
-            log!(
-                LogLevel::Debug,
-                "session {} inserted in DB",
-                session.session_id
-            );
-
-            let body = format!("Logged in as {}.", session.user_id);
-            let reply = warp::reply::with_header(body, SET_COOKIE, header_value);
-
-            Ok(reply)
-        }
+    match login(login_data).await {
+        Ok(session) => finish_session(session, "Logged in").await,
         Err(err) => Err(warp::reject::custom(Whoops(err))),
-    };
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AcceptInviteRequest {
+    pub token: String,
+    pub display_name: String,
+    pub password: String,
+}
+
+/// Accepting an invite creates the account *and* logs it in, in one step --
+/// no separate login round trip needed afterward. Shares its session-setup
+/// tail with `login_handler` via `finish_session`.
+pub async fn accept_invite_handler(
+    req: AcceptInviteRequest,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Debug, "accept_invite_handler called");
+    match accept_invite(req.token, req.display_name, req.password).await {
+        Ok(session) => finish_session(session, "Account created").await,
+        Err(err) => Err(warp::reject::custom(Whoops(err))),
+    }
+}
+
+/// Shared tail of `login_handler`/`accept_invite_handler`: persist the
+/// session, warm the in-memory cache, schedule its background refresh, and
+/// set the `session_id` cookie. `verb` only changes the human-readable body
+/// text ("Logged in as..." vs "Account created for...").
+async fn finish_session(
+    session: SessionData,
+    verb: &str,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    sqlx::query(
+        r#"INSERT INTO sessions (session_id, user_id, auth_jwt, refresh_jwt, expires_at)
+           VALUES (?, ?, ?, ?, ?)"#,
+    )
+    .bind(&session.session_id)
+    .bind(&session.user_id)
+    .bind(&session.auth_jwt)
+    .bind(&session.refresh_jwt)
+    .bind(session.expires_at)
+    .execute(get_db_pool())
+    .await
+    .map_err(|e| {
+        log!(
+            LogLevel::Error,
+            "DB insert error for {}: {}",
+            session.session_id,
+            e
+        );
+        warp::reject::custom(Whoops(e.to_string()))
+    })?;
+
+    get_state()
+        .session_cache
+        .insert(session.session_id.clone(), session.clone())
+        .await;
+    spawn_session_refresh(session.clone());
+
+    #[allow(deprecated)]
+    let cookie = CookieBuilder::new("session_id", session.session_id.clone())
+        .http_only(true)
+        .path("/")
+        .secure(true)
+        .finish();
+
+    let set_cookie_header = cookie.to_string();
+
+    let header_value = HeaderValue::from_str(&set_cookie_header)
+        .expect("cookie.to_string() returned invalid header‐value");
+
+    log!(
+        LogLevel::Debug,
+        "session {} inserted in DB",
+        session.session_id
+    );
+
+    let body = format!("{} as {}.", verb, session.user_id);
+    let reply = warp::reply::with_header(body, SET_COOKIE, header_value);
+
+    Ok(reply)
 }
 
 pub async fn logout_handler(session: SessionData) -> Result<impl warp::Reply, warp::Rejection> {

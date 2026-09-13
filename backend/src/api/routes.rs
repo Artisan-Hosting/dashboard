@@ -11,7 +11,10 @@ use crate::api::{
 };
 
 use super::{
-    handler::{login_handler, logout_all_handler, logout_handler, whoami_handler},
+    handler::{
+        AcceptInviteRequest, accept_invite_handler, login_handler, logout_all_handler,
+        logout_handler, whoami_handler,
+    },
     helper::with_session,
 };
 
@@ -41,6 +44,12 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
         .and(warp::path!("auth" / "login"))
         .and(warp::body::json::<SimpleLoginRequest>())
         .and_then(login_handler);
+
+    // public, like login -- accepting an invite creates the account
+    let accept_invite = warp::post()
+        .and(warp::path!("auth" / "accept-invite"))
+        .and(warp::body::json::<AcceptInviteRequest>())
+        .and_then(accept_invite_handler);
 
     // login
     let logout = warp::post()
@@ -109,6 +118,7 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
     let routes = warp::path("api")
         .and(
             login
+                .or(accept_invite)
                 .or(logout)
                 .or(logout_all)
                 .or(whoami)
