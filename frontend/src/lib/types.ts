@@ -292,6 +292,17 @@ export interface ReposResponse extends ReposEnvelope {
 
 export type GitConfigOp = 'set' | 'add' | 'update' | 'remove' | 'audit';
 
+// --- Phase I: centralized repo/project catalog ---
+
+export interface RepoCatalogEntry {
+  id: string;
+  user: string;
+  repo: string;
+  branch: string;
+  nodes: number[];
+  org_id?: string | null;
+}
+
 // Result of a `GitReposAudit` run: a force-resync/force-clean of every
 // configured checkout, plus a purge of any stale `/opt/artisan/tmp` state
 // file left over from a repo no longer in git.cf.

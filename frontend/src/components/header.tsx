@@ -82,6 +82,9 @@ export function Sidebar({ onLogout, onLogoutAll }: { onLogout: () => void; onLog
             <button onClick={() => router.push('/nodes')} className="text-left hover:text-brand">Nodes</button>
           )}
           {isAdminRole(role) && (
+            <button onClick={() => router.push('/repos')} className="text-left hover:text-brand">Repos</button>
+          )}
+          {isAdminRole(role) && (
             <button onClick={() => router.push('/admin')} className="text-left hover:text-brand">Admin</button>
           )}
           <div className="mt-auto" />
