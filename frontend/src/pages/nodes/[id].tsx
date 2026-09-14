@@ -10,7 +10,6 @@ import {
   fetchNodeDetails,
   reloadNode,
   fetchGitConfig,
-  setGitConfig,
   auditGitConfig,
   fetchWatchdogConfig,
   setWatchdogConfig,
@@ -23,15 +22,8 @@ import {
 } from '@/lib/types';
 import { resolveRunnerLabel } from '@/lib/repoLabel';
 
-const emptyRepoForm = { user: '', repo: '', branch: '', serverKind: 'GitHub' as 'GitHub' | 'GitLab' | 'Custom', customUrl: '', token: '' };
-
 function serverToDisplay(server: GitServer): string {
   return typeof server === 'string' ? server : `Custom (${server.Custom})`;
-}
-
-function formToServer(form: typeof emptyRepoForm): GitServer {
-  if (form.serverKind === 'Custom') return { Custom: form.customUrl };
-  return form.serverKind;
 }
 
 function NodeDetailPage() {
@@ -46,9 +38,6 @@ function NodeDetailPage() {
 
   const [repos, setRepos] = useState<RepoEntry[]>([]);
   const [gitLoading, setGitLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [repoForm, setRepoForm] = useState(emptyRepoForm);
-  const [showAddForm, setShowAddForm] = useState(false);
   const [auditing, setAuditing] = useState(false);
 
   const [application, setApplication] = useState('');
@@ -125,49 +114,6 @@ function NodeDetailPage() {
     }
   };
 
-  const openAddForm = () => {
-    setEditingId(null);
-    setRepoForm(emptyRepoForm);
-    setShowAddForm(true);
-  };
-
-  const openEditForm = (repo: RepoEntry) => {
-    setEditingId(repo.id ?? null);
-    setRepoForm({
-      user: repo.user,
-      repo: repo.repo,
-      branch: repo.branch,
-      serverKind: typeof repo.server === 'string' ? repo.server : 'Custom',
-      customUrl: typeof repo.server === 'string' ? '' : repo.server.Custom,
-      token: '',
-    });
-    setShowAddForm(true);
-  };
-
-  const submitRepoForm = async () => {
-    const entry: RepoEntry = {
-      user: repoForm.user,
-      repo: repoForm.repo,
-      branch: repoForm.branch,
-      server: formToServer(repoForm),
-      token: repoForm.token || null,
-    };
-
-    try {
-      const result = editingId
-        ? await setGitConfig(nodeId, 'update', { id: editingId, repo: entry, reload: true })
-        : await setGitConfig(nodeId, 'add', entry);
-      setRepos(result.repos);
-      setShowAddForm(false);
-      toast(result.reload.ok ? 'Saved and reloaded git monitor' : `Saved, but reload: ${result.reload.message ?? 'failed'}`, {
-        icon: result.reload.ok ? '✅' : '⚠️',
-      });
-    } catch (err) {
-      console.error('Failed to save repo', err);
-      toast.error('Failed to save repo');
-    }
-  };
-
   const handleAudit = async () => {
     setAuditing(true);
     try {
@@ -184,20 +130,6 @@ function NodeDetailPage() {
       toast.error('Failed to run repo audit');
     } finally {
       setAuditing(false);
-    }
-  };
-
-  const removeRepo = async (repoId: string) => {
-    if (!confirm(`Remove repo ${repoId}?`)) return;
-    try {
-      const result = await setGitConfig(nodeId, 'remove', { id: repoId, reload: true });
-      setRepos(result.repos);
-      toast(result.reload.ok ? 'Removed and reloaded git monitor' : `Removed, but reload: ${result.reload.message ?? 'failed'}`, {
-        icon: result.reload.ok ? '✅' : '⚠️',
-      });
-    } catch (err) {
-      console.error('Failed to remove repo', err);
-      toast.error('Failed to remove repo');
     }
   };
 
@@ -274,7 +206,9 @@ function NodeDetailPage() {
               )}
             </div>
 
-            {/* Git config editor */}
+            {/* Git config -- read-only per repo, centralized on the Repos page.
+                Recent Repositories (audit) stays: it's hygiene/resync, not
+                identity editing. */}
             <div className="card p-6 mb-8">
               <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
                 <h2 className="text-xl font-bold text-brand">Git Config</h2>
@@ -288,10 +222,10 @@ function NodeDetailPage() {
                     {auditing ? 'Auditing…' : 'Recent Repositories'}
                   </button>
                   <button
-                    onClick={openAddForm}
+                    onClick={() => router.push('/repos')}
                     className="btn-brand px-3 py-1 rounded-full text-sm"
                   >
-                    Add Repo
+                    Manage Repos
                   </button>
                 </div>
               </div>
@@ -309,35 +243,10 @@ function NodeDetailPage() {
                         {r.id && (
                           <button onClick={() => router.push(`/apps/${r.id}`)} className="px-2 py-1 rounded bg-blue-700 hover:bg-blue-600 text-xs">Open Controls</button>
                         )}
-                        <button onClick={() => openEditForm(r)} className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs">Edit</button>
-                        <button onClick={() => r.id && removeRepo(r.id)} className="px-2 py-1 rounded bg-red-700 hover:bg-red-600 text-xs">Remove</button>
                       </div>
                     </div>
                   ))}
                   {repos.length === 0 && <p className="text-sm text-gray-400">No repos configured.</p>}
-                </div>
-              )}
-
-              {showAddForm && (
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-black/20 p-4 rounded">
-                  <input placeholder="user" value={repoForm.user} onChange={(e) => setRepoForm({ ...repoForm, user: e.target.value })} className="bg-gray-800 rounded px-2 py-1 text-sm" />
-                  <input placeholder="repo" value={repoForm.repo} onChange={(e) => setRepoForm({ ...repoForm, repo: e.target.value })} className="bg-gray-800 rounded px-2 py-1 text-sm" />
-                  <input placeholder="branch" value={repoForm.branch} onChange={(e) => setRepoForm({ ...repoForm, branch: e.target.value })} className="bg-gray-800 rounded px-2 py-1 text-sm" />
-                  <select value={repoForm.serverKind} onChange={(e) => setRepoForm({ ...repoForm, serverKind: e.target.value as any })} className="bg-gray-800 rounded px-2 py-1 text-sm">
-                    <option value="GitHub">GitHub</option>
-                    <option value="GitLab">GitLab</option>
-                    <option value="Custom">Custom</option>
-                  </select>
-                  {repoForm.serverKind === 'Custom' && (
-                    <input placeholder="custom server URL" value={repoForm.customUrl} onChange={(e) => setRepoForm({ ...repoForm, customUrl: e.target.value })} className="bg-gray-800 rounded px-2 py-1 text-sm sm:col-span-2" />
-                  )}
-                  <input placeholder="token (leave blank to keep unset)" value={repoForm.token} onChange={(e) => setRepoForm({ ...repoForm, token: e.target.value })} className="bg-gray-800 rounded px-2 py-1 text-sm sm:col-span-2" />
-                  <div className="flex gap-2 sm:col-span-2">
-                    <button onClick={submitRepoForm} className="btn-brand px-3 py-1 rounded text-sm">
-                      {editingId ? 'Save Changes' : 'Add Repo'}
-                    </button>
-                    <button onClick={() => setShowAddForm(false)} className="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm">Cancel</button>
-                  </div>
                 </div>
               )}
             </div>
