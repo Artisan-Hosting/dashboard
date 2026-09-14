@@ -9,6 +9,7 @@ import {
   NodeDetails,
   NodeInfo,
   NodeReloadResult,
+  RepoCatalogEntry,
   ReposEnvelope,
   ReposResponse,
   RunnerDetails,
@@ -280,6 +281,13 @@ export async function setGitConfig(
 export async function auditGitConfig(nodeId: number): Promise<AuditOutcome> {
   const res = await postWithAuth(`proxy/node/${nodeId}/git-config`, { op: 'audit' });
   return res.data as AuditOutcome;
+}
+
+// --- Phase I: centralized repo/project catalog ---
+
+export async function fetchRepoCatalog(): Promise<RepoCatalogEntry[]> {
+  const res = await fetchWithAuth('proxy/repos');
+  return (res.data ?? []) as RepoCatalogEntry[];
 }
 
 // --- Watchdog config ---

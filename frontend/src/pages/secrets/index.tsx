@@ -1,12 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Buffer } from 'buffer';
 import { Sidebar } from '@/components/header';
-import {
-  fetchWithAuth,
-  postWithAuth,
-  putWithAuth,
-  deleteWithAuth,
-} from '@/lib/api';
+import { fetchWithAuth, postWithAuth } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { resolveRunnerLabel } from '@/lib/repoLabel';
 
@@ -64,28 +58,17 @@ const loadSecrets = useCallback(async () => {
   }
 
   try {
+    // Portal decodes the secret bytes to a plain UTF-8 string server-side,
+    // unlike the old dashboard/backend route this used to hit -- no more
+    // byte-array decoding needed on this end.
     const res = await fetchWithAuth(
-      `secrets/list?runner_id=${selectedRunner}&environment_id=${envValue}`
+      `proxy/secrets?runner_id=${selectedRunner}&environment_id=${envValue}`
     );
 
-    const list: SecretItem[] = (res.vals || []).map((kv: any) => {
-      let value = '';
-
-      // Handle byte array as decimal string
-      if (typeof kv.value === 'string' && /^\d+$/.test(kv.value)) {
-        // Split into chunks representing ASCII codes
-        const byteArray = kv.value.match(/.{1,3}/g)?.map(Number) || [];
-        value = String.fromCharCode(...byteArray);
-      } else if (Array.isArray(kv.value)) {
-        // If it's actually an array of numbers
-        value = String.fromCharCode(...kv.value);
-      } else {
-        // Fallback: treat as string
-        value = String(kv.value ?? '');
-      }
-
-      return { name: kv.key, value };
-    });
+    const list: SecretItem[] = (res.data || []).map((kv: { key: string; value: string }) => ({
+      name: kv.key,
+      value: kv.value,
+    }));
 
     setItems(list);
   } catch (err) {
@@ -101,12 +84,11 @@ const loadSecrets = useCallback(async () => {
   const addSecret = async () => {
     if (!newName || !newValue || !selectedRunner || !envValue) return;
     try {
-      await postWithAuth('secrets/create', {
+      await postWithAuth('proxy/secrets', {
         runner_id: selectedRunner,
         environment_id: envValue,
         secret_key: newName,
         value: newValue,
-        actor: 'dashboard',
       });
       setNewName('');
       setNewValue('');
@@ -116,10 +98,12 @@ const loadSecrets = useCallback(async () => {
     }
   };
 
+  // POST, not DELETE/PUT -- Portal's CORS layer only allows GET/POST/OPTIONS,
+  // same convention as every other mutating admin route.
   const deleteSecret = async (name: string) => {
     if (!selectedRunner || !envValue) return;
     try {
-      await deleteWithAuth('secrets/delete', {
+      await postWithAuth('proxy/secrets/delete', {
         runner_id: selectedRunner,
         environment_id: envValue,
         secret_key: name,
@@ -135,12 +119,11 @@ const loadSecrets = useCallback(async () => {
     const newVal = prompt('Enter new value', current);
     if (newVal === null) return;
     try {
-      await putWithAuth('secrets/update', {
+      await postWithAuth('proxy/secrets/update', {
         runner_id: selectedRunner,
         environment_id: envValue,
         secret_key: name,
         new_value: newVal,
-        actor: 'dashboard',
       });
       loadSecrets();
     } catch (err) {

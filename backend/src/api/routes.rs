@@ -2,16 +2,16 @@ use artisan_middleware::api::token::SimpleLoginRequest;
 use artisan_middleware::dusa_collection_utils::{core::logger::LogLevel, log};
 use warp::{Filter, http::header, reject::Rejection, reply::Reply};
 
-use crate::api::{
-    handler::{
-        ResetPasswordRequest, ResetPasswordResponse, generic_proxy_handler, me_handler,
-        password_reset_confirm_handler, password_reset_request_handler, runners_handler,
-    },
-    secret::secret_routes,
+use crate::api::handler::{
+    ResetPasswordRequest, ResetPasswordResponse, generic_proxy_handler, me_handler,
+    password_reset_confirm_handler, password_reset_request_handler, runners_handler,
 };
 
 use super::{
-    handler::{login_handler, logout_all_handler, logout_handler, whoami_handler},
+    handler::{
+        AcceptInviteRequest, accept_invite_handler, login_handler, logout_all_handler,
+        logout_handler, whoami_handler,
+    },
     helper::with_session,
 };
 
@@ -41,6 +41,12 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
         .and(warp::path!("auth" / "login"))
         .and(warp::body::json::<SimpleLoginRequest>())
         .and_then(login_handler);
+
+    // public, like login -- accepting an invite creates the account
+    let accept_invite = warp::post()
+        .and(warp::path!("auth" / "accept-invite"))
+        .and(warp::body::json::<AcceptInviteRequest>())
+        .and_then(accept_invite_handler);
 
     // login
     let logout = warp::post()
@@ -109,6 +115,7 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
     let routes = warp::path("api")
         .and(
             login
+                .or(accept_invite)
                 .or(logout)
                 .or(logout_all)
                 .or(whoami)
@@ -116,8 +123,7 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
                 .or(proxy_route)
                 .or(me)
                 .or(pw_reset_req)
-                .or(pw_reset_conf)
-                .or(secret_routes()), // .or(get_pretty)
+                .or(pw_reset_conf), // .or(get_pretty)
                                       // .or(update_email)
                                       // .or(change_password)
         )
