@@ -28,6 +28,15 @@ interface Invite {
   expires_at: number;
 }
 
+interface RepoCatalogEntry {
+  id: string;
+  user: string;
+  repo: string;
+  branch: string;
+  nodes: number[];
+  org_id?: string | null;
+}
+
 const ROLE_OPTIONS = ['SUPER', 'admin', 'controller', 'viewer', 'audit', 'none'];
 
 /// Step-up auth: an elevated token is only ever held in memory (state, not
@@ -83,6 +92,11 @@ export default function AdminPage() {
   const [invitesError, setInvitesError] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('viewer');
+
+  const [orgRunners, setOrgRunners] = useState<string[]>([]);
+  const [runnersError, setRunnersError] = useState<string | null>(null);
+  const [repoCatalog, setRepoCatalog] = useState<RepoCatalogEntry[]>([]);
+  const [runnerToAssign, setRunnerToAssign] = useState('');
 
   const loadOrgs = useCallback(async () => {
     if (!isSuper) return;
@@ -143,6 +157,42 @@ export default function AdminPage() {
   useEffect(() => {
     loadInvites(selectedOrgId);
   }, [selectedOrgId, loadInvites]);
+
+  const loadOrgRunners = useCallback(async (orgId: string) => {
+    if (!orgId) {
+      setOrgRunners([]);
+      return;
+    }
+    try {
+      const res = await fetchWithAuth(`proxy/admin/organizations/${orgId}/runners`);
+      setOrgRunners(res.data || []);
+      setRunnersError(null);
+    } catch (err) {
+      setRunnersError('Failed to load projects for that organization.');
+      setOrgRunners([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOrgRunners(selectedOrgId);
+  }, [selectedOrgId, loadOrgRunners]);
+
+  // The fleet-wide repo catalog backs the "assign an existing repo" picker
+  // and resolves runner ids to readable `user/repo @ branch` labels -- only
+  // Super sees the whole fleet here (an org-scoped Admin's own catalog view
+  // is empty until Phase H has assigned them something, same as the Repos
+  // page).
+  useEffect(() => {
+    if (!isSuper) return;
+    fetchWithAuth('proxy/repos')
+      .then((res) => setRepoCatalog(res.data || []))
+      .catch(() => setRepoCatalog([]));
+  }, [isSuper]);
+
+  const repoLabel = (runnerName: string) => {
+    const entry = repoCatalog.find((r) => r.id === runnerName);
+    return entry ? `${entry.user}/${entry.repo} @ ${entry.branch}` : runnerName;
+  };
 
   const createOrg = async () => {
     if (!newOrgName.trim() || !elevated.token) return;
@@ -205,6 +255,36 @@ export default function AdminPage() {
       loadInvites(selectedOrgId);
     } catch (err) {
       setStatusMessage('Failed to revoke invite.');
+    }
+  };
+
+  const assignRunner = async () => {
+    if (!runnerToAssign || !selectedOrgId || !elevated.token) return;
+    setStatusMessage(null);
+    try {
+      await postWithAuth(`proxy/admin/runners/${runnerToAssign}/org`, {
+        elevated_token: elevated.token,
+        org_id: selectedOrgId,
+      });
+      setRunnerToAssign('');
+      setStatusMessage('Project assigned.');
+      loadOrgRunners(selectedOrgId);
+    } catch (err) {
+      setStatusMessage('Failed to assign project -- check your access level.');
+    }
+  };
+
+  const removeRunner = async (runnerName: string) => {
+    if (!elevated.token) return;
+    setStatusMessage(null);
+    try {
+      await postWithAuth(`proxy/admin/runners/${runnerName}/org/remove`, {
+        elevated_token: elevated.token,
+      });
+      setStatusMessage('Project removed from organization.');
+      loadOrgRunners(selectedOrgId);
+    } catch (err) {
+      setStatusMessage('Failed to remove project.');
     }
   };
 
@@ -413,6 +493,68 @@ export default function AdminPage() {
               ))}
               {invites.length === 0 && selectedOrgId && !invitesError && (
                 <p className="text-gray-500 text-sm">No pending invites.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Projects (repos/runners) assigned to the selected org */}
+          <div className="card p-6 space-y-4">
+            <h2 className="font-semibold text-brand">
+              Projects{selectedOrgId ? ` -- org ${selectedOrgId}` : ''}
+            </h2>
+            {runnersError && <p className="text-sm text-red-500">{runnersError}</p>}
+            {!selectedOrgId && <p className="text-gray-500 text-sm">Select an organization above.</p>}
+
+            {selectedOrgId && isSuper && (
+              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center border-b border-gray-300 dark:border-gray-700 pb-4">
+                <select
+                  value={runnerToAssign}
+                  onChange={(e) => setRunnerToAssign(e.target.value)}
+                  className="w-full sm:w-96 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-sm"
+                >
+                  <option value="">Assign an existing repo...</option>
+                  {repoCatalog
+                    .filter((r) => !orgRunners.includes(r.id))
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.user}/{r.repo} @ {r.branch}
+                        {r.org_id ? ` (currently org ${r.org_id})` : ''}
+                      </option>
+                    ))}
+                </select>
+                <button
+                  onClick={assignRunner}
+                  disabled={!elevated.isElevated || !runnerToAssign}
+                  className="btn-brand px-4 py-2 rounded disabled:opacity-50"
+                  title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
+                >
+                  Assign
+                </button>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {orgRunners.map((runnerName) => (
+                <div
+                  key={runnerName}
+                  className="card-hover p-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">{repoLabel(runnerName)}</p>
+                    <p className="text-xs text-gray-400 truncate">{runnerName}</p>
+                  </div>
+                  <button
+                    onClick={() => removeRunner(runnerName)}
+                    disabled={!elevated.isElevated}
+                    className="text-sm text-red-500 hover:text-red-600 disabled:opacity-50"
+                    title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              {orgRunners.length === 0 && selectedOrgId && !runnersError && (
+                <p className="text-gray-500 text-sm">No projects assigned to this organization.</p>
               )}
             </div>
           </div>
