@@ -9,7 +9,7 @@ use crate::{
 use artisan_middleware::{
     api::token::SimpleLoginRequest,
     dusa_collection_utils::{core::logger::LogLevel, log},
-    portal::{ApiResponse, RunnerSummary},
+    portal::{ApiResponse, ProjectSummary},
 };
 use bytes::Bytes;
 use cookie::CookieBuilder;
@@ -454,7 +454,7 @@ pub async fn runners_handler(session: SessionData) -> Result<impl warp::Reply, w
                 .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
 
             if response.status().is_success() {
-                let api_response: ApiResponse<Vec<RunnerSummary>> = response
+                let api_response: ApiResponse<Vec<ProjectSummary>> = response
                     .json()
                     .await
                     .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;

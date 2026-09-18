@@ -1,4 +1,12 @@
 // Represents summarized usage data from /usage/group/{runner_id}
+//
+// NOT renamed to project_id/organization_id yet, deliberately: this type
+// mirrors Portal's actual JSON wire format, and Portal is Phase 4 of the
+// resource-taxonomy migration (RESOURCE_TAXONOMY.md 9) -- it shares that
+// wire format with Manager/watchdog and moves in the same synchronized
+// wave, not independently. Renaming a TS field here ahead of Portal would
+// compile fine (TS types aren't runtime-checked) but silently break at
+// runtime, since the JSON Portal actually sends still says `runner_id`.
 export interface UsageSummary {
   runner_id: string;
   instance_id: string;  // Will be "Grouped Data" if summarized across all
@@ -10,6 +18,23 @@ export interface UsageSummary {
   total_tx: number;
   total_samples: number;
   instances: number;
+}
+
+// --- Repo Hydration Types ---
+
+export type SyncStatus = 'idle' | 'syncing' | 'latest' | 'outdated' | 'failed';
+
+export interface NodeHydrationStatus {
+  node_id: number;
+  hostname: string;
+  repo_id: string;
+  repo_path: string;
+  branch: string;
+  commit_sha: string | null;
+  is_hydrated: boolean;
+  last_sync_timestamp: number | null;
+  sync_status: SyncStatus;
+  error_message: string | null;
 }
 
 // If you later pull instance-level runner details (optional future expansion)
@@ -93,7 +118,9 @@ export interface ProjectInstance {
   };
 }
 
-// Represents the summarized group usage for all instances under one runner
+// Represents the summarized group usage for all instances under one runner.
+// Same "not renamed yet" reasoning as UsageSummary above -- Portal's wire
+// format hasn't moved to project_id yet.
 export interface ProjectGroupUsage {
   runner_id: string;
   instance_id: string; // For group, you might set this manually like "Grouped Data"
@@ -154,13 +181,32 @@ export interface LogEntry {
   message: string;
 }
 
-export type StatusType = 'Running' | 'Stopped' | 'Warning' | 'Building';
+// The single canonical status type, matching artisan_middleware::aggregator::Status
+// (RESOURCE_TAXONOMY.md 7.1). This used to be two conflicting unions --
+// StatusType (4 variants, missing Starting/Idle/Unknown/Error) and NodeStatus
+// (8 variants, missing Error) -- plus a third hardcoded partial copy in
+// pages/nodes/index.tsx. All three are now this one type and one color map.
+export type Status =
+  | 'Starting'
+  | 'Running'
+  | 'Idle'
+  | 'Stopping'
+  | 'Stopped'
+  | 'Warning'
+  | 'Building'
+  | 'Error'
+  | 'Unknown';
 
-export const statusColorMap: Record<StatusType, string> = {
+export const statusColorMap: Record<Status, string> = {
+  Starting: 'text-blue-400',
   Running: 'text-green-400',
+  Idle: 'text-gray-400',
+  Stopping: 'text-yellow-400',
   Stopped: 'text-red-400',
   Warning: 'text-yellow-400',
   Building: 'text-blue-400',
+  Error: 'text-red-500',
+  Unknown: 'text-gray-400',
 };
 
 // Mirrors the Rust `SmallVMStatus` returned by `ais_vm` — a flat struct, no
@@ -193,20 +239,10 @@ export interface Identifier {
   _signature: string;
 }
 
-export type NodeStatus =
-  | 'Starting'
-  | 'Running'
-  | 'Idle'
-  | 'Stopping'
-  | 'Stopped'
-  | 'Unknown'
-  | 'Warning'
-  | 'Building';
-
 export interface NodeInfo {
   identity: Identifier;
   hostname: string;
-  status: NodeStatus;
+  status: Status;
   ip_address: string;
   runners: string[];
   created_at: string;
@@ -241,7 +277,7 @@ export interface ManagerData {
 
 export interface NodeDetails {
   identity: Identifier;
-  status: NodeStatus;
+  status: Status;
   runners: string[];
   created_at: string;
   last_updated: string;
@@ -294,13 +330,18 @@ export type GitConfigOp = 'set' | 'add' | 'update' | 'remove' | 'audit';
 
 // --- Phase I: centralized repo/project catalog ---
 
+// org_id not renamed yet -- same reasoning as UsageSummary above, and this
+// one is actually read/written against Portal's live /v1/repos JSON
+// (pages/repos/index.tsx), so renaming it here alone would be a type-level
+// rename with no matching backend change, not just an unused field.
 export interface RepoCatalogEntry {
   id: string;
   user: string;
   repo: string;
   branch: string;
-  nodes: number[];
+  nodes: NodeHydrationStatus[];  // Changed from number[] to include hydration info
   org_id?: string | null;
+  sync_status: SyncStatus;
 }
 
 // Result of a `GitReposAudit` run: a force-resync/force-clean of every
@@ -362,3 +403,12 @@ export interface MultiNodeConfigSetResponse {
   kind: string;
   results: NodeConfigSetResult[];
 }
+
+// Sync status colors for UI
+export const syncStatusColorMap: Record<SyncStatus, string> = {
+  idle: 'text-blue-400',
+  syncing: 'text-yellow-400 animate-pulse',
+  latest: 'text-green-400',
+  outdated: 'text-orange-400',
+  failed: 'text-red-400',
+};
