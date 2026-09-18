@@ -3,7 +3,7 @@ import { Sidebar } from '@/components/header';
 import { RequireAdmin } from '@/components/requireAdmin';
 import { fetchWithAuth, postWithAuth, fetchNodes } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
-import { RepoCatalogEntry, NodeInfo, GitServer } from '@/lib/types';
+import { RepoCatalogEntry, NodeInfo, GitServer, NodeHydrationStatus, syncStatusColorMap } from '@/lib/types';
 
 interface ConfigBasics {
   build_command: string;
@@ -150,19 +150,58 @@ export default function ReposPage() {
           <div className="card p-6 space-y-4">
             {reposError && <p className="text-sm text-red-500">{reposError}</p>}
             <div className="space-y-2">
-              {repos.map((r) => (
-                <div key={r.id} className="card-hover p-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">
-                      {r.user}/{r.repo} @ {r.branch}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      id: {r.id} -- {r.nodes.length} node{r.nodes.length === 1 ? '' : 's'}
-                      {r.org_id ? ` -- org ${r.org_id}` : ' -- unassigned'}
-                    </p>
+              {repos.map((r) => {
+                // Calculate hydration stats
+                const hydrated = r.nodes.filter(n => n.is_hydrated).length;
+                const total = r.nodes.length;
+                const allUpToDate = hydrated === total && total > 0;
+                
+                return (
+                  <div key={r.id} className="card-hover p-3 flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">
+                          {r.user}/{r.repo} @ {r.branch}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          id: {r.id} -- {r.nodes.length} node{r.nodes.length === 1 ? '' : 's'}
+                          {r.org_id ? ` -- org ${r.org_id}` : ' -- unassigned'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-sm font-medium ${allUpToDate ? 'text-green-400' : 'text-yellow-400'}`}>
+                          {hydrated}/{total} synced
+                        </span>
+                        <div className="w-24 h-1.5 bg-gray-700 rounded mt-1">
+                          <div 
+                            className={`h-full rounded ${allUpToDate ? 'bg-green-500' : 'bg-yellow-500'}`}
+                            style={{ width: `${total > 0 ? (hydrated / total) * 100 : 0}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Per-node hydration details */}
+                    {r.nodes.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {r.nodes.slice(0, 3).map((node: NodeHydrationStatus) => (
+                          <div key={node.node_id} className="flex items-center justify-between text-xs">
+                            <span className="truncate max-w-[150px]">{node.hostname}</span>
+                            <span className={`px-1.5 py-0.5 rounded ${syncStatusColorMap[node.sync_status as keyof typeof syncStatusColorMap] || 'text-gray-400'}`}>
+                              {node.sync_status}
+                            </span>
+                          </div>
+                        ))}
+                        {r.nodes.length > 3 && (
+                          <p className="text-xs text-gray-500 text-right">
+                            +{r.nodes.length - 3} more
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {repos.length === 0 && !reposError && (
                 <p className="text-gray-500 text-sm">No repos deployed on any node yet.</p>
               )}
