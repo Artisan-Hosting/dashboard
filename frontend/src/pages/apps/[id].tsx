@@ -12,7 +12,7 @@ import {
   sendRunnerControl,
 } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
-import { FullInstance, RunnerDetails, UsageSummary, BillingCosts, LogEntry, statusColorMap, StatusType, MultiNodeConfigResponse, NodeConfigEntry, WatchdogConfigKind } from '@/lib/types';
+import { FullInstance, RunnerDetails, UsageSummary, BillingCosts, LogEntry, statusColorMap, Status, MultiNodeConfigResponse, NodeConfigEntry, WatchdogConfigKind } from '@/lib/types';
 import { resolveRunnerLabel } from '@/lib/repoLabel';
 import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
@@ -305,7 +305,7 @@ export default function ProjectPage() {
                       <p className="text-xs text-gray-500 truncate" title={String(details.id)}>
                         Instance {String(details.id).slice(-8)}
                       </p>
-                      <p className={`text-sm ${statusColorMap[details.status as StatusType] || 'text-black'}`}>
+                      <p className={`text-sm ${statusColorMap[details.status as Status] || 'text-black'}`}>
                         {details.status}
                       </p>
                     </div>

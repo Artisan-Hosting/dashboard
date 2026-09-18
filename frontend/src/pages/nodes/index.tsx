@@ -1,24 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { fetchNodes } from '@/lib/api';
-import { NodeInfo, NodeStatus } from '@/lib/types';
+import { NodeInfo, statusColorMap } from '@/lib/types';
 import { Sidebar } from '@/components/header';
 import LoadingOverlay from '@/components/loading';
 import { RequireAdmin } from '@/components/requireAdmin';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 
 const REFRESH_INTERVAL = 15_000; // nodes churn slower than runners/VMs
-
-const nodeStatusColorMap: Record<NodeStatus, string> = {
-  Starting: 'text-blue-400',
-  Running: 'text-green-400',
-  Idle: 'text-gray-400',
-  Stopping: 'text-yellow-400',
-  Stopped: 'text-red-400',
-  Unknown: 'text-gray-400',
-  Warning: 'text-yellow-400',
-  Building: 'text-blue-400',
-};
 
 function formatTimestamp(value: string): string {
   const seconds = Number(value);
@@ -62,7 +51,7 @@ function NodesListPage() {
                 <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
                   <div className="min-w-0">
                     <p className="text-xl font-semibold text-brand truncate">{node.hostname}</p>
-                    <p className={`text-sm mt-1 ${nodeStatusColorMap[node.status] ?? 'text-gray-400'}`}>
+                    <p className={`text-sm mt-1 ${statusColorMap[node.status] ?? 'text-gray-400'}`}>
                       {node.status}
                     </p>
                   </div>
