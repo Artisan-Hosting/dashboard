@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "serve": "npx serve out -l 3000",
-    "lint": "next lint"
+    "lint": "next lint",
+    "export": "next build && next export"
   },
   "dependencies": {
     "jwt-decode": "^4.0.0",
