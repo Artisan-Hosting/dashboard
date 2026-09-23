@@ -1,4 +1,3 @@
-// src/components/Dashboard.tsx
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
 import { fetchRunners, fetchGroupUsage } from "@/lib/api";
@@ -21,8 +20,8 @@ export default function Dashboard() {
   const [userName, setUserName] = useState<string>("Loading...");
   const [runners, setRunners] = useState<RunnerCard[]>([]);
   const [labels, setLabels] = useState<Record<string, string>>({});
-  const loading = false;
-  // const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [runnersError, setRunnersError] = useState<string | null>(null);
   const inFlight = useRef(false);
 
   const loadData = useCallback(async () => {
@@ -41,15 +40,21 @@ export default function Dashboard() {
         })
       );
 
-      const cards: RunnerCard[] = results
-        .filter((r): r is PromiseFulfilledResult<RunnerCard> => r.status === "fulfilled")
-        .map((r) => r.value);
+      // Keep every runner even when its usage fetch failed -- a runner that
+      // exists but has no usage stats right now should still show as a card
+      // (just without the usage block), not vanish entirely.
+      const cards: RunnerCard[] = results.map((r, i) =>
+        r.status === "fulfilled" ? r.value : { name: list[i].name.replace("ais_", ""), status: list[i].status }
+      );
 
       setRunners(cards);
+      setRunnersError(null);
     } catch (err) {
       console.error("Dashboard load error", err);
+      setRunnersError(err instanceof Error ? err.message : "Failed to load apps");
     } finally {
       inFlight.current = false;
+      setLoading(false);
     }
   }, [router]);
 
@@ -85,6 +90,8 @@ export default function Dashboard() {
         <h2 className="text-2xl font-semibold mb-8 text-brand">
           Current Projects
         </h2>
+
+        {runnersError && <p className="text-sm text-red-500 mb-4">{runnersError}</p>}
 
         {!loading && (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

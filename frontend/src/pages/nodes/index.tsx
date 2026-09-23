@@ -66,7 +66,7 @@ function NodesListPage() {
                 <div className="text-sm text-gray-300 space-y-1">
                   <p>ID: <span className="font-medium text-white">{node.identity.id}</span></p>
                   <p>IP: <span className="font-medium text-white">{node.ip_address}</span></p>
-                  <p>Runners: <span className="font-medium text-white">{node.runners.length}</span></p>
+                  <p>Runners: <span className="font-medium text-white">{node.projects.length}</span></p>
                   <p>Last Updated: <span className="font-medium text-white">{formatTimestamp(node.last_updated)}</span></p>
                 </div>
               </div>

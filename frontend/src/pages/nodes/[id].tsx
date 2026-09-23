@@ -84,7 +84,7 @@ function NodeDetailPage() {
   useEffect(() => {
     if (!node) return;
     let cancelled = false;
-    node.runners.forEach((r) => {
+    node.projects.forEach((r) => {
       const key = r.replace('ais_', '');
       if (runnerLabels[key]) return;
       resolveRunnerLabel(key).then((label) => {
@@ -257,7 +257,7 @@ function NodeDetailPage() {
               <div className="flex flex-wrap gap-2 mb-3">
                 <select value={application} onChange={(e) => setApplication(e.target.value)} className="bg-gray-800 rounded px-2 py-1 text-sm">
                   <option value="">Select application…</option>
-                  {node.runners.map((r) => {
+                  {node.projects.map((r) => {
                     const key = r.replace('ais_', '');
                     return (
                       <option key={r} value={key}>{runnerLabels[key] ?? key}</option>

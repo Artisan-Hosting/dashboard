@@ -18,6 +18,8 @@ export default function SecretsPage() {
   const [items, setItems] = useState<SecretItem[]>([]);
   const [newName, setNewName] = useState('');
   const [newValue, setNewValue] = useState('');
+  const [runnersLoadError, setRunnersLoadError] = useState<string | null>(null);
+  const [secretsError, setSecretsError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadRunners() {
@@ -25,11 +27,13 @@ export default function SecretsPage() {
         const res = await fetchWithAuth('proxy/runners');
         const ids = (res.data || []).map((r: any) => r.name.replace('ais_', ''));
         setRunnerIds(ids);
+        setRunnersLoadError(null);
         if (ids.length) {
           setSelectedRunner((cur) => cur || ids[0]);
         }
       } catch (err) {
         console.error('Failed to load runners', err);
+        setRunnersLoadError(err instanceof Error ? err.message : 'Failed to load runners');
       }
     }
     loadRunners();
@@ -71,8 +75,15 @@ const loadSecrets = useCallback(async () => {
     }));
 
     setItems(list);
+    setSecretsError(null);
   } catch (err) {
     console.error('Failed to load secrets', err);
+    setItems([]);
+    // Don't try to distinguish an mTLS/channel problem from an access denial
+    // in the UI text -- portal and ais_secretserver deliberately return the
+    // same shape for both, and that distinction isn't safely surfaceable to
+    // a non-privileged caller anyway.
+    setSecretsError('Could not load secrets -- check your access to this project/environment.');
   }
 }, [selectedRunner, envValue]);
 
@@ -145,6 +156,8 @@ const loadSecrets = useCallback(async () => {
       <main className="flex-1 p-4 sm:p-6 lg:p-8">
         <h1 className="text-3xl font-bold text-brand mb-6">Secrets</h1>
 
+        {runnersLoadError && <p className="text-sm text-red-500 mb-4">{runnersLoadError}</p>}
+
         <div className="mb-6 grid gap-4 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium mb-1">Select Runner</label>
@@ -184,7 +197,8 @@ const loadSecrets = useCallback(async () => {
         </div>
 
         <div className="card p-6 space-y-6">
-          {selectedRunner && items.length === 0 ? (
+          {secretsError && <p className="text-sm text-red-500">{secretsError}</p>}
+          {selectedRunner && items.length === 0 && !secretsError ? (
             <p className="text-gray-500">No secrets stored yet.</p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

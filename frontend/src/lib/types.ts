@@ -244,7 +244,7 @@ export interface NodeInfo {
   hostname: string;
   status: Status;
   ip_address: string;
-  runners: string[];
+  projects: string[];
   created_at: string;
   last_updated: string;
 }
@@ -278,7 +278,7 @@ export interface ManagerData {
 export interface NodeDetails {
   identity: Identifier;
   status: Status;
-  runners: string[];
+  projects: string[];
   created_at: string;
   last_updated: string;
   manager_data: ManagerData;

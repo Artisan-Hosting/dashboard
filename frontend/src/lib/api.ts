@@ -173,6 +173,9 @@ export async function fetchVmList(): Promise<VmListItem[]> {
 
 export async function fetchRunners(): Promise<RunnerSummary[]> {
   const res = await fetchWithAuth('proxy/runners');
+  if (res.status !== 'success') {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load apps');
+  }
   return (res.data ?? []) as RunnerSummary[];
 }
 
