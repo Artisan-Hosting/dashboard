@@ -31,17 +31,17 @@ export default function VmListPage() {
 
         if (notify) {
           list.forEach((vm) => {
-            const prev = previousStatusRef.current[vm.vmid];
+            const prev = previousStatusRef.current[vm.vm_id];
             if (prev && prev !== vm.status) {
-              toast(`VM ${vm.vmid} is now ${vm.status}`, {
+              toast(`VM ${vm.vm_id} is now ${vm.status}`, {
                 icon: vm.status === 'running' ? '✅' : '⚠️',
               });
             }
-            previousStatusRef.current[vm.vmid] = vm.status;
+            previousStatusRef.current[vm.vm_id] = vm.status;
           });
         } else {
           list.forEach((vm) => {
-            previousStatusRef.current[vm.vmid] = vm.status;
+            previousStatusRef.current[vm.vm_id] = vm.status;
           });
         }
 
@@ -99,15 +99,15 @@ export default function VmListPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {vms.map((vm) => {
-            const isBusy = actionLoading[vm.vmid] ?? false;
+            const isBusy = actionLoading[vm.vm_id] ?? false;
 
             return (
               <div
-                key={vm.vmid}
+                key={vm.vm_id}
                 className="card-hover p-6"
               >
                 <h3 className="text-xl font-semibold text-brand">
-                  VM {vm.vmid}
+                  VM {vm.vm_id}
                 </h3>
                 <p
                   className={`text-sm mt-1 ${
@@ -131,7 +131,7 @@ export default function VmListPage() {
                     (action) => (
                       <button
                         key={action}
-                        onClick={() => handleAction(vm.vmid, action)}
+                        onClick={() => handleAction(vm.vm_id, action)}
                         disabled={isBusy}
                         className={`
                           flex-1
