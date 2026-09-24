@@ -14,6 +14,7 @@ import {
   ReposResponse,
   RunnerDetails,
   RunnerSummary,
+  SyncNodeOutcome,
   UsageSummary,
   VmActionRequest,
   VmActionType,
@@ -291,6 +292,17 @@ export async function auditGitConfig(nodeId: number): Promise<AuditOutcome> {
 export async function fetchRepoCatalog(): Promise<RepoCatalogEntry[]> {
   const res = await fetchWithAuth('proxy/repos');
   return (res.data ?? []) as RepoCatalogEntry[];
+}
+
+// Explicit "sync now" -- the only repo call that asks a node to actually
+// clone/fetch/reset. `nodeIds` omitted or empty means every node this repo
+// is currently configured on.
+export async function syncRepo(repoId: string, nodeIds?: number[]): Promise<SyncNodeOutcome[]> {
+  const res = await postWithAuth(`proxy/repos/${repoId}/sync`, { node_ids: nodeIds ?? [] });
+  if (res.status !== 'success') {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to sync repo');
+  }
+  return (res.data ?? []) as SyncNodeOutcome[];
 }
 
 // --- Watchdog config ---

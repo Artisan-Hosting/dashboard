@@ -22,7 +22,10 @@ export interface UsageSummary {
 
 // --- Repo Hydration Types ---
 
-export type SyncStatus = 'idle' | 'syncing' | 'latest' | 'outdated' | 'failed';
+// `unknown` is what a node that timed out, was unreachable, or hadn't
+// answered for a given repo id reports -- distinct from `idle`/`failed`
+// (which mean the node *did* answer).
+export type SyncStatus = 'idle' | 'syncing' | 'latest' | 'outdated' | 'failed' | 'unknown';
 
 export interface NodeHydrationStatus {
   node_id: number;
@@ -344,6 +347,15 @@ export interface RepoCatalogEntry {
   sync_status: SyncStatus;
 }
 
+// Response of `POST /v1/repos/{id}/sync` -- one entry per node actually
+// synced, each carrying that node's real post-sync hydration row(s).
+export interface SyncNodeOutcome {
+  node_id: number;
+  ok: boolean;
+  hydration: NodeHydrationStatus[];
+  error: string | null;
+}
+
 // Result of a `GitReposAudit` run: a force-resync/force-clean of every
 // configured checkout, plus a purge of any stale `/opt/artisan/tmp` state
 // file left over from a repo no longer in git.cf.
@@ -411,4 +423,5 @@ export const syncStatusColorMap: Record<SyncStatus, string> = {
   latest: 'text-green-400',
   outdated: 'text-orange-400',
   failed: 'text-red-400',
+  unknown: 'text-gray-400',
 };
