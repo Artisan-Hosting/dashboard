@@ -213,9 +213,9 @@ dependencies = [
 
 [[package]]
 name = "artisan_middleware"
-version = "7.1.0"
+version = "7.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0afeab5eb100f5df94ac9d2f3f58335540987c35b9efae9c5fc643e5b0152bf"
+checksum = "c47f9c1d1f908cf3ec50ada4fe5693024d2f05dcde59a71cedd5d9460893514b"
 dependencies = [
  "acai_core",
  "aes-gcm 0.11.1",

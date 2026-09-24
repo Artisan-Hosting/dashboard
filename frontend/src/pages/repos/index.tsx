@@ -3,7 +3,7 @@ import { toast, Toaster } from 'react-hot-toast';
 import { Sidebar } from '@/components/header';
 import { RequireAdmin } from '@/components/requireAdmin';
 import LoadingOverlay from '@/components/loading';
-import { fetchWithAuth, postWithAuth, fetchNodes, syncRepo } from '@/lib/api';
+import { fetchWithAuth, postWithAuth, fetchNodes, syncRepo, addRepoNodes } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { RepoCatalogEntry, NodeInfo, GitServer, NodeHydrationStatus, syncStatusColorMap } from '@/lib/types';
 
@@ -32,6 +32,13 @@ export default function ReposPage() {
   const [loading, setLoading] = useState(true);
   const [nodes, setNodes] = useState<NodeInfo[]>([]);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+
+  // Per-row "add to node(s)" picker -- reuses the repo's already-stored
+  // GitAuth server-side, so unlike the deploy wizard below it never needs
+  // the repo's identity retyped.
+  const [addNodesTargetId, setAddNodesTargetId] = useState<string | null>(null);
+  const [addNodesSelected, setAddNodesSelected] = useState<number[]>([]);
+  const [addingNodes, setAddingNodes] = useState(false);
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [user, setUser] = useState('');
@@ -90,6 +97,51 @@ export default function ReposPage() {
       console.error('Sync failed', err);
     } finally {
       setSyncingId(null);
+    }
+  };
+
+  const openAddNodes = (id: string) => {
+    setAddNodesTargetId(id);
+    setAddNodesSelected([]);
+  };
+
+  const toggleAddNodeTarget = (id: number) => {
+    setAddNodesSelected((cur) => (cur.includes(id) ? cur.filter((n) => n !== id) : [...cur, id]));
+  };
+
+  const handleAddNodes = async (repoId: string) => {
+    if (addNodesSelected.length === 0) return;
+    setAddingNodes(true);
+    try {
+      const results = await addRepoNodes(repoId, addNodesSelected);
+      const failures = results.filter((r) => !r.added);
+      if (failures.length === 0) {
+        toast.success(`Added to ${results.length} node${results.length === 1 ? '' : 's'}`);
+      } else {
+        failures.forEach((r) => toast.error(`Node ${r.node_id}: ${r.error || 'add failed'}`));
+      }
+      const notStarted = results.filter((r) => r.added && !r.started);
+      if (notStarted.length > 0) {
+        // Config is copied in automatically when the existing nodes agree
+        // on it (see addRepoNodes) -- if it still didn't start, either there
+        // was no existing config anywhere to copy, or the app just isn't
+        // built/ready on that node yet. Each node's own toast above (or its
+        // `error` field) has the specific reason.
+        toast(
+          `${notStarted.length} node(s) have the repo but the app hasn't started yet -- check the Apps page`,
+          { icon: '⚠️' }
+        );
+      }
+      setAddNodesTargetId(null);
+      setAddNodesSelected([]);
+      await loadRepos();
+    } catch (err) {
+      // Includes the "configs already differ, unify them first" halt from
+      // the server -- surface its actual message rather than a generic one.
+      toast.error(err instanceof Error ? err.message : 'Failed to add repo to the selected node(s)');
+      console.error('Add nodes failed', err);
+    } finally {
+      setAddingNodes(false);
     }
   };
 
@@ -207,6 +259,12 @@ export default function ReposPage() {
                         >
                           {syncingId === r.id ? 'Syncing...' : 'Sync now'}
                         </button>
+                        <button
+                          onClick={() => (addNodesTargetId === r.id ? setAddNodesTargetId(null) : openAddNodes(r.id))}
+                          className="px-3 py-1 rounded text-sm border border-gray-500 hover:bg-gray-700"
+                        >
+                          Add to node{addNodesTargetId === r.id ? '...' : ''}
+                        </button>
                       </div>
                     </div>
 
@@ -228,6 +286,46 @@ export default function ReposPage() {
                         )}
                       </div>
                     )}
+
+                    {addNodesTargetId === r.id && (() => {
+                      const assignedIds = new Set(r.nodes.map((n) => n.node_id));
+                      const candidates = nodes.filter((n) => !assignedIds.has(n.identity.id));
+                      return (
+                        <div className="mt-2 border-t border-gray-700 pt-3 space-y-2">
+                          {candidates.length === 0 ? (
+                            <p className="text-xs text-gray-500">Already on every known node.</p>
+                          ) : (
+                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                              {candidates.map((n) => (
+                                <label key={n.identity.id} className="flex items-center gap-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={addNodesSelected.includes(n.identity.id)}
+                                    onChange={() => toggleAddNodeTarget(n.identity.id)}
+                                  />
+                                  {n.hostname}
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleAddNodes(r.id)}
+                              disabled={addingNodes || addNodesSelected.length === 0}
+                              className="btn-brand px-3 py-1 rounded text-sm disabled:opacity-50"
+                            >
+                              {addingNodes ? 'Adding...' : `Add to ${addNodesSelected.length || ''} node${addNodesSelected.length === 1 ? '' : 's'}`}
+                            </button>
+                            <button
+                              onClick={() => setAddNodesTargetId(null)}
+                              className="px-3 py-1 rounded text-sm text-gray-400 hover:text-gray-200"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
                 {repos.length === 0 && !reposError && (

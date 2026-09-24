@@ -350,6 +350,17 @@ export interface SyncNodeOutcome {
   error: string | null;
 }
 
+// Per-node outcome from `POST /v1/repos/deploy` or `.../add-nodes` --
+// same shape either way (both go through the same GitReposAdd + try_start_app
+// per-node loop server-side).
+export interface DeployNodeResult {
+  node_id: number;
+  added: boolean;
+  config_written: boolean;
+  started: boolean;
+  error: string | null;
+}
+
 // Result of a `GitReposAudit` run: a force-resync/force-clean of every
 // configured checkout, plus a purge of any stale `/opt/artisan/tmp` state
 // file left over from a repo no longer in git.cf.
