@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
+import { toast, Toaster } from 'react-hot-toast';
 import { Sidebar } from '@/components/header';
 import { RequireAdmin } from '@/components/requireAdmin';
-import { fetchWithAuth, postWithAuth, fetchNodes } from '@/lib/api';
+import LoadingOverlay from '@/components/loading';
+import { fetchWithAuth, postWithAuth, fetchNodes, syncRepo } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { RepoCatalogEntry, NodeInfo, GitServer, NodeHydrationStatus, syncStatusColorMap } from '@/lib/types';
 
@@ -27,7 +29,9 @@ interface DeployResult {
 export default function ReposPage() {
   const [repos, setRepos] = useState<RepoCatalogEntry[]>([]);
   const [reposError, setReposError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [nodes, setNodes] = useState<NodeInfo[]>([]);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [user, setUser] = useState('');
@@ -56,6 +60,8 @@ export default function ReposPage() {
       setReposError(null);
     } catch (err) {
       setReposError('Failed to load the repo catalog.');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -63,6 +69,29 @@ export default function ReposPage() {
     loadRepos();
     fetchNodes().then(setNodes).catch(() => setNodes([]));
   }, [loadRepos]);
+
+  const handleSyncRepo = async (id: string) => {
+    setSyncingId(id);
+    try {
+      const results = await syncRepo(id);
+      const failures = results.filter((r) => !r.ok);
+      if (failures.length === 0) {
+        toast.success(`Synced on ${results.length} node${results.length === 1 ? '' : 's'}`);
+      } else {
+        failures.forEach((r) => toast.error(`Node ${r.node_id}: ${r.error || 'sync failed'}`));
+        if (failures.length < results.length) {
+          toast.success(`Synced on ${results.length - failures.length} of ${results.length} node(s)`);
+        }
+      }
+      // Pick up the corrected state from the server rather than guessing it.
+      await loadRepos();
+    } catch (err) {
+      toast.error('Sync failed -- check your access to this repo');
+      console.error('Sync failed', err);
+    } finally {
+      setSyncingId(null);
+    }
+  };
 
   // A repo the wizard's identity fields resolve to that isn't already in
   // the loaded catalog needs the config-basics step -- the deploy endpoint
@@ -131,7 +160,8 @@ export default function ReposPage() {
 
   return (
     <RequireAdmin>
-      <div className="min-h-screen flex bg-page text-foreground">
+      <div className="relative min-h-screen flex bg-page text-foreground">
+        <Toaster position="bottom-right" />
         <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
           <div className="flex items-center justify-between">
@@ -149,16 +179,12 @@ export default function ReposPage() {
 
           <div className="card p-6 space-y-4">
             {reposError && <p className="text-sm text-red-500">{reposError}</p>}
-            <div className="space-y-2">
-              {repos.map((r) => {
-                // Calculate hydration stats
-                const hydrated = r.nodes.filter(n => n.is_hydrated).length;
-                const total = r.nodes.length;
-                const allUpToDate = hydrated === total && total > 0;
-                
-                return (
+            {loading && <LoadingOverlay />}
+            {!loading && (
+              <div className="space-y-2">
+                {repos.map((r) => (
                   <div key={r.id} className="card-hover p-3 flex flex-col gap-2">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate">
                           {r.user}/{r.repo} @ {r.branch}
@@ -168,26 +194,29 @@ export default function ReposPage() {
                           {r.org_id ? ` -- org ${r.org_id}` : ' -- unassigned'}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <span className={`text-sm font-medium ${allUpToDate ? 'text-green-400' : 'text-yellow-400'}`}>
-                          {hydrated}/{total} synced
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span
+                          className={`px-2 py-0.5 rounded text-sm font-medium ${syncStatusColorMap[r.sync_status]}`}
+                        >
+                          {r.sync_status}
                         </span>
-                        <div className="w-24 h-1.5 bg-gray-700 rounded mt-1">
-                          <div 
-                            className={`h-full rounded ${allUpToDate ? 'bg-green-500' : 'bg-yellow-500'}`}
-                            style={{ width: `${total > 0 ? (hydrated / total) * 100 : 0}%` }}
-                          />
-                        </div>
+                        <button
+                          onClick={() => handleSyncRepo(r.id)}
+                          disabled={syncingId === r.id}
+                          className="btn-brand px-3 py-1 rounded text-sm disabled:opacity-50"
+                        >
+                          {syncingId === r.id ? 'Syncing...' : 'Sync now'}
+                        </button>
                       </div>
                     </div>
-                    
+
                     {/* Per-node hydration details */}
                     {r.nodes.length > 0 && (
                       <div className="mt-2 space-y-1">
                         {r.nodes.slice(0, 3).map((node: NodeHydrationStatus) => (
                           <div key={node.node_id} className="flex items-center justify-between text-xs">
                             <span className="truncate max-w-[150px]">{node.hostname}</span>
-                            <span className={`px-1.5 py-0.5 rounded ${syncStatusColorMap[node.sync_status as keyof typeof syncStatusColorMap] || 'text-gray-400'}`}>
+                            <span className={`px-1.5 py-0.5 rounded ${syncStatusColorMap[node.sync_status]}`}>
                               {node.sync_status}
                             </span>
                           </div>
@@ -200,12 +229,12 @@ export default function ReposPage() {
                       </div>
                     )}
                   </div>
-                );
-              })}
-              {repos.length === 0 && !reposError && (
-                <p className="text-gray-500 text-sm">No repos deployed on any node yet.</p>
-              )}
-            </div>
+                ))}
+                {repos.length === 0 && !reposError && (
+                  <p className="text-gray-500 text-sm">No repos deployed on any node yet.</p>
+                )}
+              </div>
+            )}
           </div>
 
           {wizardOpen && (
