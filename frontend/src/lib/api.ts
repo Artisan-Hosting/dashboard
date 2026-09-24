@@ -2,6 +2,7 @@
 import {
   AuditOutcome,
   BillingCosts,
+  DeployNodeResult,
   GitConfigOp,
   LogEntry,
   MultiNodeConfigResponse,
@@ -342,6 +343,17 @@ export async function syncRepo(repoId: string, nodeIds?: number[]): Promise<Sync
     throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to sync repo');
   }
   return (res.data ?? []) as SyncNodeOutcome[];
+}
+
+// Adds a repo already in the catalog to more nodes. Reuses its existing
+// GitAuth (server + token) server-side, so -- unlike the deploy wizard --
+// this never needs a token re-entered for a private repo.
+export async function addRepoNodes(repoId: string, nodeIds: number[]): Promise<DeployNodeResult[]> {
+  const res = await postWithAuth(`proxy/repos/${repoId}/add-nodes`, { node_ids: nodeIds });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to add repo to node(s)');
+  }
+  return (res.data?.results ?? []) as DeployNodeResult[];
 }
 
 // --- Watchdog config ---
