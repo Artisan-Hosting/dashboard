@@ -93,7 +93,21 @@ export default function Dashboard() {
 
         {runnersError && <p className="text-sm text-red-500 mb-4">{runnersError}</p>}
 
-        {!loading && (
+        {!loading && runners.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="text-gray-400 mb-4">
+              <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-300 mb-2">No apps found</h3>
+            <p className="text-gray-500 max-w-md">
+              You don't have any apps deployed yet. Apps will appear here once they're created.
+            </p>
+          </div>
+        )}
+
+        {!loading && runners.length > 0 && (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {runners.map((r) => (
               <div

@@ -157,15 +157,15 @@ export async function sendVmAction(
   action: VmActionType,
 ): Promise<void> {
   const res = await fetchWithAuth(`proxy/vms/${vmid}/${action}`);
-  if (res.status !== 'ok') {
-    throw new Error(res.errors.join(', '));
+  if (!res.data && res.status !== 'success' && res.status !== 'ok') {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join(', '));
   }
 }
 
 export async function fetchVmList(): Promise<VmListItem[]> {
   const res = await fetchWithAuth('proxy/vms');
-  if (res.status !== 'ok' || !res.data) {
-    throw new Error(res.errors.join(', '));
+  if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join(', '));
   }
   return res.data;
 }
@@ -174,7 +174,7 @@ export async function fetchVmList(): Promise<VmListItem[]> {
 
 export async function fetchRunners(): Promise<RunnerSummary[]> {
   const res = await fetchWithAuth('proxy/runners');
-  if (res.status !== 'success') {
+  if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
     throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load apps');
   }
   return (res.data ?? []) as RunnerSummary[];
@@ -182,6 +182,9 @@ export async function fetchRunners(): Promise<RunnerSummary[]> {
 
 export async function fetchRunnerDetails(runnerId: string): Promise<RunnerDetails[]> {
   const res = await fetchWithAuth(`proxy/runner/${runnerId}`);
+  if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load details for ${runnerId}`);
+  }
   return (res.data ?? []) as RunnerDetails[];
 }
 
@@ -205,11 +208,17 @@ export async function fetchRunnerGitInfo(runnerId: string): Promise<RunnerGitInf
 
 export async function fetchGroupUsage(runnerId: string): Promise<UsageSummary> {
   const res = await fetchWithAuth(`proxy/usage/group/${runnerId}`);
+  if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load usage for ${runnerId}`);
+  }
   return res.data as UsageSummary;
 }
 
 export async function fetchInstanceUsage(instanceId: string): Promise<UsageSummary> {
   const res = await fetchWithAuth(`proxy/usage/single/${instanceId}`);
+  if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load usage for ${instanceId}`);
+  }
   return res.data as UsageSummary;
 }
 
@@ -219,7 +228,11 @@ export async function fetchInstanceLogs(instanceId: string, limit: number): Prom
 }
 
 export async function sendRunnerControl(instanceId: string, command: string): Promise<any> {
-  return fetchWithAuth(`proxy/control/${instanceId}/${command}`);
+  const res = await fetchWithAuth(`proxy/control/${instanceId}/${command}`);
+  if (!res.data && res.status !== 'success' && res.status !== 'ok') {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Control command failed');
+  }
+  return res;
 }
 
 // --- multi-node app config (Apps page) ---
@@ -229,6 +242,9 @@ export async function fetchMultiNodeConfig(
   kind: WatchdogConfigKind,
 ): Promise<MultiNodeConfigResponse> {
   const res = await fetchWithAuth(`proxy/runner/${application}/config?kind=${kind}`);
+  if (!res.data && res.status !== 'success' && res.status !== 'ok') {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to fetch config for ${application}`);
+  }
   return res.data as MultiNodeConfigResponse;
 }
 
@@ -243,6 +259,9 @@ export async function setMultiNodeConfig(
     content,
     expected_shas: expectedShas,
   });
+  if (!res.data && res.status !== 'success' && res.status !== 'ok') {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to set config for ${application}`);
+  }
   return res.data as MultiNodeConfigSetResponse;
 }
 
@@ -250,16 +269,25 @@ export async function setMultiNodeConfig(
 
 export async function fetchNodes(): Promise<NodeInfo[]> {
   const res = await fetchWithAuth('proxy/nodes');
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load nodes');
+  }
   return (res.data ?? []) as NodeInfo[];
 }
 
 export async function fetchNodeDetails(nodeId: number): Promise<NodeDetails> {
   const res = await fetchWithAuth(`proxy/node/${nodeId}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load details for node ${nodeId}`);
+  }
   return res.data as NodeDetails;
 }
 
 export async function reloadNode(nodeId: number): Promise<NodeReloadResult> {
   const res = await fetchWithAuth(`proxy/node_reload/${nodeId}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to reload node ${nodeId}`);
+  }
   return res.data as NodeReloadResult;
 }
 
@@ -267,6 +295,9 @@ export async function reloadNode(nodeId: number): Promise<NodeReloadResult> {
 
 export async function fetchGitConfig(nodeId: number): Promise<ReposEnvelope> {
   const res = await fetchWithAuth(`proxy/node/${nodeId}/git-config`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load git config for node ${nodeId}`);
+  }
   return res.data as ReposEnvelope;
 }
 
@@ -276,6 +307,9 @@ export async function setGitConfig(
   body: object,
 ): Promise<ReposResponse> {
   const res = await postWithAuth(`proxy/node/${nodeId}/git-config`, { op, ...body });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to set git config');
+  }
   return res.data as ReposResponse;
 }
 
@@ -284,13 +318,18 @@ export async function setGitConfig(
 // widening that function's return type for one op.
 export async function auditGitConfig(nodeId: number): Promise<AuditOutcome> {
   const res = await postWithAuth(`proxy/node/${nodeId}/git-config`, { op: 'audit' });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to audit git config');
+  }
   return res.data as AuditOutcome;
 }
 
 // --- Phase I: centralized repo/project catalog ---
-
 export async function fetchRepoCatalog(): Promise<RepoCatalogEntry[]> {
   const res = await fetchWithAuth('proxy/repos');
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load repository catalog');
+  }
   return (res.data ?? []) as RepoCatalogEntry[];
 }
 
@@ -299,7 +338,7 @@ export async function fetchRepoCatalog(): Promise<RepoCatalogEntry[]> {
 // is currently configured on.
 export async function syncRepo(repoId: string, nodeIds?: number[]): Promise<SyncNodeOutcome[]> {
   const res = await postWithAuth(`proxy/repos/${repoId}/sync`, { node_ids: nodeIds ?? [] });
-  if (res.status !== 'success') {
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
     throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to sync repo');
   }
   return (res.data ?? []) as SyncNodeOutcome[];
@@ -315,6 +354,9 @@ export async function fetchWatchdogConfig(
 ): Promise<WatchdogGetConfigResponse> {
   const qs = `application=${encodeURIComponent(application)}&kind=${kind}&create_if_missing=${createIfMissing}`;
   const res = await fetchWithAuth(`proxy/node/${nodeId}/watchdog/config?${qs}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to fetch watchdog config for ${application}`);
+  }
   return res.data as WatchdogGetConfigResponse;
 }
 
@@ -331,5 +373,8 @@ export async function setWatchdogConfig(
     content,
     expected_previous_sha256: expectedPreviousSha256,
   });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to set watchdog config for ${application}`);
+  }
   return res.data as WatchdogSetConfigResponse;
 }
