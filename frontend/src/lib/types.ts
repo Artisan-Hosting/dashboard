@@ -1,14 +1,10 @@
 // Represents summarized usage data from /usage/group/{runner_id}
 //
-// NOT renamed to project_id/organization_id yet, deliberately: this type
-// mirrors Portal's actual JSON wire format, and Portal is Phase 4 of the
-// resource-taxonomy migration (RESOURCE_TAXONOMY.md 9) -- it shares that
-// wire format with Manager/watchdog and moves in the same synchronized
-// wave, not independently. Renaming a TS field here ahead of Portal would
-// compile fine (TS types aren't runtime-checked) but silently break at
-// runtime, since the JSON Portal actually sends still says `runner_id`.
+// This type has been updated to match the Portal API's BilledUsageSummary
+// which uses project_id (not runner_id) as part of the resource-taxonomy
+// migration.
 export interface UsageSummary {
-  runner_id: string;
+  project_id: string;
   instance_id: string;  // Will be "Grouped Data" if summarized across all
   total_cpu: number;
   peak_cpu: number;
@@ -122,10 +118,8 @@ export interface ProjectInstance {
 }
 
 // Represents the summarized group usage for all instances under one runner.
-// Same "not renamed yet" reasoning as UsageSummary above -- Portal's wire
-// format hasn't moved to project_id yet.
 export interface ProjectGroupUsage {
-  runner_id: string;
+  project_id: string;
   instance_id: string; // For group, you might set this manually like "Grouped Data"
   total_cpu: number;
   peak_cpu: number;
@@ -215,7 +209,7 @@ export const statusColorMap: Record<Status, string> = {
 // Mirrors the Rust `SmallVMStatus` returned by `ais_vm` — a flat struct, no
 // nested "metrics" object and no "name" field.
 export interface VmListItem {
-  vmid: number;
+  vm_id: number;
   status: string;      // e.g. "running" | "stopped"
   cpu: number;          // fraction 0..1 (e.g. 0.17 -> 17%)
   mem: number;           // bytes
