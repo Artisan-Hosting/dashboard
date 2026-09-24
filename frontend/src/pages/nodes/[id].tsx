@@ -46,7 +46,7 @@ function NodeDetailPage() {
   const [sha256, setSha256] = useState<string | null>(null);
   const [watchdogLoading, setWatchdogLoading] = useState(false);
   const [watchdogSaving, setWatchdogSaving] = useState(false);
-  const [runnerLabels, setRunnerLabels] = useState<Record<string, string>>({});
+  const [projectLabels, setProjectLabels] = useState<Record<string, string>>({});
 
   const loadNode = useCallback(async () => {
     if (Number.isNaN(nodeId)) return;
@@ -86,10 +86,10 @@ function NodeDetailPage() {
     let cancelled = false;
     node.projects.forEach((r) => {
       const key = r.replace('ais_', '');
-      if (runnerLabels[key]) return;
+      if (projectLabels[key]) return;
       resolveRunnerLabel(key).then((label) => {
         if (cancelled) return;
-        setRunnerLabels((prev) => (prev[key] ? prev : { ...prev, [key]: label }));
+        setProjectLabels((prev) => (prev[key] ? prev : { ...prev, [key]: label }));
       });
     });
     return () => {
@@ -260,7 +260,7 @@ function NodeDetailPage() {
                   {node.projects.map((r) => {
                     const key = r.replace('ais_', '');
                     return (
-                      <option key={r} value={key}>{runnerLabels[key] ?? key}</option>
+                      <option key={r} value={key}>{projectLabels[key] ?? key}</option>
                     );
                   })}
                 </select>

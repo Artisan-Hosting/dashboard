@@ -36,19 +36,19 @@ export interface NodeHydrationStatus {
   error_message: string | null;
 }
 
-// If you later pull instance-level runner details (optional future expansion)
-export interface RunnerDetails {
+// If you later pull instance-level project details (optional future expansion)
+export interface ProjectDetails {
   id: string;
   status: string;
   version: SoftwareVersion;
   artisan_config: any;
   specific_config?: any;
   enviornment?: any;
-  health?: RunnerHealth;
-  logs?: RunnerLogs;
+  health?: ProjectHealth;
+  logs?: ProjectLogs;
 }
 
-export interface RunnerHealth {
+export interface ProjectHealth {
   uptime: number;
   last_check: number;
   cpu_usage: string;
@@ -57,7 +57,7 @@ export interface RunnerHealth {
   rx_bytes: number;
 }
 
-export interface RunnerLogs {
+export interface ProjectLogs {
   recent: string[];
 }
 
@@ -88,7 +88,7 @@ export interface BillingCosts {
 
 
 export interface FullInstance {
-  details: RunnerDetails;
+  details: ProjectDetails;
   usage: UsageSummary;
 }
 
@@ -139,11 +139,11 @@ export interface ProjectCostSummary {
 }
 
 /**
- * A minimal summary of a runner group for listing.
- * Mirrors the Rust `RunnerSummary`:
+ * A minimal summary of a project group for listing.
+ * Mirrors the Rust `ProjectSummary`:
  */
-export interface RunnerSummary {
-  /** Short name or ID of the runner */
+export interface ProjectSummary {
+  /** Short name or ID of the project */
   name: string;
   /** Current state, e.g. "Running" or "Stopped" */
   status: string;
@@ -154,9 +154,9 @@ export interface RunnerSummary {
     /** Release channel or label, e.g. "Beta" */
     release?: string;
   };
-  /** IDs of nodes this runner is deployed on */
+  /** IDs of nodes this project is deployed on */
   nodes: number[];
-  /** Total seconds this runner has been active (optional) */
+  /** Total seconds this project has been active (optional) */
   uptime?: number;
 }
 

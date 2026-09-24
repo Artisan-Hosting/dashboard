@@ -10,53 +10,53 @@ interface SecretItem {
 }
 
 export default function SecretsPage() {
-  const [runnerIds, setRunnerIds] = useState<string[]>([]);
-  const [runnerLabels, setRunnerLabels] = useState<Record<string, string>>({});
-  const [selectedRunner, setSelectedRunner] = useState('');
+  const [projectIds, setProjectIds] = useState<string[]>([]);
+  const [projectLabels, setProjectLabels] = useState<Record<string, string>>({});
+  const [selectedProject, setSelectedProject] = useState('');
   const [selectedEnv, setSelectedEnv] = useState('prod');
   const [customEnv, setCustomEnv] = useState('');
   const [items, setItems] = useState<SecretItem[]>([]);
   const [newName, setNewName] = useState('');
   const [newValue, setNewValue] = useState('');
-  const [runnersLoadError, setRunnersLoadError] = useState<string | null>(null);
+  const [projectsLoadError, setProjectsLoadError] = useState<string | null>(null);
   const [secretsError, setSecretsError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadRunners() {
+    async function loadProjects() {
       try {
         const res = await fetchWithAuth('proxy/runners');
         const ids = (res.data || []).map((r: any) => r.name.replace('ais_', ''));
-        setRunnerIds(ids);
-        setRunnersLoadError(null);
+        setProjectIds(ids);
+        setProjectsLoadError(null);
         if (ids.length) {
-          setSelectedRunner((cur) => cur || ids[0]);
+          setSelectedProject((cur) => cur || ids[0]);
         }
       } catch (err) {
-        console.error('Failed to load runners', err);
-        setRunnersLoadError(err instanceof Error ? err.message : 'Failed to load runners');
+        console.error('Failed to load projects', err);
+        setProjectsLoadError(err instanceof Error ? err.message : 'Failed to load projects');
       }
     }
-    loadRunners();
+    loadProjects();
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-    runnerIds.forEach((id) => {
-      if (runnerLabels[id]) return;
+    projectIds.forEach((id) => {
+      if (projectLabels[id]) return;
       resolveRunnerLabel(id).then((label) => {
         if (cancelled) return;
-        setRunnerLabels((prev) => (prev[id] ? prev : { ...prev, [id]: label }));
+        setProjectLabels((prev) => (prev[id] ? prev : { ...prev, [id]: label }));
       });
     });
     return () => {
       cancelled = true;
     };
-  }, [runnerIds]);
+  }, [projectIds]);
 
   const envValue = selectedEnv === '__custom__' ? customEnv : selectedEnv;
 
 const loadSecrets = useCallback(async () => {
-  if (!selectedRunner || !envValue) {
+  if (!selectedProject || !envValue) {
     setItems([]);
     return;
   }
@@ -66,7 +66,7 @@ const loadSecrets = useCallback(async () => {
     // unlike the old dashboard/backend route this used to hit -- no more
     // byte-array decoding needed on this end.
     const res = await fetchWithAuth(
-      `proxy/secrets?runner_id=${selectedRunner}&environment_id=${envValue}`
+      `proxy/secrets?runner_id=${selectedProject}&environment_id=${envValue}`
     );
 
     const list: SecretItem[] = (res.data || []).map((kv: { key: string; value: string }) => ({
@@ -85,7 +85,7 @@ const loadSecrets = useCallback(async () => {
     // a non-privileged caller anyway.
     setSecretsError('Could not load secrets -- check your access to this project/environment.');
   }
-}, [selectedRunner, envValue]);
+}, [selectedProject, envValue]);
 
 
   useEffect(() => {
@@ -93,10 +93,10 @@ const loadSecrets = useCallback(async () => {
   }, [loadSecrets]);
 
   const addSecret = async () => {
-    if (!newName || !newValue || !selectedRunner || !envValue) return;
+    if (!newName || !newValue || !selectedProject || !envValue) return;
     try {
       await postWithAuth('proxy/secrets', {
-        runner_id: selectedRunner,
+        runner_id: selectedProject,
         environment_id: envValue,
         secret_key: newName,
         value: newValue,
@@ -112,10 +112,10 @@ const loadSecrets = useCallback(async () => {
   // POST, not DELETE/PUT -- Portal's CORS layer only allows GET/POST/OPTIONS,
   // same convention as every other mutating admin route.
   const deleteSecret = async (name: string) => {
-    if (!selectedRunner || !envValue) return;
+    if (!selectedProject || !envValue) return;
     try {
       await postWithAuth('proxy/secrets/delete', {
-        runner_id: selectedRunner,
+        runner_id: selectedProject,
         environment_id: envValue,
         secret_key: name,
       });
@@ -126,12 +126,12 @@ const loadSecrets = useCallback(async () => {
   };
 
   const updateSecret = async (name: string, current: string) => {
-    if (!selectedRunner || !envValue) return;
+    if (!selectedProject || !envValue) return;
     const newVal = prompt('Enter new value', current);
     if (newVal === null) return;
     try {
       await postWithAuth('proxy/secrets/update', {
-        runner_id: selectedRunner,
+        runner_id: selectedProject,
         environment_id: envValue,
         secret_key: name,
         new_value: newVal,
@@ -156,19 +156,19 @@ const loadSecrets = useCallback(async () => {
       <main className="flex-1 p-4 sm:p-6 lg:p-8">
         <h1 className="text-3xl font-bold text-brand mb-6">Secrets</h1>
 
-        {runnersLoadError && <p className="text-sm text-red-500 mb-4">{runnersLoadError}</p>}
+        {projectsLoadError && <p className="text-sm text-red-500 mb-4">{projectsLoadError}</p>}
 
         <div className="mb-6 grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium mb-1">Select Runner</label>
+            <label className="block text-sm font-medium mb-1">Select Project</label>
             <select
               className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
-              value={selectedRunner}
-              onChange={(e) => setSelectedRunner(e.target.value)}
+              value={selectedProject}
+              onChange={(e) => setSelectedProject(e.target.value)}
             >
-              {runnerIds.map((id) => (
+              {projectIds.map((id) => (
                 <option key={id} value={id}>
-                  {runnerLabels[id] ?? id}
+                  {projectLabels[id] ?? id}
                 </option>
               ))}
             </select>
@@ -198,7 +198,7 @@ const loadSecrets = useCallback(async () => {
 
         <div className="card p-6 space-y-6">
           {secretsError && <p className="text-sm text-red-500">{secretsError}</p>}
-          {selectedRunner && items.length === 0 && !secretsError ? (
+          {selectedProject && items.length === 0 && !secretsError ? (
             <p className="text-gray-500">No secrets stored yet.</p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

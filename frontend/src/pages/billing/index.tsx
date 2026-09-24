@@ -2,7 +2,7 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { fetchBilling, fetchWithAuth, postWithAuth } from '@/lib/api';
-import { UsageSummary, BillingCosts, RunnerSummary } from '@/lib/types';
+import { UsageSummary, BillingCosts, ProjectSummary } from '@/lib/types';
 import { Sidebar } from '@/components/header';
 import LoadingOverlay from '@/components/loading';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
@@ -23,10 +23,10 @@ export default function BillingPage() {
     const fetchData = async () => {
       try {
         const res = await fetchWithAuth('proxy/runners');
-        const runners: RunnerSummary[] = res.data || [];
+        const projects: ProjectSummary[] = res.data || [];
 
         const results = await Promise.all(
-          runners.map(async (r) => {
+          projects.map(async (r) => {
             const name = r.name.replace('ais_', '');
             const usageRes = await fetchWithAuth(`proxy/usage/group/${name}`);
             const summary = usageRes.data as UsageSummary;

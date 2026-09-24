@@ -93,10 +93,10 @@ export default function AdminPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('viewer');
 
-  const [orgRunners, setOrgRunners] = useState<string[]>([]);
-  const [runnersError, setRunnersError] = useState<string | null>(null);
+  const [orgProjects, setOrgProjects] = useState<string[]>([]);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
   const [repoCatalog, setRepoCatalog] = useState<RepoCatalogEntry[]>([]);
-  const [runnerToAssign, setRunnerToAssign] = useState('');
+  const [projectToAssign, setProjectToAssign] = useState('');
 
   const loadOrgs = useCallback(async () => {
     if (!isSuper) return;
@@ -158,24 +158,24 @@ export default function AdminPage() {
     loadInvites(selectedOrgId);
   }, [selectedOrgId, loadInvites]);
 
-  const loadOrgRunners = useCallback(async (orgId: string) => {
+  const loadOrgProjects = useCallback(async (orgId: string) => {
     if (!orgId) {
-      setOrgRunners([]);
+      setOrgProjects([]);
       return;
     }
     try {
       const res = await fetchWithAuth(`proxy/admin/organizations/${orgId}/runners`);
-      setOrgRunners(res.data || []);
-      setRunnersError(null);
+      setOrgProjects(res.data || []);
+      setProjectsError(null);
     } catch (err) {
-      setRunnersError('Failed to load projects for that organization.');
-      setOrgRunners([]);
+      setProjectsError('Failed to load projects for that organization.');
+      setOrgProjects([]);
     }
   }, []);
 
   useEffect(() => {
-    loadOrgRunners(selectedOrgId);
-  }, [selectedOrgId, loadOrgRunners]);
+    loadOrgProjects(selectedOrgId);
+  }, [selectedOrgId, loadOrgProjects]);
 
   // The fleet-wide repo catalog backs the "assign an existing repo" picker
   // and resolves runner ids to readable `user/repo @ branch` labels -- only
@@ -258,31 +258,31 @@ export default function AdminPage() {
     }
   };
 
-  const assignRunner = async () => {
-    if (!runnerToAssign || !selectedOrgId || !elevated.token) return;
+  const assignProject = async () => {
+    if (!projectToAssign || !selectedOrgId || !elevated.token) return;
     setStatusMessage(null);
     try {
-      await postWithAuth(`proxy/admin/runners/${runnerToAssign}/org`, {
+      await postWithAuth(`proxy/admin/runners/${projectToAssign}/org`, {
         elevated_token: elevated.token,
         org_id: selectedOrgId,
       });
-      setRunnerToAssign('');
+      setProjectToAssign('');
       setStatusMessage('Project assigned.');
-      loadOrgRunners(selectedOrgId);
+      loadOrgProjects(selectedOrgId);
     } catch (err) {
       setStatusMessage('Failed to assign project -- check your access level.');
     }
   };
 
-  const removeRunner = async (runnerName: string) => {
+  const removeProject = async (projectName: string) => {
     if (!elevated.token) return;
     setStatusMessage(null);
     try {
-      await postWithAuth(`proxy/admin/runners/${runnerName}/org/remove`, {
+      await postWithAuth(`proxy/admin/runners/${projectName}/org/remove`, {
         elevated_token: elevated.token,
       });
       setStatusMessage('Project removed from organization.');
-      loadOrgRunners(selectedOrgId);
+      loadOrgProjects(selectedOrgId);
     } catch (err) {
       setStatusMessage('Failed to remove project.');
     }
@@ -502,19 +502,19 @@ export default function AdminPage() {
             <h2 className="font-semibold text-brand">
               Projects{selectedOrgId ? ` -- org ${selectedOrgId}` : ''}
             </h2>
-            {runnersError && <p className="text-sm text-red-500">{runnersError}</p>}
+            {projectsError && <p className="text-sm text-red-500">{projectsError}</p>}
             {!selectedOrgId && <p className="text-gray-500 text-sm">Select an organization above.</p>}
 
             {selectedOrgId && isSuper && (
               <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center border-b border-gray-300 dark:border-gray-700 pb-4">
                 <select
-                  value={runnerToAssign}
-                  onChange={(e) => setRunnerToAssign(e.target.value)}
+                  value={projectToAssign}
+                  onChange={(e) => setProjectToAssign(e.target.value)}
                   className="w-full sm:w-96 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-sm"
                 >
                   <option value="">Assign an existing repo...</option>
                   {repoCatalog
-                    .filter((r) => !orgRunners.includes(r.id))
+                    .filter((r) => !orgProjects.includes(r.id))
                     .map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.user}/{r.repo} @ {r.branch}
@@ -523,8 +523,8 @@ export default function AdminPage() {
                     ))}
                 </select>
                 <button
-                  onClick={assignRunner}
-                  disabled={!elevated.isElevated || !runnerToAssign}
+                  onClick={assignProject}
+                  disabled={!elevated.isElevated || !projectToAssign}
                   className="btn-brand px-4 py-2 rounded disabled:opacity-50"
                   title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
                 >
@@ -534,17 +534,17 @@ export default function AdminPage() {
             )}
 
             <div className="space-y-2">
-              {orgRunners.map((runnerName) => (
+              {orgProjects.map((projectName) => (
                 <div
-                  key={runnerName}
+                  key={projectName}
                   className="card-hover p-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{repoLabel(runnerName)}</p>
-                    <p className="text-xs text-gray-400 truncate">{runnerName}</p>
+                    <p className="font-semibold truncate">{repoLabel(projectName)}</p>
+                    <p className="text-xs text-gray-400 truncate">{projectName}</p>
                   </div>
                   <button
-                    onClick={() => removeRunner(runnerName)}
+                    onClick={() => removeProject(projectName)}
                     disabled={!elevated.isElevated}
                     className="text-sm text-red-500 hover:text-red-600 disabled:opacity-50"
                     title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
@@ -553,7 +553,7 @@ export default function AdminPage() {
                   </button>
                 </div>
               ))}
-              {orgRunners.length === 0 && selectedOrgId && !runnersError && (
+              {orgProjects.length === 0 && selectedOrgId && !projectsError && (
                 <p className="text-gray-500 text-sm">No projects assigned to this organization.</p>
               )}
             </div>

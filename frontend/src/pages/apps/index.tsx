@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
-import { fetchRunners, fetchGroupUsage } from "@/lib/api";
+import { fetchProjects, fetchGroupUsage } from "@/lib/api";
 import { UsageSummary } from "@/lib/types";
 import { Sidebar } from "@/components/header";
 import LoadingOverlay from "@/components/loading";
@@ -9,7 +9,7 @@ import { resolveRunnerLabel } from "@/lib/repoLabel";
 
 const REFRESH_INTERVAL = 10_000; // 10s
 
-interface RunnerCard {
+interface ProjectCard {
   name: string;
   status: string;
   summary?: UsageSummary;
@@ -18,10 +18,10 @@ interface RunnerCard {
 export default function Dashboard() {
   const router = useRouter();
   const [userName, setUserName] = useState<string>("Loading...");
-  const [runners, setRunners] = useState<RunnerCard[]>([]);
+  const [projects, setProjects] = useState<ProjectCard[]>([]);
   const [labels, setLabels] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [runnersError, setRunnersError] = useState<string | null>(null);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
   const inFlight = useRef(false);
 
   const loadData = useCallback(async () => {
@@ -30,28 +30,28 @@ export default function Dashboard() {
     if (inFlight.current) return;
     inFlight.current = true;
     try {
-      const list = await fetchRunners();
+      const list = await fetchProjects();
 
       const results = await Promise.allSettled(
-        list.map(async (r): Promise<RunnerCard> => {
+        list.map(async (r): Promise<ProjectCard> => {
           const name = r.name.replace("ais_", "");
           const summary = await fetchGroupUsage(name);
           return { name, status: r.status, summary };
         })
       );
 
-      // Keep every runner even when its usage fetch failed -- a runner that
+      // Keep every project even when its usage fetch failed -- a project that
       // exists but has no usage stats right now should still show as a card
       // (just without the usage block), not vanish entirely.
-      const cards: RunnerCard[] = results.map((r, i) =>
+      const cards: ProjectCard[] = results.map((r, i) =>
         r.status === "fulfilled" ? r.value : { name: list[i].name.replace("ais_", ""), status: list[i].status }
       );
 
-      setRunners(cards);
-      setRunnersError(null);
+      setProjects(cards);
+      setProjectsError(null);
     } catch (err) {
       console.error("Dashboard load error", err);
-      setRunnersError(err instanceof Error ? err.message : "Failed to load apps");
+      setProjectsError(err instanceof Error ? err.message : "Failed to load apps");
     } finally {
       inFlight.current = false;
       setLoading(false);
@@ -68,7 +68,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     let cancelled = false;
-    runners.forEach((r) => {
+    projects.forEach((r) => {
       if (labels[r.name]) return;
       resolveRunnerLabel(r.name).then((label) => {
         if (cancelled) return;
@@ -78,7 +78,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [runners]);
+  }, [projects]);
 
   return (
     <div className="relative min-h-screen flex bg-page text-foreground">
@@ -91,11 +91,25 @@ export default function Dashboard() {
           Current Projects
         </h2>
 
-        {runnersError && <p className="text-sm text-red-500 mb-4">{runnersError}</p>}
+        {projectsError && <p className="text-sm text-red-500 mb-4">{projectsError}</p>}
 
-        {!loading && (
+        {!loading && projects.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="text-gray-400 mb-4">
+              <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-300 mb-2">No apps found</h3>
+            <p className="text-gray-500 max-w-md">
+              You don't have any apps deployed yet. Apps will appear here once they're created.
+            </p>
+          </div>
+        )}
+
+        {!loading && projects.length > 0 && (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {runners.map((r) => (
+            {projects.map((r) => (
               <div
                 key={r.name}
                 className="card-hover p-6"
