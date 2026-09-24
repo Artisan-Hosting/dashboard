@@ -9,11 +9,11 @@ import {
   NodeDetails,
   NodeInfo,
   NodeReloadResult,
+  ProjectDetails,
+  ProjectSummary,
   RepoCatalogEntry,
   ReposEnvelope,
   ReposResponse,
-  RunnerDetails,
-  RunnerSummary,
   SyncNodeOutcome,
   UsageSummary,
   VmActionRequest,
@@ -170,46 +170,46 @@ export async function fetchVmList(): Promise<VmListItem[]> {
   return res.data;
 }
 
-// ======= Runners =======
+// ======= Projects =======
 
-export async function fetchRunners(): Promise<RunnerSummary[]> {
+export async function fetchProjects(): Promise<ProjectSummary[]> {
   const res = await fetchWithAuth('proxy/runners');
   if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load apps');
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load projects');
   }
-  return (res.data ?? []) as RunnerSummary[];
+  return (res.data ?? []) as ProjectSummary[];
 }
 
-export async function fetchRunnerDetails(runnerId: string): Promise<RunnerDetails[]> {
-  const res = await fetchWithAuth(`proxy/runner/${runnerId}`);
+export async function fetchProjectDetails(projectId: string): Promise<ProjectDetails[]> {
+  const res = await fetchWithAuth(`proxy/runner/${projectId}`);
   if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load details for ${runnerId}`);
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load details for ${projectId}`);
   }
-  return (res.data ?? []) as RunnerDetails[];
+  return (res.data ?? []) as ProjectDetails[];
 }
 
-export interface RunnerGitInfo {
+export interface ProjectGitInfo {
   user: string;
   repo: string;
   branch: string;
 }
 
-// Returns null if the id has no git repo behind it (a system app) or the
+// Returns null if the id has no git repo behind it (a system project) or the
 // caller isn't permitted to see it — either is a normal "fall back to the
 // raw id" case for the resolver in `@/lib/repoLabel`, not an error to surface.
-export async function fetchRunnerGitInfo(runnerId: string): Promise<RunnerGitInfo | null> {
+export async function fetchProjectGitInfo(projectId: string): Promise<ProjectGitInfo | null> {
   try {
-    const res = await fetchWithAuth(`proxy/runner/${runnerId}/git-info`);
-    return (res.data ?? null) as RunnerGitInfo | null;
+    const res = await fetchWithAuth(`proxy/runner/${projectId}/git-info`);
+    return (res.data ?? null) as ProjectGitInfo | null;
   } catch {
     return null;
   }
 }
 
-export async function fetchGroupUsage(runnerId: string): Promise<UsageSummary> {
-  const res = await fetchWithAuth(`proxy/usage/group/${runnerId}`);
+export async function fetchGroupUsage(projectId: string): Promise<UsageSummary> {
+  const res = await fetchWithAuth(`proxy/usage/group/${projectId}`);
   if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load usage for ${runnerId}`);
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load usage for ${projectId}`);
   }
   return res.data as UsageSummary;
 }
@@ -227,7 +227,7 @@ export async function fetchInstanceLogs(instanceId: string, limit: number): Prom
   return res.data?.lines ?? [];
 }
 
-export async function sendRunnerControl(instanceId: string, command: string): Promise<any> {
+export async function sendProjectControl(instanceId: string, command: string): Promise<any> {
   const res = await fetchWithAuth(`proxy/control/${instanceId}/${command}`);
   if (!res.data && res.status !== 'success' && res.status !== 'ok') {
     throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Control command failed');

@@ -1,11 +1,11 @@
-// Universal runner-id -> human label resolver.
+// Universal project-id -> human label resolver.
 //
-// Runner/app ids are 8-hex-char git-derived hashes (see `GitAuth::generate_id`
+// Project/app ids are 8-hex-char git-derived hashes (see `GitAuth::generate_id`
 // in the Rust backend) with no meaning to a human. This resolves one to
 // "repo @ branch" via `GET proxy/runner/{id}/git-info`, with a module-level
 // cache so the same id is only ever looked up once per page load regardless
 // of how many components render it.
-import { fetchRunnerGitInfo, RunnerGitInfo } from './api';
+import { fetchProjectGitInfo, ProjectGitInfo } from './api';
 
 const SYSTEM_APP_LABELS: Record<string, string> = {
   manager: 'Manager',
@@ -22,16 +22,16 @@ export function systemAppLabel(id: string): string | null {
   return SYSTEM_APP_LABELS[bareId(id)] ?? null;
 }
 
-const cache = new Map<string, RunnerGitInfo | null>();
-const inflight = new Map<string, Promise<RunnerGitInfo | null>>();
+const cache = new Map<string, ProjectGitInfo | null>();
+const inflight = new Map<string, Promise<ProjectGitInfo | null>>();
 
-export async function fetchGitInfo(id: string): Promise<RunnerGitInfo | null> {
+export async function fetchGitInfo(id: string): Promise<ProjectGitInfo | null> {
   const key = bareId(id);
   if (cache.has(key)) return cache.get(key)!;
   const existing = inflight.get(key);
   if (existing) return existing;
 
-  const promise = fetchRunnerGitInfo(key)
+  const promise = fetchProjectGitInfo(key)
     .then((info) => {
       cache.set(key, info);
       return info;
