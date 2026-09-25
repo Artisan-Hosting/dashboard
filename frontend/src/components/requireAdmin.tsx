@@ -7,6 +7,10 @@ export function isAdminRole(role: string): boolean {
   return role === 'admin' || role === 'SUPER';
 }
 
+export function isSuperRole(role: string): boolean {
+  return role === 'SUPER';
+}
+
 export function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { role, isLoading } = useUser();
   const router = useRouter();

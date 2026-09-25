@@ -13,6 +13,7 @@ import {
   ProjectDetails,
   ProjectSummary,
   RepoCatalogEntry,
+  RepoEntry,
   ReposEnvelope,
   ReposResponse,
   SyncNodeOutcome,
@@ -312,6 +313,28 @@ export async function setGitConfig(
     throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to set git config');
   }
   return res.data as ReposResponse;
+}
+
+// Super-only: edits one node's stored repo identity/credentials in place.
+// `repo` replaces the whole entry server-side (Manager does a full swap, not
+// a merge) -- callers must send back every field they want kept, token
+// included.
+export async function updateNodeRepo(
+  nodeId: number,
+  id: string,
+  repo: RepoEntry,
+  reload = true,
+): Promise<ReposResponse> {
+  return setGitConfig(nodeId, 'update', { id, repo, reload });
+}
+
+// Super-only: removes one repo from one node's git config.
+export async function removeNodeRepo(
+  nodeId: number,
+  id: string,
+  reload = true,
+): Promise<ReposResponse> {
+  return setGitConfig(nodeId, 'remove', { id, reload });
 }
 
 // `GitReposAudit` doesn't touch git.cf, so it answers with an `AuditOutcome`,

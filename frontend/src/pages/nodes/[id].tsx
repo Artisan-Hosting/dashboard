@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { toast, Toaster } from 'react-hot-toast';
 import { Sidebar } from '@/components/header';
 import LoadingOverlay from '@/components/loading';
-import { RequireAdmin } from '@/components/requireAdmin';
+import { RequireAdmin, isSuperRole } from '@/components/requireAdmin';
 import { useUser } from '@/hooks/useUser';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import {
@@ -175,7 +175,7 @@ function NodeDetailPage() {
     }
   };
 
-  const isSuper = role === 'SUPER';
+  const isSuper = isSuperRole(role);
 
   return (
     <div className="relative min-h-screen flex bg-page text-foreground">

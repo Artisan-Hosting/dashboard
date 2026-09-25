@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Sidebar } from '@/components/header';
-import { RequireAdmin } from '@/components/requireAdmin';
+import { RequireAdmin, isSuperRole } from '@/components/requireAdmin';
 import { fetchWithAuth, postWithAuth } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { useUser } from '@/hooks/useUser';
@@ -76,7 +76,7 @@ function useElevatedSession() {
 
 export default function AdminPage() {
   const { role, orgId: myOrgId } = useUser();
-  const isSuper = role === 'SUPER';
+  const isSuper = isSuperRole(role);
   const elevated = useElevatedSession();
 
   const [orgs, setOrgs] = useState<Organization[]>([]);
