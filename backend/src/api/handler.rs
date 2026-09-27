@@ -518,7 +518,7 @@ pub async fn generic_proxy_handler(
 
     const TTL_SHORT: Duration = Duration::from_secs(5);
     const TTL_LONG: Duration = Duration::from_secs(30);
-    let cache_key = proxy_cache_key(tail.as_str(), &raw_query);
+    let cache_key = proxy_cache_key(&session.session_id, tail.as_str(), &raw_query);
     let is_vm = tail.as_str().starts_with("vms") && !tail.as_str().contains("status");
     // "runner" (not just "runners") also matches the singular `runner/{name}`
     // detail route, which is just as expensive on the portal side as the list.
