@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Sidebar } from '@/components/header';
 import { RequireAdmin, isSuperRole } from '@/components/requireAdmin';
+import { PolicyMatrix } from '@/components/admin/PolicyMatrix';
 import { fetchWithAuth, postWithAuth } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { useUser } from '@/hooks/useUser';
@@ -558,6 +559,11 @@ export default function AdminPage() {
               )}
             </div>
           </div>
+
+          {/* What each role in the selected org can actually do */}
+          {selectedOrgId && (
+            <PolicyMatrix orgId={selectedOrgId} isSuper={isSuper} elevated={elevated} />
+          )}
         </main>
       </div>
     </RequireAdmin>

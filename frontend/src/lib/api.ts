@@ -10,12 +10,14 @@ import {
   NodeDetails,
   NodeInfo,
   NodeReloadResult,
+  OrgPolicyRow,
   ProjectDetails,
   ProjectSummary,
   RepoCatalogEntry,
   RepoEntry,
   ReposEnvelope,
   ReposResponse,
+  SetOrgPolicyBody,
   SyncNodeOutcome,
   UsageSummary,
   VmActionRequest,
@@ -412,4 +414,26 @@ export async function setWatchdogConfig(
     throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to set watchdog config for ${application}`);
   }
   return res.data as WatchdogSetConfigResponse;
+}
+
+// --- Org role-policy editor ---
+//
+// `orgId` may be the literal string "GLOBAL" to read/write the platform-wide
+// default policy every org inherits -- portal maps that alias to ais_auth's
+// sentinel org id server-side (see `handler::admin::resolve_org_path_segment`).
+
+export async function fetchOrgPolicy(orgId: string): Promise<OrgPolicyRow[]> {
+  const res = await fetchWithAuth(`proxy/admin/organizations/${orgId}/policy`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load org policy');
+  }
+  return (res.data ?? []) as OrgPolicyRow[];
+}
+
+export async function setOrgPolicyRow(orgId: string, body: SetOrgPolicyBody): Promise<boolean> {
+  const res = await postWithAuth(`proxy/admin/organizations/${orgId}/policy`, body);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to set org policy');
+  }
+  return !!res.data;
 }

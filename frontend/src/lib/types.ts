@@ -421,6 +421,24 @@ export interface MultiNodeConfigSetResponse {
   results: NodeConfigSetResult[];
 }
 
+// --- Org role-policy editor ---
+
+export interface OrgPolicyRow {
+  organization_id: string;
+  resource_type: string;
+  action: string;
+  role: string;
+  allow: boolean;
+}
+
+export interface SetOrgPolicyBody {
+  elevated_token: string;
+  resource_type: string;
+  action: string;
+  role: string;
+  allow: boolean;
+}
+
 // Sync status colors for UI
 export const syncStatusColorMap: Record<SyncStatus, string> = {
   idle: 'text-blue-400',
