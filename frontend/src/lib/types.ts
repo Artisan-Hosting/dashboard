@@ -518,6 +518,61 @@ export interface AttachDomainBody {
   no_http_redirect?: boolean;
 }
 
+// --- Billing (Portal's /v1/billing/*, backed by the separate Billing
+// service + Stripe) ---
+//
+// Shapes verified against portal/src/api/handler/billing.rs's
+// SubscriptionSummary/InvoiceSummary/InvoiceLineItemSummary/
+// SubscriptionCheckoutSummary -- these are exactly what Portal serializes,
+// not guessed from the proto (Billing's own proto isn't vendored here).
+
+export interface SubscriptionSummary {
+  id: string;
+  organization_id: string;
+  storefront: string;
+  plan_code: string;
+  /** e.g. "active", "trialing", "past_due", "canceled", "unpaid" -- the
+   *  proto's BILLING_STATUS_* enum, lowercased with the prefix stripped. */
+  status: string;
+  current_period_start: number;
+  current_period_end: number;
+  /** Empty when no downgrade is queued. */
+  pending_plan_code: string;
+  cancel_at_period_end: boolean;
+}
+
+export interface InvoiceLineItem {
+  /** Empty for the plan's own base-price line. */
+  unit_code: string;
+  description: string;
+  quantity: number;
+  unit_price_cents: number;
+  amount_cents: number;
+}
+
+export interface InvoiceSummary {
+  id: string;
+  organization_id: string;
+  /** Empty for a one-off charge with no subscription behind it. */
+  subscription_id: string;
+  period_start: number;
+  period_end: number;
+  /** draft | open | paid | void | uncollectible */
+  status: string;
+  total_cents: number;
+  currency: string;
+  line_items: InvoiceLineItem[];
+}
+
+export interface SubscriptionCheckout {
+  subscription: SubscriptionSummary | null;
+  invoice: InvoiceSummary | null;
+  /** Empty when nothing is owed (a $0 plan, or a downgrade) -- nothing for
+   *  Stripe Elements to collect. */
+  stripe_client_secret: string;
+  stripe_publishable_key: string;
+}
+
 // Sync status colors for UI
 export const syncStatusColorMap: Record<SyncStatus, string> = {
   idle: 'text-blue-400',

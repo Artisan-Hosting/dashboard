@@ -4,13 +4,13 @@ import {
   AssignDomainBody,
   AttachDomainBody,
   AuditOutcome,
-  BillingCosts,
   DeployNodeResult,
   DomainFinding,
   DomainRescanResult,
   DomainsPage,
   DomainSummary,
   GitConfigOp,
+  InvoiceSummary,
   LogEntry,
   MultiNodeConfigResponse,
   MultiNodeConfigSetResponse,
@@ -25,6 +25,8 @@ import {
   ReposEnvelope,
   ReposResponse,
   SetOrgPolicyBody,
+  SubscriptionCheckout,
+  SubscriptionSummary,
   SyncNodeOutcome,
   UsageSummary,
   WatchdogConfigKind,
@@ -131,34 +133,6 @@ export async function deleteWithAuth(endpoint: string, body?: any) {
   return res.json();
 }
 
-
-export async function fetchBilling(
-  usage: UsageSummary
-): Promise<BillingCosts> {
-  const res = await fetch(
-    `${API_URL}/proxy/billing/calculate?instances=${usage.instances}`,
-    {
-      method: "POST",
-      credentials: "include", // ← send the cookie
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(usage),
-    }
-  );
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API Error: ${res.status} ${text}`);
-  }
-
-  const resp = await res.json();
-  if (resp.errors?.length) {
-    throw new Error(resp.errors.map((e: any) => e.message).join("; "));
-  }
-
-  return resp.data as BillingCosts;
-}
 
 // ======= Projects =======
 
@@ -513,4 +487,81 @@ export async function rescanDomains(body: { checkDns?: boolean; checkCloudflare?
     throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to rescan domains');
   }
   return res.data as DomainRescanResult;
+}
+
+// --- Billing (Portal's /v1/billing/*, forwards to the separate Billing
+// service + Stripe) ---
+//
+// `storefront` is required on every one of these calls -- Portal has no
+// default and rejects a missing one outright, unlike `organization_id`
+// (empty lets Billing infer it from the caller's own access token, same
+// "no authorization decision here" shape as Domains).
+
+export async function fetchSubscription(storefront: string, organizationId = ''): Promise<SubscriptionSummary | null> {
+  const qs = new URLSearchParams({ storefront });
+  if (organizationId) qs.set('organization_id', organizationId);
+  const res = await fetchWithAuth(`proxy/billing/subscription?${qs.toString()}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    // No subscription yet reads the same as any other "nothing here" --
+    // callers treat null as "not subscribed", not an error.
+    return null;
+  }
+  return (res.data ?? null) as SubscriptionSummary | null;
+}
+
+export async function fetchInvoices(storefront: string, organizationId = '', limit = 20, offset = 0): Promise<InvoiceSummary[]> {
+  const qs = new URLSearchParams({ storefront, limit: String(limit), offset: String(offset) });
+  if (organizationId) qs.set('organization_id', organizationId);
+  const res = await fetchWithAuth(`proxy/billing/invoices?${qs.toString()}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load invoices');
+  }
+  return (res.data ?? []) as InvoiceSummary[];
+}
+
+// Creates the subscription if none exists yet, or upgrades it in place --
+// prorated and charged now. Needs a fresh `elevatedToken` (step-up auth):
+// this is the one billing call that can move money immediately.
+export async function upgradeSubscription(
+  storefront: string,
+  planCode: string,
+  elevatedToken: string,
+  organizationId = '',
+): Promise<SubscriptionCheckout> {
+  const res = await postWithAuth('proxy/billing/subscription/upgrade', {
+    organization_id: organizationId,
+    storefront,
+    plan_code: planCode,
+    elevated_token: elevatedToken,
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to upgrade subscription');
+  }
+  return res.data as SubscriptionCheckout;
+}
+
+// Queues a plan change for the end of the current period -- charges
+// nothing now, so no elevated token needed.
+export async function scheduleDowngrade(storefront: string, planCode: string, organizationId = ''): Promise<SubscriptionSummary> {
+  const res = await postWithAuth('proxy/billing/subscription/downgrade', {
+    organization_id: organizationId,
+    storefront,
+    plan_code: planCode,
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to schedule downgrade');
+  }
+  return res.data as SubscriptionSummary;
+}
+
+// Takes effect at the end of the current period; charges/refunds nothing now.
+export async function cancelSubscription(storefront: string, organizationId = ''): Promise<SubscriptionSummary> {
+  const res = await postWithAuth('proxy/billing/subscription/cancel', {
+    organization_id: organizationId,
+    storefront,
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to cancel subscription');
+  }
+  return res.data as SubscriptionSummary;
 }
