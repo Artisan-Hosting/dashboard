@@ -7,6 +7,7 @@ import { useUser } from '@/hooks/useUser';
 import { useElevatedSession } from '@/hooks/useElevatedSession';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { resolveRunnerLabel } from '@/lib/repoLabel';
+import { formatExpiry } from '@/lib/format';
 import {
   fetchWithAuth,
   fetchDomains,
@@ -26,15 +27,6 @@ interface Organization {
 }
 
 const PAGE_SIZE = 50;
-
-function formatExpiry(expiresAt: number): string {
-  if (!expiresAt) return 'no certificate on disk';
-  const days = Math.round((expiresAt * 1000 - Date.now()) / 86_400_000);
-  const date = new Date(expiresAt * 1000).toLocaleDateString();
-  if (days < 0) return `expired ${date}`;
-  if (days === 0) return `expires today`;
-  return `expires in ${days}d (${date})`;
-}
 
 // Per-row "assign" / "attach" editor. Kept as one component so its draft
 // state resets cleanly whenever a different domain's panel is opened.

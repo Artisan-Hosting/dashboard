@@ -349,6 +349,18 @@ textarea.code { width: 100%; min-height: 200px; font: 400 .92rem/1.6 var(--font-
 .term .w { color: var(--term-warn); }
 .term.tall { max-height: 360px; }
 
+/* ---------- Project page (mirrors redesign-and-blend/project.html's outline) ---------- */
+.page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; padding: 8px 0 24px; }
+.grid3 { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+dl.kv { display: grid; grid-template-columns: 170px 1fr; gap: 10px 20px; margin: 0; }
+dl.kv dt { color: var(--muted); }
+dl.kv dd { margin: 0; font-family: var(--font-mono); color: var(--strong); overflow-wrap: anywhere; }
+@media (max-width: 980px) {
+  .grid3 { grid-template-columns: 1fr; }
+  dl.kv { grid-template-columns: 1fr; gap: 2px; }
+  dl.kv dd { margin-bottom: 10px; }
+}
+
 /* ---------- Login (mirrors redesign-and-blend/login.html's two-column layout) ---------- */
 .login { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 72px; align-items: center; }
 @media (max-width: 900px) { .login { grid-template-columns: 1fr; gap: 36px; } }
