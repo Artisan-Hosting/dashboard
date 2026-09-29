@@ -6,6 +6,7 @@ import { UsageSummary, BillingCosts, ProjectSummary } from '@/lib/types';
 import { Sidebar } from '@/components/header';
 import LoadingOverlay from '@/components/loading';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
+import { Button } from '@/components/ui';
 
 interface BillingBlock {
   name: string;
@@ -69,23 +70,23 @@ export default function BillingPage() {
               <div key={block.name} className="card p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold text-brand">{block.name}</h2>
-                  <button
+                  <Button
+                    small
                     onClick={() =>
                       router.push({
                         pathname: `/billing/${block.name}`,
                         query: { instances: block.instanceIds.join(',') },
                       })
                     }
-                    className="btn-brand text-sm px-4 py-2 rounded-full"
                   >
                     View Daily Breakdown
-                  </button>
+                  </Button>
                 </div>
-                <ul className="text-sm text-gray-300 space-y-1">
+                <ul className="text-sm space-y-1" style={{ color: 'var(--muted)' }}>
                   <li>RAM Usage: ${block.costs?.ram_cost?.toFixed(2) ?? 'N/A'}</li>
                   <li>CPU Usage: ${block.costs?.cpu_cost?.toFixed(2) ?? 'N/A'}</li>
                   <li>Bandwidth: ${block.costs?.bandwidth_cost?.toFixed(2) ?? 'N/A'}</li>
-                  <li className="text-white font-medium mt-2">Total: ${block.costs?.total_cost?.toFixed(2) ?? 'N/A'}</li>
+                  <li className="font-medium mt-2" style={{ color: 'var(--strong)' }}>Total: ${block.costs?.total_cost?.toFixed(2) ?? 'N/A'}</li>
                 </ul>
               </div>
             ))}

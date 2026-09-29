@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/header';
 import LoadingOverlay from '@/components/loading';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { toast, Toaster } from 'react-hot-toast';
+import { Button, Pill } from '@/components/ui';
 
 function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400);
@@ -109,17 +110,11 @@ export default function VmListPage() {
                 <h3 className="text-xl font-semibold text-brand">
                   VM {vm.vm_id}
                 </h3>
-                <p
-                  className={`text-sm mt-1 ${
-                    vm.status === 'running'
-                      ? 'text-green-400'
-                      : 'text-red-400'
-                  }`}
-                >
-                  {vm.status.toUpperCase()}
-                </p>
+                <div className="mt-1">
+                  <Pill status={vm.status} />
+                </div>
 
-                <div className="mt-2 text-sm text-gray-300 space-y-1 mb-4">
+                <div className="mt-2 text-sm space-y-1 mb-4" style={{ color: 'var(--muted)' }}>
                   <p>CPU: {(vm.cpu * 100).toFixed(1)}%</p>
                   <p>RAM: {vm.maxmem > 0 ? ((vm.mem / vm.maxmem) * 100).toFixed(1) : '0.0'}%</p>
                   <p>Uptime: {formatUptime(vm.uptime)}</p>
@@ -129,22 +124,16 @@ export default function VmListPage() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   {(['start', 'stop', 'restart', 'shutdown'] as VmActionType[]).map(
                     (action) => (
-                      <button
+                      <Button
                         key={action}
+                        small
+                        variant={action === 'stop' || action === 'shutdown' ? 'danger' : 'ghost'}
                         onClick={() => handleAction(vm.vm_id, action)}
                         disabled={isBusy}
-                        className={`
-                          flex-1
-                          px-3 py-1 text-sm font-medium rounded-full
-                          ${
-                            isBusy
-                              ? 'bg-gray-500 cursor-not-allowed'
-                              : 'btn-brand'
-                          }
-                        `}
+                        className="flex-1"
                       >
                         {action.charAt(0).toUpperCase() + action.slice(1)}
-                      </button>
+                      </Button>
                     )
                   )}
                 </div>

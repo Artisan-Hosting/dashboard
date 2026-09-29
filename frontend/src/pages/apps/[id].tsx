@@ -12,12 +12,13 @@ import {
   sendProjectControl,
 } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
-import { FullInstance, ProjectDetails, UsageSummary, BillingCosts, LogEntry, statusColorMap, Status, MultiNodeConfigResponse, NodeConfigEntry, WatchdogConfigKind } from '@/lib/types';
+import { FullInstance, ProjectDetails, UsageSummary, BillingCosts, LogEntry, MultiNodeConfigResponse, NodeConfigEntry, WatchdogConfigKind } from '@/lib/types';
 import { resolveRunnerLabel } from '@/lib/repoLabel';
 import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
 import { Menu } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
+import { Button, Pill, SelectField, Term } from '@/components/ui';
 
 function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -305,14 +306,14 @@ export default function ProjectPage() {
                       <p className="text-xs text-gray-500 truncate" title={String(details.id)}>
                         Instance {String(details.id).slice(-8)}
                       </p>
-                      <p className={`text-sm ${statusColorMap[details.status as Status] || 'text-black'}`}>
-                        {details.status}
-                      </p>
+                      <div className="mt-1">
+                        <Pill status={details.status} />
+                      </div>
                     </div>
                     <div className="hidden sm:flex gap-2">
-                      <button onClick={() => handleCommand(details.id, 'start')} className="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-white text-sm">Start</button>
-                      <button onClick={() => handleCommand(details.id, 'stop')} className="bg-yellow-500 hover:bg-yellow-600 px-2 py-1 rounded text-white text-sm">Stop</button>
-                      <button onClick={() => handleCommand(details.id, 'restart')} className="btn-brand px-2 py-1 rounded text-sm">Restart</button>
+                      <Button small variant="ghost" onClick={() => handleCommand(details.id, 'start')}>Start</Button>
+                      <Button small variant="danger" onClick={() => handleCommand(details.id, 'stop')}>Stop</Button>
+                      <Button small variant="ghost" onClick={() => handleCommand(details.id, 'restart')}>Restart</Button>
                     </div>
                     <div className="relative sm:hidden">
                       <button
@@ -322,16 +323,16 @@ export default function ProjectPage() {
                         <Menu className="w-5 h-5" />
                       </button>
                       {openMenu === details.id && (
-                        <div className="absolute right-0 mt-2 bg-[#1b1e2e] p-2 rounded shadow-lg space-y-1 z-20">
-                          <button onClick={() => {handleCommand(details.id, 'start'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-gray-700 text-sm">Start</button>
-                          <button onClick={() => {handleCommand(details.id, 'stop'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-gray-700 text-sm">Stop</button>
-                          <button onClick={() => {handleCommand(details.id, 'restart'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-gray-700 text-sm">Restart</button>
+                        <div className="absolute right-0 mt-2 p-2 rounded shadow-lg space-y-1 z-20 panel">
+                          <button onClick={() => {handleCommand(details.id, 'start'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-[color:var(--surface-2)] text-sm">Start</button>
+                          <button onClick={() => {handleCommand(details.id, 'stop'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-[color:var(--surface-2)] text-sm">Stop</button>
+                          <button onClick={() => {handleCommand(details.id, 'restart'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-[color:var(--surface-2)] text-sm">Restart</button>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 text-sm text-gray-300">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 text-sm" style={{ color: 'var(--text)' }}>
 
                     <div className="space-y-1">
                       <h3 className="font-semibold text-brand">Health</h3>
@@ -364,22 +365,19 @@ export default function ProjectPage() {
                       <summary className="cursor-pointer font-semibold text-sm mb-2 text-brand">
                         Recent Logs
                       </summary>
-                      <div className="max-h-40 overflow-y-auto bg-black text-green-400 text-xs p-2 rounded border border-gray-700">
-                        {instanceLogs.map((log, i) => (
-                          <pre key={i} className="whitespace-pre-wrap">[{log.timestamp}] {log.message}</pre>
-                        ))}
-                      </div>
+                      <Term lines={instanceLogs.map((log) => `[${log.timestamp}] ${log.message}`)} />
                     </details>
                   )}
 
                   <div className="mt-3">
-                    <button
+                    <Button
+                      small
+                      variant="ghost"
                       onClick={() => loadHistoricalLogs(details.id)}
                       disabled={!!historicalLoading[details.id]}
-                      className="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-white text-xs disabled:opacity-50"
                     >
                       {historicalLoading[details.id] ? 'Loading…' : `Load last ${HISTORICAL_LOG_LINES} lines`}
-                    </button>
+                    </Button>
 
                     {historicalLogs[details.id] && (
                       <details className="mt-2" open>
@@ -394,16 +392,13 @@ export default function ProjectPage() {
                                 return next;
                               });
                             }}
-                            className="text-gray-400 hover:text-white text-xs ml-2"
+                            className="text-xs ml-2 hover:underline"
+                            style={{ color: 'var(--muted)' }}
                           >
                             Close
                           </button>
                         </summary>
-                        <div className="max-h-96 overflow-y-auto bg-black text-green-400 text-xs p-2 rounded border border-gray-700">
-                          {historicalLogs[details.id].map((log, i) => (
-                            <pre key={i} className="whitespace-pre-wrap">[{log.timestamp}] {log.message}</pre>
-                          ))}
-                        </div>
+                        <Term tall lines={historicalLogs[details.id].map((log) => `[${log.timestamp}] ${log.message}`)} />
                       </details>
                     )}
                   </div>
@@ -420,47 +415,43 @@ export default function ProjectPage() {
             <p className="text-sm text-gray-400 mb-3">
               Reads and writes the watchdog config for every instance of this app at once.
             </p>
-            <div className="flex flex-wrap gap-2 mb-3">
-              <select
+            <div className="flex flex-wrap gap-2 mb-3 items-center">
+              <SelectField
                 value={configKind}
                 onChange={(e) => setConfigKind(e.target.value as WatchdogConfigKind)}
-                className="bg-gray-800 rounded px-2 py-1 text-sm"
+                style={{ width: 'auto' }}
               >
                 <option value="config">config</option>
                 <option value="overrides">overrides</option>
-              </select>
-              <button
-                onClick={loadAppConfig}
-                disabled={configLoading}
-                className="btn-brand px-3 py-1 rounded text-sm disabled:opacity-50"
-              >
+              </SelectField>
+              <Button small onClick={loadAppConfig} disabled={configLoading}>
                 {configLoading ? 'Loading…' : 'Load Config'}
-              </button>
+              </Button>
             </div>
 
             {configData && !configData.all_match && (
-              <div className="mb-3 p-3 rounded border border-yellow-600 bg-yellow-900/20 text-sm">
-                <p className="text-yellow-400 font-semibold mb-2">
+              <div
+                className="mb-3 p-3 rounded text-sm"
+                style={{ border: '1px solid var(--warn)', background: 'color-mix(in srgb, var(--warn) 10%, transparent)' }}
+              >
+                <p className="font-semibold mb-2" style={{ color: 'var(--warn)' }}>
                   Configs differ across nodes — pick a version below before saving.
                 </p>
                 <div className="space-y-2">
                   {configData.nodes.map((node) => (
-                    <div key={node.node_id} className="flex flex-wrap items-center justify-between gap-2 border-b border-yellow-800/50 pb-2">
-                      <div className="text-gray-300">
-                        <span className="font-medium text-white">{node.hostname}</span>{' '}
+                    <div key={node.node_id} className="flex flex-wrap items-center justify-between gap-2 pb-2" style={{ borderBottom: '1px solid var(--line)' }}>
+                      <div style={{ color: 'var(--text)' }}>
+                        <span className="font-medium" style={{ color: 'var(--strong)' }}>{node.hostname}</span>{' '}
                         {node.found ? (
-                          <span className="text-xs text-gray-500">({(node.content ?? '').length} bytes)</span>
+                          <span className="text-xs" style={{ color: 'var(--muted)' }}>({(node.content ?? '').length} bytes)</span>
                         ) : (
-                          <span className="text-xs text-red-400">{node.error ?? 'unavailable'}</span>
+                          <span className="text-xs" style={{ color: 'var(--bad)' }}>{node.error ?? 'unavailable'}</span>
                         )}
                       </div>
                       {node.found && (
-                        <button
-                          onClick={() => useNodeVersion(node)}
-                          className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs"
-                        >
+                        <Button small variant="ghost" onClick={() => useNodeVersion(node)}>
                           Use this version
-                        </button>
+                        </Button>
                       )}
                     </div>
                   ))}
@@ -469,24 +460,24 @@ export default function ProjectPage() {
             )}
 
             {configData && configData.nodes.length === 0 && (
-              <p className="text-sm text-gray-400 mb-3">No nodes are currently running this app.</p>
+              <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>No nodes are currently running this app.</p>
             )}
 
             <textarea
               value={configContent}
               onChange={(e) => setConfigContent(e.target.value)}
               rows={14}
-              className="w-full bg-black text-green-400 text-xs p-2 rounded border border-gray-700 font-mono"
+              className="code"
               placeholder="Load a config to edit it"
             />
             <div className="mt-3">
-              <button
+              <Button
+                small
                 onClick={saveAppConfig}
                 disabled={configSaving || !configData || configData.nodes.every((n) => !n.found)}
-                className="btn-brand px-3 py-1 rounded text-sm disabled:opacity-50"
               >
                 {configSaving ? 'Saving…' : 'Save to all instances'}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -497,17 +488,17 @@ export default function ProjectPage() {
               Overall Usage & Billing
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-1 text-gray-300">
+              <div className="space-y-1" style={{ color: 'var(--text)' }}>
                 <p>Total CPU Time: {groupUsage.total_cpu.toFixed(2)} hrs</p>
                 <p>Avg Memory:       {groupUsage.avg_memory.toFixed(2)} MB</p>
                 <p>Total Instances:  {instances.length}</p>
                 <p>Samples:          {groupUsage.total_samples}</p>
               </div>
-              <div className="space-y-1 text-gray-300">
+              <div className="space-y-1" style={{ color: 'var(--text)' }}>
                 <p>CPU Cost:      ${groupCosts.cpu_cost.toFixed(2)}</p>
                 <p>RAM Cost:      ${groupCosts.ram_cost.toFixed(2)}</p>
                 <p>Bandwidth:     ${groupCosts.bandwidth_cost.toFixed(2)}</p>
-                <p className="font-semibold text-white">
+                <p className="font-semibold" style={{ color: 'var(--strong)' }}>
                   Total Cost:    ${groupCosts.total_cost.toFixed(2)}
                 </p>
               </div>

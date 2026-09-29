@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/header';
 import { fetchWithAuth, postWithAuth } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { resolveRunnerLabel } from '@/lib/repoLabel';
+import { Button, Field, SelectField } from '@/components/ui';
 
 interface SecretItem {
   name: string;
@@ -161,8 +162,8 @@ const loadSecrets = useCallback(async () => {
         <div className="mb-6 grid gap-4 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium mb-1">Select Project</label>
-            <select
-              className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
+            <SelectField
+              className="w-full"
               value={selectedProject}
               onChange={(e) => setSelectedProject(e.target.value)}
             >
@@ -171,12 +172,12 @@ const loadSecrets = useCallback(async () => {
                   {projectLabels[id] ?? id}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Select Environment</label>
-            <select
-              className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
+            <SelectField
+              className="w-full"
               value={selectedEnv}
               onChange={(e) => setSelectedEnv(e.target.value)}
             >
@@ -184,10 +185,11 @@ const loadSecrets = useCallback(async () => {
               <option value="stage">stage</option>
               <option value="prod">prod</option>
               <option value="__custom__">Custom...</option>
-            </select>
+            </SelectField>
             {selectedEnv === '__custom__' && (
-              <input
-                className="mt-2 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
+              <Field
+                sans
+                className="mt-2 w-full"
                 placeholder="Environment name"
                 value={customEnv}
                 onChange={(e) => setCustomEnv(e.target.value)}
@@ -205,56 +207,30 @@ const loadSecrets = useCallback(async () => {
               {items.map((s) => (
                 <div key={s.name} className="card-hover p-4 space-y-2">
                   <p className="font-semibold text-brand">{s.name}</p>
-                  <p className="text-sm text-gray-400 truncate">{s.value}</p>
+                  <p className="text-sm truncate" style={{ color: 'var(--muted)' }}>{s.value}</p>
                   <div className="mt-2 flex gap-2">
-                    <button
-                      onClick={() => copySecret(s.value)}
-                      className="btn-brand px-3 py-1 rounded text-sm"
-                    >
+                    <Button small onClick={() => copySecret(s.value)}>
                       Copy
-                    </button>
-                    <button
-                      onClick={() => updateSecret(s.name, s.value)}
-                      className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-                    >
+                    </Button>
+                    <Button small variant="ghost" onClick={() => updateSecret(s.name, s.value)}>
                       Update
-                    </button>
-                    <button
-                      onClick={() => deleteSecret(s.name)}
-                      className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                    >
+                    </Button>
+                    <Button small variant="danger" onClick={() => deleteSecret(s.name)}>
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          <div className="border-t border-gray-300 dark:border-gray-700 pt-4">
+          <div className="pt-4" style={{ borderTop: '1px solid var(--line)' }}>
             <h3 className="font-semibold text-brand mb-2">Add Secret</h3>
             <div className="grid gap-4 sm:grid-cols-2 mb-4">
-              <input
-                id="name"
-                placeholder="Name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
-              />
-              <input
-                id="value"
-                placeholder="Value"
-                value={newValue}
-                onChange={(e) => setNewValue(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
-              />
+              <Field sans id="name" placeholder="Name" value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full" />
+              <Field sans id="value" placeholder="Value" value={newValue} onChange={(e) => setNewValue(e.target.value)} className="w-full" />
             </div>
-            <button
-              onClick={addSecret}
-              className="btn-brand px-4 py-2 rounded"
-            >
-              Save
-            </button>
+            <Button onClick={addSecret}>Save</Button>
           </div>
         </div>
       </main>

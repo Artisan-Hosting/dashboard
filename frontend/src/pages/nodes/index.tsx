@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { fetchNodes } from '@/lib/api';
-import { NodeInfo, statusColorMap } from '@/lib/types';
+import { NodeInfo } from '@/lib/types';
 import { Sidebar } from '@/components/header';
 import LoadingOverlay from '@/components/loading';
 import { RequireAdmin } from '@/components/requireAdmin';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
+import { Button, Pill } from '@/components/ui';
 
 const REFRESH_INTERVAL = 15_000; // nodes churn slower than runners/VMs
 
@@ -51,23 +52,20 @@ function NodesListPage() {
                 <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
                   <div className="min-w-0">
                     <p className="text-xl font-semibold text-brand truncate">{node.hostname}</p>
-                    <p className={`text-sm mt-1 ${statusColorMap[node.status] ?? 'text-gray-400'}`}>
-                      {node.status}
-                    </p>
+                    <div className="mt-1">
+                      <Pill status={node.status} />
+                    </div>
                   </div>
-                  <button
-                    onClick={() => router.push(`/nodes/${node.identity.id}`)}
-                    className="btn-brand px-4 py-2 rounded-full text-sm font-medium shrink-0"
-                  >
+                  <Button small onClick={() => router.push(`/nodes/${node.identity.id}`)} className="shrink-0">
                     Details →
-                  </button>
+                  </Button>
                 </div>
 
-                <div className="text-sm text-gray-300 space-y-1">
-                  <p>ID: <span className="font-medium text-white">{node.identity.id}</span></p>
-                  <p>IP: <span className="font-medium text-white">{node.ip_address}</span></p>
-                  <p>Apps: <span className="font-medium text-white">{node.projects.length}</span></p>
-                  <p>Last Updated: <span className="font-medium text-white">{formatTimestamp(node.last_updated)}</span></p>
+                <div className="text-sm space-y-1" style={{ color: 'var(--muted)' }}>
+                  <p>ID: <span className="font-medium" style={{ color: 'var(--strong)' }}>{node.identity.id}</span></p>
+                  <p>IP: <span className="font-medium" style={{ color: 'var(--strong)' }}>{node.ip_address}</span></p>
+                  <p>Apps: <span className="font-medium" style={{ color: 'var(--strong)' }}>{node.projects.length}</span></p>
+                  <p>Last Updated: <span className="font-medium" style={{ color: 'var(--strong)' }}>{formatTimestamp(node.last_updated)}</span></p>
                 </div>
               </div>
             ))}

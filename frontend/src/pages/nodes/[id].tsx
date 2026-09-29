@@ -21,6 +21,7 @@ import {
   WatchdogConfigKind,
 } from '@/lib/types';
 import { resolveRunnerLabel } from '@/lib/repoLabel';
+import { Button, SelectField } from '@/components/ui';
 
 function serverToDisplay(server: GitServer): string {
   return typeof server === 'string' ? server : `Custom (${server.Custom})`;
@@ -188,21 +189,17 @@ function NodeDetailPage() {
             <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
               <div className="min-w-0">
                 <h1 className="text-3xl font-bold text-brand truncate">{node.manager_data.hostname}</h1>
-                <p className="text-sm text-gray-300 mt-1 break-words">
+                <p className="text-sm mt-1 break-words" style={{ color: 'var(--muted)' }}>
                   ID {node.identity.id} · {node.status} · Uptime {node.manager_data.uptime}s
                 </p>
-                <p className="text-sm text-gray-300 break-words">
+                <p className="text-sm break-words" style={{ color: 'var(--muted)' }}>
                   System apps: {node.manager_data.system_apps} · Client apps: {node.manager_data.client_apps} · Warnings: {node.manager_data.warning}
                 </p>
               </div>
               {isSuper && (
-                <button
-                  onClick={handleReload}
-                  disabled={reloading}
-                  className="btn-brand px-4 py-2 rounded-full text-sm font-medium disabled:opacity-50 shrink-0"
-                >
+                <Button onClick={handleReload} disabled={reloading} className="shrink-0">
                   {reloading ? 'Reloading…' : 'Reload Node'}
-                </button>
+                </Button>
               )}
             </div>
 
@@ -213,40 +210,38 @@ function NodeDetailPage() {
               <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
                 <h2 className="text-xl font-bold text-brand">Git Config</h2>
                 <div className="flex gap-2">
-                  <button
+                  <Button
+                    small
+                    variant="ghost"
                     onClick={handleAudit}
                     disabled={auditing}
                     title="Force a resync/clean of every configured checkout, and purge stale state files for repos no longer configured"
-                    className="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-full text-sm disabled:opacity-50"
                   >
                     {auditing ? 'Auditing…' : 'Recent Repositories'}
-                  </button>
-                  <button
-                    onClick={() => router.push('/repos')}
-                    className="btn-brand px-3 py-1 rounded-full text-sm"
-                  >
+                  </Button>
+                  <Button small onClick={() => router.push('/repos')}>
                     Manage Repos
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               {!gitLoading && (
                 <div className="space-y-2">
                   {repos.map((r) => (
-                    <div key={r.id} className="flex flex-wrap justify-between items-center gap-2 border-b border-gray-700 py-2 text-sm">
-                      <div className="text-gray-300">
-                        <span className="font-medium text-white">{r.user}/{r.repo}</span>{' '}
+                    <div key={r.id} className="flex flex-wrap justify-between items-center gap-2 py-2 text-sm" style={{ borderBottom: '1px solid var(--line)' }}>
+                      <div style={{ color: 'var(--text)' }}>
+                        <span className="font-medium" style={{ color: 'var(--strong)' }}>{r.user}/{r.repo}</span>{' '}
                         @ {r.branch} · {serverToDisplay(r.server)} · {r.token ? '•••• set' : 'no token'}
-                        <span className="text-gray-500"> ({r.id})</span>
+                        <span style={{ color: 'var(--muted)' }}> ({r.id})</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {r.id && (
-                          <button onClick={() => router.push(`/apps/${r.id}`)} className="px-2 py-1 rounded bg-blue-700 hover:bg-blue-600 text-xs">Open Controls</button>
+                          <Button small variant="ghost" onClick={() => router.push(`/apps/${r.id}`)}>Open Controls</Button>
                         )}
                       </div>
                     </div>
                   ))}
-                  {repos.length === 0 && <p className="text-sm text-gray-400">No repos configured.</p>}
+                  {repos.length === 0 && <p className="text-sm" style={{ color: 'var(--muted)' }}>No repos configured.</p>}
                 </div>
               )}
             </div>
@@ -255,7 +250,7 @@ function NodeDetailPage() {
             <div className="card p-6">
               <h2 className="text-xl font-bold text-brand mb-4">Watchdog Config</h2>
               <div className="flex flex-wrap gap-2 mb-3">
-                <select value={application} onChange={(e) => setApplication(e.target.value)} className="bg-gray-800 rounded px-2 py-1 text-sm">
+                <SelectField value={application} onChange={(e) => setApplication(e.target.value)} style={{ width: 'auto' }}>
                   <option value="">Select application…</option>
                   {node.projects.map((r) => {
                     const key = r.replace('ais_', '');
@@ -263,31 +258,27 @@ function NodeDetailPage() {
                       <option key={r} value={key}>{projectLabels[key] ?? key}</option>
                     );
                   })}
-                </select>
-                <select value={kind} onChange={(e) => setKind(e.target.value as WatchdogConfigKind)} className="bg-gray-800 rounded px-2 py-1 text-sm">
+                </SelectField>
+                <SelectField value={kind} onChange={(e) => setKind(e.target.value as WatchdogConfigKind)} style={{ width: 'auto' }}>
                   <option value="config">config</option>
                   <option value="overrides">overrides</option>
-                </select>
-                <button onClick={loadWatchdogConfig} disabled={watchdogLoading} className="btn-brand px-3 py-1 rounded text-sm disabled:opacity-50">
+                </SelectField>
+                <Button small onClick={loadWatchdogConfig} disabled={watchdogLoading}>
                   {watchdogLoading ? 'Loading…' : 'Load'}
-                </button>
+                </Button>
               </div>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 rows={14}
-                className="w-full bg-black text-green-400 text-xs p-2 rounded border border-gray-700 font-mono"
+                className="code"
                 placeholder="Load a config to edit it"
               />
               <div className="mt-3 flex items-center gap-3">
-                <button
-                  onClick={saveWatchdogConfig}
-                  disabled={watchdogSaving || sha256 === null}
-                  className="btn-brand px-3 py-1 rounded text-sm disabled:opacity-50"
-                >
+                <Button small onClick={saveWatchdogConfig} disabled={watchdogSaving || sha256 === null}>
                   {watchdogSaving ? 'Saving…' : 'Save'}
-                </button>
-                {sha256 && <span className="text-xs text-gray-500">sha256: {sha256.slice(0, 12)}…</span>}
+                </Button>
+                {sha256 && <span className="text-xs" style={{ color: 'var(--muted)' }}>sha256: {sha256.slice(0, 12)}…</span>}
               </div>
             </div>
           </>
