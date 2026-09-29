@@ -61,9 +61,19 @@ export interface ProjectLogs {
   recent: string[];
 }
 
+// Every service on the platform reports its own app version alongside the
+// artisan_middleware ("ais_library") version it's built against -- verified
+// against real GET /node/{id} and GET /runners responses, both nested this
+// way. `code` is the release channel (e.g. "Production", "ReleaseCandidate"),
+// not a version number.
+export interface VersionField {
+  number: string;
+  code: string;
+}
+
 export interface SoftwareVersion {
-  version: string;   // E.g., "1.2.3"
-  release: string;   // E.g., "Production" or "Beta"
+  application: VersionField;
+  library: VersionField;
 }
 
 
@@ -92,30 +102,6 @@ export interface FullInstance {
   usage: UsageSummary;
 }
 
-
-// Represents a single instance of a runner (individual app instance)
-export interface ProjectInstance {
-  id: string;
-  status: string;
-  version: {
-    version: string;
-    code: string;
-  };
-  artisan_config: object; // you can later strongly type this if you want
-  specific_config?: object;
-  enviornment?: object;
-  health?: {
-    uptime: number;
-    last_check: number;
-    cpu_usage: string;
-    ram_usage: string;
-    tx_bytes: number;
-    rx_bytes: number;
-  };
-  logs?: {
-    recent: string[];
-  };
-}
 
 // Represents the summarized group usage for all instances under one runner.
 export interface ProjectGroupUsage {
@@ -147,14 +133,15 @@ export interface ProjectSummary {
   name: string;
   /** Current state, e.g. "Running" or "Stopped" */
   status: string;
-  /** Software version info (you can expand this as needed) */
-  version: {
-    /** SemVer string, e.g. "1.2.3" */
-    version: string;
-    /** Release channel or label, e.g. "Beta" */
-    release?: string;
-  };
-  /** IDs of nodes this project is deployed on */
+  version: SoftwareVersion;
+  /**
+   * IDs of nodes this project is deployed on. For the platform's own system
+   * apps (manager, gitmon, mailler) this is always empty -- Portal's
+   * `/nodes` response never lists them in a node's own `projects` array, so
+   * there's no per-node linkage for them here. Every node runs its own
+   * manager + gitmon, but GET /runners folds all of those into one row per
+   * app name (aggregated fleet-wide, worst-of status), not one per node.
+   */
   nodes: number[];
   /** Total seconds this project has been active (optional) */
   uptime?: number;
@@ -239,12 +226,25 @@ export interface GitCredentials {
 
 export interface ManagerData {
   identity: Identifier;
+  /** This node's own manager: its application version and the ais_library
+   *  (artisan_middleware) version it's built against. */
   version: SoftwareVersion;
   git_config: GitCredentials;
   hostname: string;
   address: string;
+  /** Bare counts for this node -- no names or per-app status. See
+   *  ais_manager's get_manager_data(): summed by walking this node's local
+   *  app-status array and checking is_system_application(), not a fleet
+   *  breakdown. */
   system_apps: number;
   client_apps: number;
+  /**
+   * NOT a count of warnings. A sticky 0/1 flag: 1 once this node's local
+   * watchdog has reported a security/tamper trip at any point since the
+   * manager process last started, and it stays 1 until the manager
+   * restarts -- it does not clear when the underlying issue does. There is
+   * no list of individual warnings anywhere in what Portal exposes today.
+   */
   warning: number;
   uptime: number;
 }

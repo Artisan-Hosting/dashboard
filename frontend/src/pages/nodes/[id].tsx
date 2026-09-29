@@ -13,15 +13,17 @@ import {
   auditGitConfig,
   fetchWatchdogConfig,
   setWatchdogConfig,
+  fetchProjects,
 } from '@/lib/api';
 import {
   NodeDetails,
   RepoEntry,
   GitServer,
   WatchdogConfigKind,
+  ProjectSummary,
 } from '@/lib/types';
-import { resolveRunnerLabel } from '@/lib/repoLabel';
-import { Button, SelectField } from '@/components/ui';
+import { resolveRunnerLabel, systemAppLabel } from '@/lib/repoLabel';
+import { Button, Pill, SelectField } from '@/components/ui';
 
 function serverToDisplay(server: GitServer): string {
   return typeof server === 'string' ? server : `Custom (${server.Custom})`;
@@ -32,6 +34,7 @@ function NodeDetailPage() {
   const { id } = router.query as { id?: string };
   const nodeId = id ? Number(id) : NaN;
   const { role } = useUser();
+  const isSuper = isSuperRole(role);
 
   const [node, setNode] = useState<NodeDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,6 +51,12 @@ function NodeDetailPage() {
   const [watchdogLoading, setWatchdogLoading] = useState(false);
   const [watchdogSaving, setWatchdogSaving] = useState(false);
   const [projectLabels, setProjectLabels] = useState<Record<string, string>>({});
+
+  // Fleet-wide, not scoped to this node -- Portal has no per-node linkage
+  // for the platform's own system apps (see the ProjectSummary.nodes doc
+  // comment), so this is the best available view of their status/version.
+  const [systemApps, setSystemApps] = useState<ProjectSummary[]>([]);
+  const [systemAppsLoading, setSystemAppsLoading] = useState(true);
 
   const loadNode = useCallback(async () => {
     if (Number.isNaN(nodeId)) return;
@@ -81,6 +90,21 @@ function NodeDetailPage() {
     loadNode();
     loadGitConfig();
   }, [router.isReady, loadNode, loadGitConfig]);
+
+  useEffect(() => {
+    if (!isSuper) {
+      setSystemAppsLoading(false);
+      return;
+    }
+    setSystemAppsLoading(true);
+    fetchProjects()
+      .then((all) => setSystemApps(all.filter((p) => systemAppLabel(p.name) !== null)))
+      .catch((err) => {
+        console.error('Failed to load system app status', err);
+        setSystemApps([]);
+      })
+      .finally(() => setSystemAppsLoading(false));
+  }, [isSuper]);
 
   useEffect(() => {
     if (!node) return;
@@ -176,8 +200,6 @@ function NodeDetailPage() {
     }
   };
 
-  const isSuper = isSuperRole(role);
-
   return (
     <div className="relative min-h-screen bg-page text-foreground">
       <Toaster position="bottom-right" />
@@ -192,9 +214,21 @@ function NodeDetailPage() {
                 <p className="text-sm mt-1 break-words" style={{ color: 'var(--muted)' }}>
                   ID {node.identity.id} · {node.status} · Uptime {node.manager_data.uptime}s
                 </p>
-                <p className="text-sm break-words" style={{ color: 'var(--muted)' }}>
-                  System apps: {node.manager_data.system_apps} · Client apps: {node.manager_data.client_apps} · Warnings: {node.manager_data.warning}
-                </p>
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <span className="text-sm" style={{ color: 'var(--muted)' }}>
+                    System apps: {node.manager_data.system_apps} · Client apps: {node.manager_data.client_apps}
+                  </span>
+                  <Pill
+                    status={node.manager_data.warning > 0 ? 'error' : 'active'}
+                    label={node.manager_data.warning > 0 ? 'Security trip detected' : 'No security trips'}
+                  />
+                </div>
+                {node.manager_data.warning > 0 && (
+                  <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                    Sticky since the manager process last started -- stays flagged even after the
+                    underlying issue clears, until manager restarts.
+                  </p>
+                )}
               </div>
               {isSuper && (
                 <Button onClick={handleReload} disabled={reloading} className="shrink-0">
@@ -202,6 +236,56 @@ function NodeDetailPage() {
                 </Button>
               )}
             </div>
+
+            {/* Versions -- this node's own manager, application vs the
+                ais_library (artisan_middleware) it's built against. */}
+            <div className="card p-6 mb-8">
+              <h2 className="text-xl font-bold text-brand mb-4">Versions</h2>
+              <dl className="kv">
+                <dt>Application</dt>
+                <dd>{node.manager_data.version.application.number} ({node.manager_data.version.application.code})</dd>
+                <dt>Library (ais_library)</dt>
+                <dd>{node.manager_data.version.library.number} ({node.manager_data.version.library.code})</dd>
+              </dl>
+            </div>
+
+            {/* System apps -- fleet-wide, not scoped to this node. Portal has
+                no per-node linkage for manager/gitmon/mailler (see the
+                ProjectSummary.nodes doc comment), so this is the best
+                available view rather than a per-node breakdown. */}
+            {isSuper && (
+              <div className="card p-6 mb-8">
+                <h2 className="text-xl font-bold text-brand mb-1">System Apps</h2>
+                <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
+                  Fleet-wide status, not scoped to this node -- Portal doesn't currently track which
+                  node runs which system-app instance.
+                </p>
+                {!systemAppsLoading && (
+                  <div className="space-y-2">
+                    {systemApps.map((app) => (
+                      <div
+                        key={app.name}
+                        className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+                        style={{ borderBottom: '1px solid var(--line)' }}
+                      >
+                        <span className="font-medium" style={{ color: 'var(--strong)' }}>
+                          {systemAppLabel(app.name) ?? app.name}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Pill status={app.status} />
+                          <span style={{ color: 'var(--muted)' }}>
+                            app {app.version.application.number} · lib {app.version.library.number}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    {systemApps.length === 0 && (
+                      <p className="text-sm" style={{ color: 'var(--muted)' }}>No system apps reported.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Git config -- read-only per repo, centralized on the Repos page.
                 Recent Repositories (audit) stays: it's hygiene/resync, not
