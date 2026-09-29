@@ -11,7 +11,7 @@ interface SecretItem {
 // Scoped to one `projectId` -- unlike the old standalone /secrets page this
 // replaced, there's no project picker here, just the environment.
 export function SecretsManager({ projectId }: { projectId: string }) {
-  const [selectedEnv, setSelectedEnv] = useState('prod');
+  const [selectedEnv, setSelectedEnv] = useState('production');
   const [customEnv, setCustomEnv] = useState('');
   const [items, setItems] = useState<SecretItem[]>([]);
   const [newName, setNewName] = useState('');
@@ -111,9 +111,9 @@ export function SecretsManager({ projectId }: { projectId: string }) {
       <div>
         <label className="block text-sm font-medium mb-1">Environment</label>
         <SelectField className="w-full sm:w-64" value={selectedEnv} onChange={(e) => setSelectedEnv(e.target.value)}>
-          <option value="dev">dev</option>
-          <option value="stage">stage</option>
-          <option value="prod">prod</option>
+          <option value="development">Development</option>
+          <option value="staging">Staging</option>
+          <option value="production">Production</option>
           <option value="__custom__">Custom...</option>
         </SelectField>
         {selectedEnv === '__custom__' && (
