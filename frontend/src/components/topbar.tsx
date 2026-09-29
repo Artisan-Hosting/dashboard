@@ -1,14 +1,14 @@
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { useUser } from "@/hooks/useUser";
-import { isAdminRole } from "@/components/requireAdmin";
+import { isAdminRole, isSuperRole } from "@/components/requireAdmin";
 import { ThemeToggle } from "@/components/ui";
 
-const NAV: { href: string; label: string; adminOnly?: boolean }[] = [
+const NAV: { href: string; label: string; adminOnly?: boolean; superOnly?: boolean }[] = [
   { href: "/apps", label: "Apps" },
   { href: "/domains", label: "Domains" },
   { href: "/billing", label: "Billing" },
-  { href: "/nodes", label: "Nodes", adminOnly: true },
+  { href: "/nodes", label: "Nodes", superOnly: true },
   { href: "/repos", label: "Repos", adminOnly: true },
   { href: "/admin", label: "Admin", adminOnly: true },
 ];
@@ -37,7 +37,7 @@ export function TopBar({ onLogout, onLogoutAll }: { onLogout: () => void; onLogo
         </a>
 
         <nav className="nav" aria-label="Main">
-          {NAV.filter((item) => !item.adminOnly || isAdminRole(role)).map((item) => (
+          {NAV.filter((item) => (!item.adminOnly || isAdminRole(role)) && (!item.superOnly || isSuperRole(role))).map((item) => (
             <a
               key={item.href}
               href={item.href}

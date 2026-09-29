@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { toast, Toaster } from 'react-hot-toast';
 import { TopBar } from '@/components/topbar';
 import LoadingOverlay from '@/components/loading';
-import { RequireAdmin, isSuperRole } from '@/components/requireAdmin';
+import { RequireSuper, isSuperRole } from '@/components/requireAdmin';
 import { useUser } from '@/hooks/useUser';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import {
@@ -375,8 +375,8 @@ function NodeDetailPage() {
 
 export default function GuardedNodeDetailPage() {
   return (
-    <RequireAdmin>
+    <RequireSuper>
       <NodeDetailPage />
-    </RequireAdmin>
+    </RequireSuper>
   );
 }

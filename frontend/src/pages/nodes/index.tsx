@@ -4,7 +4,7 @@ import { fetchNodes } from '@/lib/api';
 import { NodeInfo } from '@/lib/types';
 import { TopBar } from '@/components/topbar';
 import LoadingOverlay from '@/components/loading';
-import { RequireAdmin } from '@/components/requireAdmin';
+import { RequireSuper } from '@/components/requireAdmin';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { Button, Pill } from '@/components/ui';
 
@@ -79,8 +79,8 @@ function NodesListPage() {
 
 export default function GuardedNodesListPage() {
   return (
-    <RequireAdmin>
+    <RequireSuper>
       <NodesListPage />
-    </RequireAdmin>
+    </RequireSuper>
   );
 }
