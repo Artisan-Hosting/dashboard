@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { fetchBilling, fetchWithAuth, postWithAuth } from '@/lib/api';
 import { UsageSummary, BillingCosts, ProjectSummary } from '@/lib/types';
-import { Sidebar } from '@/components/header';
+import { TopBar } from '@/components/topbar';
 import LoadingOverlay from '@/components/loading';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { Button } from '@/components/ui';
@@ -58,11 +58,10 @@ export default function BillingPage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen flex bg-page text-foreground">
-      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+    <div className="relative min-h-screen bg-page text-foreground">
+      <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
-
-      <main className="flex-1 p-4 sm:p-6 lg:p-8">
+      <main className="p-4 sm:p-6 lg:p-8">
         <h1 className="text-3xl font-bold text-brand mb-6">Billing Summary</h1>
         {!loading && (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">

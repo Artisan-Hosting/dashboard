@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { fetchNodes } from '@/lib/api';
 import { NodeInfo } from '@/lib/types';
-import { Sidebar } from '@/components/header';
+import { TopBar } from '@/components/topbar';
 import LoadingOverlay from '@/components/loading';
 import { RequireAdmin } from '@/components/requireAdmin';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
@@ -39,10 +39,10 @@ function NodesListPage() {
   }, [loadNodes]);
 
   return (
-    <div className="relative min-h-screen flex bg-page text-foreground">
-      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+    <div className="relative min-h-screen bg-page text-foreground">
+      <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
-      <main className="flex-1 p-4 sm:p-6 lg:p-8">
+      <main className="p-4 sm:p-6 lg:p-8">
         <h2 className="text-2xl font-semibold mb-8 text-brand">Nodes</h2>
 
         {!loading && (

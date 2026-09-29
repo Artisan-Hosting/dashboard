@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
 import { fetchProjects, fetchGroupUsage } from "@/lib/api";
 import { UsageSummary } from "@/lib/types";
-import { Sidebar } from "@/components/header";
+import { TopBar } from "@/components/topbar";
 import LoadingOverlay from "@/components/loading";
 import { handleLogout, handleLogoutAll } from "@/lib/logout";
 import { resolveRunnerLabel } from "@/lib/repoLabel";
@@ -82,12 +82,10 @@ export default function Dashboard() {
   }, [projects]);
 
   return (
-    <div className="relative min-h-screen flex bg-page text-foreground">
-      {/* Sidebar should be a sibling of <main>, not a child */}
-      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+    <div className="relative min-h-screen bg-page text-foreground">
+      <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
-      {/* Content area */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8">
+      <main className="p-4 sm:p-6 lg:p-8">
         <h2 className="text-2xl font-semibold mb-8 text-brand">
           Current Projects
         </h2>

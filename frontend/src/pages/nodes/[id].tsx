@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { toast, Toaster } from 'react-hot-toast';
-import { Sidebar } from '@/components/header';
+import { TopBar } from '@/components/topbar';
 import LoadingOverlay from '@/components/loading';
 import { RequireAdmin, isSuperRole } from '@/components/requireAdmin';
 import { useUser } from '@/hooks/useUser';
@@ -179,11 +179,11 @@ function NodeDetailPage() {
   const isSuper = isSuperRole(role);
 
   return (
-    <div className="relative min-h-screen flex bg-page text-foreground">
+    <div className="relative min-h-screen bg-page text-foreground">
       <Toaster position="bottom-right" />
-      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+      <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+      <main className="overflow-y-auto p-4 sm:p-6 lg:p-8">
         {!loading && node && (
           <>
             <div className="flex flex-wrap justify-between items-center gap-4 mb-8">

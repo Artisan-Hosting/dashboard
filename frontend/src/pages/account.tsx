@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@/hooks/useUser'
 
-import { Sidebar } from '@/components/header'
+import { TopBar } from '@/components/topbar'
 import LoadingOverlay from '@/components/loading'
 import { handleLogout, handleLogoutAll } from '@/lib/logout'
 import { API_URL } from '@/lib/config'
@@ -88,11 +88,10 @@ export default function AccountPage() {
 
 
   return (
-    <div className="relative min-h-screen flex bg-page text-foreground">
-      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+    <div className="relative min-h-screen bg-page text-foreground">
+      <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
-      {/* Main content on the right */}
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-12">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-12">
         <h1 className="text-3xl font-bold text-brand">Account Settings</h1>
 
         {/* 1. User Info */}

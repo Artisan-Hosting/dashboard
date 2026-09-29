@@ -349,6 +349,20 @@ textarea.code { width: 100%; min-height: 200px; font: 400 .92rem/1.6 var(--font-
 .term .w { color: var(--term-warn); }
 .term.tall { max-height: 360px; }
 
+/* ---------- Top bar (mirrors redesign-and-blend console.js's mountShell) ---------- */
+.topbar { position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--background) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.topbar-in { display: flex; align-items: center; gap: 24px; min-height: 64px; flex-wrap: wrap; }
+.brand { display: inline-flex; align-items: center; text-decoration: none; white-space: nowrap; }
+.nav { display: flex; gap: 4px; margin-right: auto; flex-wrap: wrap; }
+.nav a { padding: .45rem .8rem; border-radius: 8px; text-decoration: none; color: var(--muted); font-weight: 600; font-size: .95rem; }
+.nav a:hover { color: var(--strong); background: var(--surface-2); }
+.nav a[aria-current="page"] { color: var(--strong); background: var(--surface); box-shadow: inset 0 -2px 0 var(--accent); border-radius: 8px 8px 0 0; }
+.topbar .tools { display: flex; align-items: center; gap: 10px; }
+@media (max-width: 700px) {
+  .nav { order: 3; width: 100%; overflow-x: auto; gap: 2px; padding-bottom: 8px; }
+  .nav a { white-space: nowrap; }
+}
+
 /* ---------- Project page (mirrors redesign-and-blend/project.html's outline) ---------- */
 .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; padding: 8px 0 24px; }
 .grid3 { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }

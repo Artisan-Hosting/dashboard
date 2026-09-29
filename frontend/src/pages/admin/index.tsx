@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Sidebar } from '@/components/header';
+import { TopBar } from '@/components/topbar';
 import { RequireAdmin, isSuperRole } from '@/components/requireAdmin';
 import { PolicyMatrix } from '@/components/admin/PolicyMatrix';
 import { fetchWithAuth, postWithAuth } from '@/lib/api';
@@ -258,9 +258,9 @@ export default function AdminPage() {
 
   return (
     <RequireAdmin>
-      <div className="min-h-screen flex bg-page text-foreground">
-        <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
+      <div className="min-h-screen bg-page text-foreground">
+        <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6">
           <h1 className="text-3xl font-bold text-brand mb-2">Admin</h1>
           <p className="text-sm text-gray-400">
             Signed in as <span className="font-semibold">{role}</span>
