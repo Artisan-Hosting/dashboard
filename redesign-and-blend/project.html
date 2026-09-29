@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sample-shop | Artisan console (mock)</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('ah-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}</script>
+<link rel="stylesheet" href="console.css">
+</head>
+<body data-page="project">
+<main id="main" class="wrap">
+
+  <div class="page-head">
+    <div>
+      <h1>sample-shop</h1>
+      <p>A project is the thing you deploy: one app, running as one or more instances. Everything about it lives on this page.</p>
+    </div>
+    <div class="seg" id="env" role="radiogroup" aria-label="Environment">
+      <button type="button" role="radio" aria-checked="true" data-v="production">Production</button>
+      <button type="button" role="radio" aria-checked="false" data-v="staging">Staging</button>
+    </div>
+  </div>
+
+  <div class="grid3">
+    <div id="shop"></div>
+
+    <section class="panel" aria-labelledby="u-h">
+      <header id="u-h">Usage, last 30 days</header>
+      <div class="panel-body">
+        <div class="meter" role="img" aria-label="Memory, average: 1.4 GB. Included: 2 GB.">
+          <div class="meter-top"><span>Memory, average</span><span class="v">1.4 GB</span></div>
+          <div class="meter-bar"><i style="width:35%"></i><b style="left:50%"></b></div>
+          <div class="meter-cap">Within the 2 GB included. Peak was 2.1 GB.</div>
+        </div>
+        <div class="meter" role="img" aria-label="Processor, average: 0.6 vCPU. Included: 2 vCPU.">
+          <div class="meter-top"><span>Processor, average</span><span class="v">0.6 vCPU</span></div>
+          <div class="meter-bar"><i style="width:15%"></i><b style="left:50%"></b></div>
+          <div class="meter-cap">Within the 2 vCPU included.</div>
+        </div>
+        <div class="meter" role="img" aria-label="Traffic: 6.2 GB. Included: 10 GB.">
+          <div class="meter-top"><span>Traffic</span><span class="v">6.2 GB</span></div>
+          <div class="meter-bar"><i style="width:31%"></i><b style="left:50%"></b></div>
+          <div class="meter-cap">Within the 10 GB included.</div>
+        </div>
+        <a href="usage.html">How this is worked out</a>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="d-h">
+      <header id="d-h">Domains</header>
+      <div class="panel-body">
+        <div><span class="pill" data-s="live">Live</span> <span class="mono">shop.example.com</span></div>
+        <p class="muted">Certificate renews in 41 days.</p>
+        <div class="knob-head"><span class="knob-label" id="renew-l">Renew automatically</span><button type="button" class="switch" id="renew" role="switch" aria-checked="true" aria-labelledby="renew-l"></button></div>
+        <p id="renew-note" class="muted" aria-live="polite">Renews automatically before it expires.</p>
+        <a href="services.html?s=domains">Set up another domain</a>
+      </div>
+    </section>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Project details">
+    <button type="button" role="tab" data-p="config" aria-selected="true">Config</button>
+    <button type="button" role="tab" data-p="secrets" aria-selected="false">Secrets</button>
+    <button type="button" role="tab" data-p="logs" aria-selected="false">Logs</button>
+    <button type="button" role="tab" data-p="source" aria-selected="false">Source</button>
+  </div>
+
+  <section class="tabpanel" id="p-config" role="tabpanel">
+    <p class="help">The settings your app starts with. Every instance gets the same file, and saving checks that they all agree first.</p>
+    <div class="row">
+      <label for="cfg-file" class="knob-label">Settings file</label>
+      <select id="cfg-file" class="field field-sans" style="width:auto"><option>config</option><option>overrides</option></select>
+    </div>
+    <textarea id="cfg-text" class="code" spellcheck="false" aria-label="Settings file contents"></textarea>
+    <div class="row"><button class="btn btn-primary" type="button" id="cfg-save">Save to all instances&hellip;</button></div>
+  </section>
+
+  <section class="tabpanel" id="p-secrets" role="tabpanel" hidden>
+    <p class="help">Secrets are stored encrypted, for one project in one environment. Values are never shown here.</p>
+    <div class="row"><label for="sec-env" class="knob-label">Environment</label>
+      <select id="sec-env" class="field field-sans" style="width:auto"><option value="production">production</option><option value="staging">staging</option><option value="dev">dev</option></select></div>
+    <ul class="secrets" id="sec-list"></ul>
+    <form id="sec-add" class="row" novalidate>
+      <input class="field" id="sec-key" type="text" placeholder="NAME" aria-label="Secret name" style="width:200px" autocomplete="off">
+      <input class="field" id="sec-val" type="password" placeholder="value" aria-label="Secret value" style="width:220px" autocomplete="new-password">
+      <button class="btn btn-primary" type="submit">Add secret</button>
+    </form>
+    <p id="sec-msg" class="muted" aria-live="polite"></p>
+  </section>
+
+  <section class="tabpanel" id="p-logs" role="tabpanel" hidden>
+    <p class="help">The newest lines are at the bottom. Restart an instance above, then come back to watch it happen.</p>
+    <div class="term tall" id="logs" role="log" aria-live="off" tabindex="0" aria-label="Project log"></div>
+    <div class="row"><button class="btn btn-ghost" type="button" id="more-logs">Load 20 earlier lines</button></div>
+  </section>
+
+  <section class="tabpanel" id="p-source" role="tabpanel" hidden>
+    <p class="help">Where the code comes from, and how to refer to this project from other tools.</p>
+    <dl class="kv">
+      <dt>Repository</dt><dd>acme/shop on GitHub</dd>
+      <dt>Branch</dt><dd>main</dd>
+      <dt>Last deploy</dt><dd>a1c9f04, 2 hours ago</dd>
+      <dt>Project ID</dt><dd>63eff31e</dd>
+      <dt>Reference</dt><dd>urn:artisan:project:63eff31e <button class="btn btn-ghost btn-sm" type="button" id="copy-urn" style="margin-left:8px">Copy</button></dd>
+    </dl>
+    <div class="row"><button class="btn btn-primary" type="button" id="deploy-latest">Deploy the latest commit&hellip;</button></div>
+  </section>
+
+</main>
+<script src="console.js"></script>
+<script src="pages.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usage | Artisan console (mock)</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('ah-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}</script>
+<link rel="stylesheet" href="console.css">
+</head>
+<body data-page="usage">
+<main id="main" class="wrap">
+
+  <div class="page-head">
+    <div>
+      <h1>How usage is billed</h1>
+      <p>A small base per environment, then only what you use above it. Move the knobs to see how a busy week changes the month. Prices are on <a href="https://artisanhosting.net/run/pricing.html">the pricing page</a>.</p>
+    </div>
+  </div>
+
+  <div class="usage">
+    <div>
+      <div class="knobs" id="u-knobs"></div>
+      <details class="advanced"><summary>Advanced <span>(2). Processor and traffic.</span></summary><div class="knobs" id="u-adv"></div></details>
+    </div>
+    <div>
+      <p class="verdict" id="u-verdict" aria-live="polite"></p>
+      <div id="u-chart" style="margin-top:20px"></div>
+      <div class="gauges" id="u-gauges"></div>
+    </div>
+  </div>
+
+  <h2 style="margin:16px 0 16px">How the bill is worked out</h2>
+  <ol class="ledger-steps">
+    <li><div><h3>We record it every day</h3><p>Memory, processor and traffic, for each of your projects.</p></div></li>
+    <li><div><h3>We average the month</h3><p>A busy hour or a single bad day barely moves an average.</p></div></li>
+    <li><div><h3>You pay for what is above your plan</h3><p>Anything at or below what your plan includes costs nothing extra.</p></div></li>
+  </ol>
+  <p class="leave" style="margin-bottom:72px">What does it cost to leave? Nothing.<span>You own your domain, your code and your content.</span></p>
+
+</main>
+<script src="console.js"></script>
+<script src="pages.js"></script>
+</body>
+</html>

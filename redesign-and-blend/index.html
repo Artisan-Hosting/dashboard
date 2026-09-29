@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview | Artisan console (mock)</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('ah-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}</script>
+<link rel="stylesheet" href="console.css">
+</head>
+<body data-page="overview">
+<main id="main" class="wrap">
+
+  <section class="hero" aria-labelledby="h">
+    <div>
+      <h1 id="h">Your app, running somewhere we look after.</h1>
+      <p class="lede">This is the console, with sample data so you can try it. Restart the project on the right. Then look through the services and see what you can change, and what each change does.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="services.html">Explore the services</a>
+        <a class="btn btn-ghost" href="login.html">Sign in</a>
+      </div>
+    </div>
+    <div id="shop"></div>
+  </section>
+
+  <section class="section" aria-labelledby="what">
+    <h2 id="what">What do you want to do?</h2>
+    <div class="ledger">
+      <a href="services.html?s=hosting">
+        <h3>Run an app or website</h3>
+        <p>Put a project online on machines we monitor. Deploy it from git, and change its size when it needs more.</p>
+        <p class="tweaks">You can change: instances, environments, memory, processor, deploy branch, git source</p>
+      </a>
+      <a href="services.html?s=domains">
+        <h3>Own a domain</h3>
+        <p>Register one, or bring your own. We do the DNS and the certificate.</p>
+        <p class="tweaks">You can change: register or bring, which project it points at, auto-renew, who manages DNS</p>
+      </a>
+      <a href="services.html?s=email">
+        <h3>Get email</h3>
+        <p>Mailboxes on your own domain, with webmail and storage that we watch for you.</p>
+        <p class="tweaks">You can change: mailboxes, storage each, warning level, DNS records</p>
+      </a>
+      <a href="services.html?s=oss">
+        <h3>Run open-source software</h3>
+        <p>Ghost, Plausible, Uptime Kuma, Shlink and PostHog, installed and kept up to date.</p>
+        <p class="tweaks">You can change: the app, a staging copy, its address, single sign-on, outgoing email</p>
+      </a>
+      <a href="services.html?s=compute">
+        <h3>Rent a machine or a GPU</h3>
+        <p>A full virtual machine, or a GPU for as long as you need one.</p>
+        <p class="tweaks">You can change: power state, GPU memory, model, idle timeout</p>
+      </a>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="how">
+    <h2 id="how" class="visually-hidden">How this console works</h2>
+    <div class="trio">
+      <div><h3>The data is made up</h3><p>Everything you see here is a sample. Nothing you change is saved or sent anywhere.</p></div>
+      <div><h3>Apply shows its work</h3><p>Before anything changes you get a list of exactly what would happen. Signed out, it stops there.</p></div>
+      <div><h3>Signing in swaps the data</h3><p>The screens stay the same. Your own projects, domains and usage replace the samples.</p></div>
+    </div>
+    <p class="leave">What does it cost to leave? Nothing.<span>You own your domain, your code and your content. <a href="usage.html">See how billing works</a>.</span></p>
+  </section>
+
+</main>
+<script src="console.js"></script>
+<script src="pages.js"></script>
+</body>
+</html>
