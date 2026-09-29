@@ -12,17 +12,14 @@ import {
   fetchDomains,
 } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
-import { DomainEntry, FullInstance, ProjectDetails, UsageSummary, LogEntry, MultiNodeConfigResponse, NodeConfigEntry, WatchdogConfigKind } from '@/lib/types';
+import { FullInstance, ProjectDetails, UsageSummary, BillingCosts, LogEntry, MultiNodeConfigResponse, NodeConfigEntry, WatchdogConfigKind } from '@/lib/types';
 import { resolveRunnerLabel } from '@/lib/repoLabel';
 import { formatExpiry } from '@/lib/format';
 import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
 import { Menu } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
-import { Button, Meter, Panel, Pill, SelectField, TabPanel, Tabs, Term } from '@/components/ui';
-import { SecretsManager } from '@/components/SecretsManager';
-import { TopBar } from '@/components/topbar';
-import Link from 'next/link';
+import { Button, Pill, SelectField, Term } from '@/components/ui';
 
 function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -321,37 +318,31 @@ export default function ProjectPage() {
 
       <main className="overflow-y-auto p-4 sm:p-6 lg:p-8">
         {!loading && (
-          <>
-            <div className="page-head">
-              <div>
-                <h1 className="text-3xl font-bold text-brand">{runnerLabel || projectId}</h1>
-                <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
-                  {instances.length} instance{instances.length === 1 ? '' : 's'}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid3">
-              {/* Instances */}
-              <Panel
-                title={
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span>Instances</span>
-                    <div className="flex gap-2">
-                      <Button small variant="ghost" disabled={bulkBusy} onClick={() => handleBulkCommand('start')}>Start all</Button>
-                      <Button small variant="ghost" disabled={bulkBusy} onClick={() => handleBulkCommand('restart')}>Restart all</Button>
-                      <Button small variant="danger" disabled={bulkBusy} onClick={() => handleBulkCommand('stop')}>Stop all</Button>
-                    </div>
-                  </div>
-                }
-              >
-                {instances.map(({ details }) => (
-                  <div key={details.id} className="flex items-center justify-between gap-2 py-2" style={{ borderBottom: '1px solid var(--line)' }}>
-                    <div className="min-w-0">
-                      <p className="text-xs truncate" style={{ fontFamily: 'var(--font-mono)', color: 'var(--strong)' }} title={String(details.id)}>
-                        {String(details.id).slice(-8)}
+          <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {instances.map(({ details, usage }) => {
+              const costs = instanceCosts[details.id];
+              const instanceLogs = logs[details.id] || [];
+              return (
+                <div
+                  key={details.id}
+                  className="card p-4"
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <div>
+                      <h2 className="text-xl font-semibold text-brand text-pretty">
+                        {runnerLabel || projectId}
+                      </h2>
+                      <p className="text-xs text-gray-500 truncate" title={String(details.id)}>
+                        Instance {String(details.id).slice(-8)}
                       </p>
-                      <Pill status={details.status} />
+                      <div className="mt-1">
+                        <Pill status={details.status} />
+                      </div>
+                    </div>
+                    <div className="hidden sm:flex gap-2">
+                      <Button small variant="ghost" onClick={() => handleCommand(details.id, 'start')}>Start</Button>
+                      <Button small variant="danger" onClick={() => handleCommand(details.id, 'stop')}>Stop</Button>
+                      <Button small variant="ghost" onClick={() => handleCommand(details.id, 'restart')}>Restart</Button>
                     </div>
                     <div className="hidden sm:flex gap-2 shrink-0">
                       <Button small variant="ghost" onClick={() => handleCommand(details.id, 'start')}>Start</Button>
@@ -364,9 +355,9 @@ export default function ProjectPage() {
                       </button>
                       {openMenu === details.id && (
                         <div className="absolute right-0 mt-2 p-2 rounded shadow-lg space-y-1 z-20 panel">
-                          <button onClick={() => { handleCommand(details.id, 'start'); setOpenMenu(null); }} className="block w-full text-left px-2 py-1 rounded hover:bg-[color:var(--surface-2)] text-sm">Start</button>
-                          <button onClick={() => { handleCommand(details.id, 'stop'); setOpenMenu(null); }} className="block w-full text-left px-2 py-1 rounded hover:bg-[color:var(--surface-2)] text-sm">Stop</button>
-                          <button onClick={() => { handleCommand(details.id, 'restart'); setOpenMenu(null); }} className="block w-full text-left px-2 py-1 rounded hover:bg-[color:var(--surface-2)] text-sm">Restart</button>
+                          <button onClick={() => {handleCommand(details.id, 'start'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-[color:var(--surface-2)] text-sm">Start</button>
+                          <button onClick={() => {handleCommand(details.id, 'stop'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-[color:var(--surface-2)] text-sm">Stop</button>
+                          <button onClick={() => {handleCommand(details.id, 'restart'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-[color:var(--surface-2)] text-sm">Restart</button>
                         </div>
                       )}
                     </div>
@@ -377,34 +368,7 @@ export default function ProjectPage() {
                 )}
               </Panel>
 
-              {/* Usage */}
-              <Panel title="Usage, last 30 days">
-                {groupUsage ? (
-                  <>
-                    <Meter
-                      label="Memory, average"
-                      value={groupUsage.avg_memory}
-                      valueLabel={`${groupUsage.avg_memory.toFixed(1)} MB`}
-                      included={groupUsage.peak_memory}
-                      includedLabel={`${groupUsage.peak_memory.toFixed(1)} MB`}
-                      capNote={`Peak was ${groupUsage.peak_memory.toFixed(1)} MB.`}
-                    />
-                    <Meter
-                      label="CPU, average"
-                      value={groupUsage.total_cpu}
-                      valueLabel={`${groupUsage.total_cpu.toFixed(2)} hrs`}
-                      included={groupUsage.peak_cpu}
-                      includedLabel={`${groupUsage.peak_cpu.toFixed(2)} hrs`}
-                      capNote={`Peak was ${groupUsage.peak_cpu.toFixed(2)} hrs.`}
-                    />
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                      TX {formatBytes(groupUsage.total_tx)} -- RX {formatBytes(groupUsage.total_rx)}
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-sm" style={{ color: 'var(--muted)' }}>No usage data yet.</p>
-                )}
-              </Panel>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 text-sm" style={{ color: 'var(--text)' }}>
 
               {/* Domains */}
               <Panel title="Domains">
@@ -442,31 +406,14 @@ export default function ProjectPage() {
                     </Button>
                   </div>
 
-                  {configData && !configData.all_match && (
-                    <div className="mb-3 p-3 rounded text-sm" style={{ border: '1px solid var(--warn)', background: 'color-mix(in srgb, var(--warn) 10%, transparent)' }}>
-                      <p className="font-semibold mb-2" style={{ color: 'var(--warn)' }}>
-                        Configs differ across nodes — pick a version below before saving.
-                      </p>
-                      <div className="space-y-2">
-                        {configData.nodes.map((node) => (
-                          <div key={node.node_id} className="flex flex-wrap items-center justify-between gap-2 pb-2" style={{ borderBottom: '1px solid var(--line)' }}>
-                            <div style={{ color: 'var(--text)' }}>
-                              <span className="font-medium" style={{ color: 'var(--strong)' }}>{node.hostname}</span>{' '}
-                              {node.found ? (
-                                <span className="text-xs" style={{ color: 'var(--muted)' }}>({(node.content ?? '').length} bytes)</span>
-                              ) : (
-                                <span className="text-xs" style={{ color: 'var(--bad)' }}>{node.error ?? 'unavailable'}</span>
-                              )}
-                            </div>
-                            {node.found && (
-                              <Button small variant="ghost" onClick={() => useNodeVersion(node)}>
-                                Use this version
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+
+                  {instanceLogs.length > 0 && (
+                    <details className="mt-4">
+                      <summary className="cursor-pointer font-semibold text-sm mb-2 text-brand">
+                        Recent Logs
+                      </summary>
+                      <Term lines={instanceLogs.map((log) => `[${log.timestamp}] ${log.message}`)} />
+                    </details>
                   )}
 
                   {configData && configData.nodes.length === 0 && (
@@ -481,9 +428,37 @@ export default function ProjectPage() {
                     placeholder="Load a config to edit it"
                   />
                   <div className="mt-3">
-                    <Button small onClick={saveAppConfig} disabled={configSaving || !configData || configData.nodes.every((n) => !n.found)}>
-                      {configSaving ? 'Saving…' : 'Save to all instances'}
+                    <Button
+                      small
+                      variant="ghost"
+                      onClick={() => loadHistoricalLogs(details.id)}
+                      disabled={!!historicalLoading[details.id]}
+                    >
+                      {historicalLoading[details.id] ? 'Loading…' : `Load last ${HISTORICAL_LOG_LINES} lines`}
                     </Button>
+
+                    {historicalLogs[details.id] && (
+                      <details className="mt-2" open>
+                        <summary className="cursor-pointer font-semibold text-sm mb-2 text-brand flex items-center justify-between">
+                          <span>Historical Logs ({historicalLogs[details.id].length} lines)</span>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setHistoricalLogs((prev) => {
+                                const next = { ...prev };
+                                delete next[details.id];
+                                return next;
+                              });
+                            }}
+                            className="text-xs ml-2 hover:underline"
+                            style={{ color: 'var(--muted)' }}
+                          >
+                            Close
+                          </button>
+                        </summary>
+                        <Term tall lines={historicalLogs[details.id].map((log) => `[${log.timestamp}] ${log.message}`)} />
+                      </details>
+                    )}
                   </div>
                 </TabPanel>
 
@@ -491,18 +466,43 @@ export default function ProjectPage() {
                   {projectId && <SecretsManager projectId={projectId} />}
                 </TabPanel>
 
-                <TabPanel tabKey="logs" active={activeTab}>
-                  {instances.map(({ details }) => {
-                    const instanceLogs = logs[details.id] || [];
-                    return (
-                      <div key={details.id} className="mb-8">
-                        <h3 className="font-semibold text-sm mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--strong)' }}>
-                          {String(details.id).slice(-8)}
-                        </h3>
-                        {instanceLogs.length > 0 ? (
-                          <Term lines={instanceLogs.map((log) => `[${log.timestamp}] ${log.message}`)} />
+        {!loading && (
+          <div className="mt-10 card p-6">
+            <h2 className="text-xl font-bold mb-4 text-brand">Application Config</h2>
+            <p className="text-sm text-gray-400 mb-3">
+              Reads and writes the watchdog config for every instance of this app at once.
+            </p>
+            <div className="flex flex-wrap gap-2 mb-3 items-center">
+              <SelectField
+                value={configKind}
+                onChange={(e) => setConfigKind(e.target.value as WatchdogConfigKind)}
+                style={{ width: 'auto' }}
+              >
+                <option value="config">config</option>
+                <option value="overrides">overrides</option>
+              </SelectField>
+              <Button small onClick={loadAppConfig} disabled={configLoading}>
+                {configLoading ? 'Loading…' : 'Load Config'}
+              </Button>
+            </div>
+
+            {configData && !configData.all_match && (
+              <div
+                className="mb-3 p-3 rounded text-sm"
+                style={{ border: '1px solid var(--warn)', background: 'color-mix(in srgb, var(--warn) 10%, transparent)' }}
+              >
+                <p className="font-semibold mb-2" style={{ color: 'var(--warn)' }}>
+                  Configs differ across nodes — pick a version below before saving.
+                </p>
+                <div className="space-y-2">
+                  {configData.nodes.map((node) => (
+                    <div key={node.node_id} className="flex flex-wrap items-center justify-between gap-2 pb-2" style={{ borderBottom: '1px solid var(--line)' }}>
+                      <div style={{ color: 'var(--text)' }}>
+                        <span className="font-medium" style={{ color: 'var(--strong)' }}>{node.hostname}</span>{' '}
+                        {node.found ? (
+                          <span className="text-xs" style={{ color: 'var(--muted)' }}>({(node.content ?? '').length} bytes)</span>
                         ) : (
-                          <p className="text-sm" style={{ color: 'var(--muted)' }}>No recent logs.</p>
+                          <span className="text-xs" style={{ color: 'var(--bad)' }}>{node.error ?? 'unavailable'}</span>
                         )}
                         <div className="mt-2">
                           <Button small variant="ghost" onClick={() => loadHistoricalLogs(details.id)} disabled={!!historicalLoading[details.id]}>
@@ -528,38 +528,62 @@ export default function ProjectPage() {
                           )}
                         </div>
                       </div>
-                    );
-                  })}
-                  {instances.length === 0 && (
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>No instances to show logs for.</p>
-                  )}
-                </TabPanel>
+                      {node.found && (
+                        <Button small variant="ghost" onClick={() => useNodeVersion(node)}>
+                          Use this version
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-                <TabPanel tabKey="source" active={activeTab}>
-                  <dl className="kv">
-                    <dt>Repository</dt>
-                    <dd>{gitInfo ? `${gitInfo.user}/${gitInfo.repo}` : 'unavailable'}</dd>
-                    <dt>Branch</dt>
-                    <dd>{gitInfo?.branch ?? 'unavailable'}</dd>
-                    <dt>Project ID</dt>
-                    <dd>{projectId}</dd>
-                    <dt>Reference</dt>
-                    <dd>
-                      urn:artisan:project:{projectId}{' '}
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        type="button"
-                        style={{ marginLeft: 8 }}
-                        onClick={() => navigator.clipboard?.writeText(`urn:artisan:project:${projectId}`)}
-                      >
-                        Copy
-                      </button>
-                    </dd>
-                  </dl>
-                </TabPanel>
-              </Tabs>
+            {configData && configData.nodes.length === 0 && (
+              <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>No nodes are currently running this app.</p>
+            )}
+
+            <textarea
+              value={configContent}
+              onChange={(e) => setConfigContent(e.target.value)}
+              rows={14}
+              className="code"
+              placeholder="Load a config to edit it"
+            />
+            <div className="mt-3">
+              <Button
+                small
+                onClick={saveAppConfig}
+                disabled={configSaving || !configData || configData.nodes.every((n) => !n.found)}
+              >
+                {configSaving ? 'Saving…' : 'Save to all instances'}
+              </Button>
             </div>
-          </>
+          </div>
+        )}
+
+        {groupUsage && !loading && groupCosts && (
+          <div className="mt-10 card p-6">
+            <h2 className="text-xl font-bold mb-4 text-brand">
+              Overall Usage & Billing
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-1" style={{ color: 'var(--text)' }}>
+                <p>Total CPU Time: {groupUsage.total_cpu.toFixed(2)} hrs</p>
+                <p>Avg Memory:       {groupUsage.avg_memory.toFixed(2)} MB</p>
+                <p>Total Instances:  {instances.length}</p>
+                <p>Samples:          {groupUsage.total_samples}</p>
+              </div>
+              <div className="space-y-1" style={{ color: 'var(--text)' }}>
+                <p>CPU Cost:      ${groupCosts.cpu_cost.toFixed(2)}</p>
+                <p>RAM Cost:      ${groupCosts.ram_cost.toFixed(2)}</p>
+                <p>Bandwidth:     ${groupCosts.bandwidth_cost.toFixed(2)}</p>
+                <p className="font-semibold" style={{ color: 'var(--strong)' }}>
+                  Total Cost:    ${groupCosts.total_cost.toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </div>
         )}
       </main>
       {loading && <LoadingOverlay />}

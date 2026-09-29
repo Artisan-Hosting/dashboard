@@ -22,8 +22,8 @@ import {
   WatchdogConfigKind,
   ProjectSummary,
 } from '@/lib/types';
-import { resolveRunnerLabel, systemAppLabel } from '@/lib/repoLabel';
-import { Button, Pill, SelectField } from '@/components/ui';
+import { resolveRunnerLabel } from '@/lib/repoLabel';
+import { Button, SelectField } from '@/components/ui';
 
 function serverToDisplay(server: GitServer): string {
   return typeof server === 'string' ? server : `Custom (${server.Custom})`;
@@ -214,21 +214,9 @@ function NodeDetailPage() {
                 <p className="text-sm mt-1 break-words" style={{ color: 'var(--muted)' }}>
                   ID {node.identity.id} · {node.status} · Uptime {node.manager_data.uptime}s
                 </p>
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <span className="text-sm" style={{ color: 'var(--muted)' }}>
-                    System apps: {node.manager_data.system_apps} · Client apps: {node.manager_data.client_apps}
-                  </span>
-                  <Pill
-                    status={node.manager_data.warning > 0 ? 'error' : 'active'}
-                    label={node.manager_data.warning > 0 ? 'Security trip detected' : 'No security trips'}
-                  />
-                </div>
-                {node.manager_data.warning > 0 && (
-                  <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-                    Sticky since the manager process last started -- stays flagged even after the
-                    underlying issue clears, until manager restarts.
-                  </p>
-                )}
+                <p className="text-sm break-words" style={{ color: 'var(--muted)' }}>
+                  System apps: {node.manager_data.system_apps} · Client apps: {node.manager_data.client_apps} · Warnings: {node.manager_data.warning}
+                </p>
               </div>
               {isSuper && (
                 <Button onClick={handleReload} disabled={reloading} className="shrink-0">

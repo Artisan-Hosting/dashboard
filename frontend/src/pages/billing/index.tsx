@@ -15,7 +15,7 @@ import LoadingOverlay from '@/components/loading';
 import { useUser } from '@/hooks/useUser';
 import { useElevatedSession } from '@/hooks/useElevatedSession';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
-import { Button, Field, Panel, Pill, Seg, SelectField } from '@/components/ui';
+import { Button } from '@/components/ui';
 
 function formatCents(cents: number, currency = 'usd'): string {
   return (cents / 100).toLocaleString(undefined, {
@@ -159,68 +159,29 @@ export default function BillingPage() {
         </div>
 
         {!loading && (
-          <div className="grid3">
-            <Panel title="Subscription">
-              {subscription ? (
-                <dl className="kv">
-                  <dt>Plan</dt>
-                  <dd>{currentPlan?.name ?? subscription.plan_code}</dd>
-                  <dt>Status</dt>
-                  <dd><Pill status={subscription.status} /></dd>
-                  <dt>Current period</dt>
-                  <dd>{formatDate(subscription.current_period_start)} -- {formatDate(subscription.current_period_end)}</dd>
-                  {subscription.pending_plan_code && (
-                    <>
-                      <dt>Pending change</dt>
-                      <dd>Switching to {findPlan(storefront, subscription.pending_plan_code)?.name ?? subscription.pending_plan_code} at period end</dd>
-                    </>
-                  )}
-                  {subscription.cancel_at_period_end && (
-                    <>
-                      <dt>Cancellation</dt>
-                      <dd style={{ color: 'var(--warn)' }}>Cancels at period end</dd>
-                    </>
-                  )}
-                </dl>
-              ) : (
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                  No active {STOREFRONTS.find((s) => s.key === storefront)?.label} subscription.
-                </p>
-              )}
-              {subscription && !subscription.cancel_at_period_end && (
-                <Button small variant="danger" className="mt-4" disabled={busy} onClick={handleCancel}>
-                  Cancel subscription
-                </Button>
-              )}
-            </Panel>
-
-            <Panel title="Change plan">
-              <div className="space-y-3">
-                <SelectField value={selectedPlan} onChange={(e) => setSelectedPlan(e.target.value)}>
-                  <option value="">Choose a plan...</option>
-                  {plans.map((p) => (
-                    <option key={p.code} value={p.code} disabled={p.code === subscription?.plan_code}>
-                      {p.name} -- {formatCents(p.priceCents)}/mo
-                    </option>
-                  ))}
-                </SelectField>
-                {targetPlan && (
-                  <div className="flex gap-2">
-                    {isDowngrade ? (
-                      <Button small disabled={busy} onClick={handleDowngrade}>
-                        {busy ? 'Working...' : `Schedule downgrade to ${targetPlan.name}`}
-                      </Button>
-                    ) : (
-                      <Button small disabled={busy || !elevated.isElevated} onClick={handleUpgrade}>
-                        {busy ? 'Working...' : subscription ? `Upgrade to ${targetPlan.name}` : `Subscribe to ${targetPlan.name}`}
-                      </Button>
-                    )}
-                  </div>
-                )}
-                <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                  Upgrades charge the card immediately (prorated) and need an unlocked elevated session.
-                  Downgrades take effect at the end of the current period and charge nothing now.
-                </p>
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {blocks.map((block) => (
+              <div key={block.name} className="card p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold text-brand">{block.name}</h2>
+                  <Button
+                    small
+                    onClick={() =>
+                      router.push({
+                        pathname: `/billing/${block.name}`,
+                        query: { instances: block.instanceIds.join(',') },
+                      })
+                    }
+                  >
+                    View Daily Breakdown
+                  </Button>
+                </div>
+                <ul className="text-sm space-y-1" style={{ color: 'var(--muted)' }}>
+                  <li>RAM Usage: ${block.costs?.ram_cost?.toFixed(2) ?? 'N/A'}</li>
+                  <li>CPU Usage: ${block.costs?.cpu_cost?.toFixed(2) ?? 'N/A'}</li>
+                  <li>Bandwidth: ${block.costs?.bandwidth_cost?.toFixed(2) ?? 'N/A'}</li>
+                  <li className="font-medium mt-2" style={{ color: 'var(--strong)' }}>Total: ${block.costs?.total_cost?.toFixed(2) ?? 'N/A'}</li>
+                </ul>
               </div>
             </Panel>
 
