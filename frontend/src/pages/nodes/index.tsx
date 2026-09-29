@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { fetchNodes } from '@/lib/api';
 import { NodeInfo } from '@/lib/types';
-import { Sidebar } from '@/components/header';
+import { TopBar } from '@/components/topbar';
 import LoadingOverlay from '@/components/loading';
 import { RequireSuper } from '@/components/requireAdmin';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';

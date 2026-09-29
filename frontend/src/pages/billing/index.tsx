@@ -1,15 +1,8 @@
 // src/pages/billing/index.tsx
-import { useEffect, useState, useCallback } from 'react';
-import { toast, Toaster } from 'react-hot-toast';
-import {
-  fetchSubscription,
-  fetchInvoices,
-  upgradeSubscription,
-  scheduleDowngrade,
-  cancelSubscription,
-} from '@/lib/api';
-import { SubscriptionSummary, InvoiceSummary } from '@/lib/types';
-import { PLAN_CATALOG, STOREFRONTS, Storefront, findPlan } from '@/lib/plans';
+import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
+import { fetchBilling, fetchWithAuth, postWithAuth } from '@/lib/api';
+import { UsageSummary, BillingCosts, ProjectSummary } from '@/lib/types';
 import { TopBar } from '@/components/topbar';
 import LoadingOverlay from '@/components/loading';
 import { useUser } from '@/hooks/useUser';
@@ -117,47 +110,10 @@ export default function BillingPage() {
 
   return (
     <div className="relative min-h-screen bg-page text-foreground">
-      <Toaster position="bottom-right" />
       <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
-      <main className="p-4 sm:p-6 lg:p-8 space-y-6">
-        <div className="page-head">
-          <div>
-            <h1 className="text-3xl font-bold text-brand">Billing</h1>
-            <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
-              Subscription and invoices, by product line.
-            </p>
-          </div>
-          <Seg value={storefront} onChange={(v) => setStorefront(v)} label="Storefront" options={STOREFRONTS.map((s) => ({ value: s.key, label: s.label }))} />
-        </div>
-
-        {/* Step-up auth -- only an upgrade (charges now) needs this;
-            downgrade/cancel take effect at period end and charge nothing. */}
-        <div className="card p-6 space-y-3">
-          <h2 className="font-semibold text-brand">Elevated session</h2>
-          {elevated.isElevated ? (
-            <p className="text-sm" style={{ color: 'var(--ok)' }}>
-              Unlocked -- expires in {elevated.secondsLeft}s.
-            </p>
-          ) : (
-            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-              <Field
-                sans
-                type="password"
-                placeholder="Re-enter your password to unlock upgrades"
-                value={elevated.password}
-                onChange={(e) => elevated.setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && elevated.elevate()}
-                className="w-full sm:w-96"
-              />
-              <Button onClick={elevated.elevate} disabled={elevated.busy || !elevated.password}>
-                {elevated.busy ? 'Checking...' : 'Unlock'}
-              </Button>
-            </div>
-          )}
-          {elevated.error && <p className="text-sm text-red-500">{elevated.error}</p>}
-        </div>
-
+      <main className="p-4 sm:p-6 lg:p-8">
+        <h1 className="text-3xl font-bold text-brand mb-6">Billing Summary</h1>
         {!loading && (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {blocks.map((block) => (

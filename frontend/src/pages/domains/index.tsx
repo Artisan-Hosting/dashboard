@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
-import { Sidebar } from '@/components/header';
+import { TopBar } from '@/components/topbar';
 import { isSuperRole } from '@/components/requireAdmin';
 import LoadingOverlay from '@/components/loading';
 import { useUser } from '@/hooks/useUser';
@@ -339,10 +339,10 @@ export default function DomainsPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex bg-page text-foreground">
+    <div className="relative min-h-screen bg-page text-foreground">
       <Toaster position="bottom-right" />
-      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
+      <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+      <main className="p-4 sm:p-6 lg:p-8 space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h1 className="text-3xl font-bold text-brand">Domains</h1>
           <p className="text-sm" style={{ color: 'var(--muted)' }}>

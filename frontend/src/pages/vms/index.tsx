@@ -1,4 +1,4 @@
-import { Sidebar } from '@/components/header';
+import { TopBar } from '@/components/topbar';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { Panel } from '@/components/ui';
 
@@ -10,8 +10,8 @@ import { Panel } from '@/components/ui';
 // real listing once Portal actually routes /vms/*.
 export default function VmListPage() {
   return (
-    <div className="relative min-h-screen flex bg-page text-foreground">
-      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+    <div className="relative min-h-screen bg-page text-foreground">
+      <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
       <main className="p-4 sm:p-6 lg:p-8">
         <h2 className="text-2xl font-semibold mb-6 text-brand">

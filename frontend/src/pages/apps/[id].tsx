@@ -21,6 +21,7 @@ import { Menu } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import { Button, Meter, Panel, Pill, SelectField, TabPanel, Tabs, Term } from '@/components/ui';
 import { SecretsManager } from '@/components/SecretsManager';
+import { TopBar } from '@/components/topbar';
 import Link from 'next/link';
 
 function formatBytes(bytes: number): string {
@@ -316,9 +317,9 @@ export default function ProjectPage() {
   return (
     <div className="relative min-h-screen bg-page text-foreground">
       <Toaster position="bottom-right" />
-      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+      <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+      <main className="overflow-y-auto p-4 sm:p-6 lg:p-8">
         {!loading && (
           <>
             <div className="page-head">
