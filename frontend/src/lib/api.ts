@@ -134,6 +134,34 @@ export async function deleteWithAuth(endpoint: string, body?: any) {
 }
 
 
+export async function fetchBilling(
+  usage: UsageSummary
+): Promise<BillingCosts> {
+  const res = await fetch(
+    `${API_URL}/proxy/billing/calculate?instances=${usage.instances}`,
+    {
+      method: "POST",
+      credentials: "include", // ← send the cookie
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(usage),
+    }
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API Error: ${res.status} ${text}`);
+  }
+
+  const resp = await res.json();
+  if (resp.errors?.length) {
+    throw new Error(resp.errors.map((e: any) => e.message).join("; "));
+  }
+
+  return resp.data as BillingCosts;
+}
+
 // ======= Projects =======
 
 export async function fetchProjects(): Promise<ProjectSummary[]> {
