@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Tailwind v4 defaults `dark:` to `@media (prefers-color-scheme: dark)`, but
+   this app's dark mode is a stored user choice (see the pre-paint script in
+   _document.tsx and ThemeToggle), reflected as `data-theme="dark"` on <html>.
+   Without this, every `dark:` utility class in the codebase would silently
+   track the OS setting instead of the toggle -- rebinding it here is what
+   makes them agree. (tailwind.config.ts's `darkMode` setting has no effect
+   under v4 unless referenced via `@config`, which this project doesn't do;
+   this @custom-variant is the actual switch.) */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* ==========================================================================
    Fonts — self-hosted woff2 subsets, pulled from artisanhosting.net so the
    dashboard renders in the same type system as the marketing site.
@@ -88,7 +98,9 @@
    ========================================================================== */
 
 :root {
-  /* Brand primitives — the six colors everything else derives from. */
+  /* Brand primitives — the six colors everything else derives from. Shared
+     verbatim with redesign-and-blend/console.css so the mockup and the app
+     never drift onto two palettes. */
   --sky: #a7c7e7;
   --navy: #0b132b;
   --charcoal: #1f2430;
@@ -102,6 +114,30 @@
   --accent: var(--wine);
   --gradient-start: #eef2f7;
   --gradient-end: #d8dee9;
+
+  /* Derived surface/line/status tokens, ported from console.css's :root so
+     the ui/ component set (Panel, Pill, Field, ...) has the same variables
+     to draw on that the mockup's .panel/.pill/.field classes use. */
+  --surface: #ffffff;
+  --surface-2: var(--background-alt);
+  --text: var(--foreground);
+  --strong: #101a33;
+  --muted: #586177;
+  --line: #d9dfe9;
+  --line-strong: #b7c0d0;
+  --link: var(--navy);
+  --ok: #0f7a52;
+  --warn: #a86a00;
+  --bad: #b3261e;
+  --info: #2d5f9a;
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  /* terminal panels (log viewers) stay dark in both themes */
+  --term-bg: #04120a;
+  --term-fg: #86e995;
+  --term-dim: #4a9a58;
+  --term-warn: #e7e7a7;
 
   /* The sidebar is a permanent dark panel regardless of page theme (same
      idea as artisanhosting.net's always-dark nav accents), so it isn't
@@ -118,6 +154,7 @@
   --font-sans: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-serif: 'Fraunces', ui-serif, Georgia, 'Times New Roman', Times, serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -127,19 +164,37 @@
   --font-mono: var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: var(--navy);
-    --background-alt: #1a2440;
-    --foreground: var(--paper);
-    --accent: var(--warm);
-    --gradient-start: #121b33;
-    --gradient-end: #0e1628;
+/* Dark mode is a user choice, not just an OS setting: `data-theme` is set on
+   <html> before first paint by the inline script in _document.tsx (reading
+   localStorage, falling back to prefers-color-scheme), same mechanism as
+   redesign-and-blend's pages. This block is the single dark-theme source of
+   truth — do not add a parallel `@media (prefers-color-scheme: dark)` block,
+   it would fight the toggle. */
+:root[data-theme="dark"] {
+  --background: var(--navy);
+  --background-alt: #1a2440;
+  --foreground: var(--paper);
+  --accent: var(--warm);
+  --gradient-start: #121b33;
+  --gradient-end: #0e1628;
 
-    --btn-primary-bg: var(--sky);
-    --btn-primary-hover: #93b9e0;
-    --btn-primary-text: var(--navy);
-  }
+  --surface: #121b33;
+  --surface-2: #1a2440;
+  --text: var(--paper);
+  --strong: #f6f7fb;
+  --muted: #a1abc4;
+  --line: #26314f;
+  --line-strong: #3a4770;
+  --link: var(--sky);
+  --ok: #3ddc97;
+  --warn: #f0b429;
+  --bad: #ff8a80;
+  --info: #8ab4f8;
+
+  --btn-primary-bg: var(--sky);
+  --btn-primary-hover: #93b9e0;
+  --btn-primary-text: var(--navy);
+  color-scheme: dark;
 }
 
 body {
@@ -162,11 +217,17 @@ h1, h2 {
 }
 
 .card {
-  @apply bg-white dark:bg-[#121b33] border border-gray-200 dark:border-gray-700 rounded-2xl shadow overflow-x-auto;
+  @apply rounded-2xl shadow overflow-x-auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
 }
 
 .card-hover {
-  @apply bg-white dark:bg-[#121b33] border rounded-2xl shadow hover:shadow-xl transform transition hover:-translate-y-1;
+  @apply rounded-2xl shadow hover:shadow-xl transform transition hover:-translate-y-1;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.card-hover:hover {
   border-color: var(--accent);
 }
 
@@ -198,3 +259,99 @@ h1, h2 {
 .btn-brand:hover {
   background-color: var(--btn-primary-hover);
 }
+
+/* ==========================================================================
+   Shared component vocabulary — ported from redesign-and-blend/console.css.
+   These back the components in src/components/ui/ (Button, Pill, Panel,
+   Field, Switch, Seg, Tabs, Meter, Term) so every page that needs a status
+   dot, a usage bar, a tab strip, etc. draws on one implementation instead of
+   each page hand-rolling its own Tailwind.
+   ========================================================================== */
+
+.btn {
+  font: 600 .95rem/1 var(--font-sans);
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  padding: .6rem .95rem; border-radius: var(--radius-sm);
+  border: 1px solid transparent; cursor: pointer; text-decoration: none;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-text); }
+.btn-primary:hover { background: var(--btn-primary-hover); }
+.btn-ghost { background: transparent; border-color: var(--line-strong); color: var(--strong); }
+.btn-ghost:hover { background: var(--surface-2); }
+.btn-danger { background: transparent; border-color: var(--bad); color: var(--bad); }
+.btn-danger:hover { background: color-mix(in srgb, var(--bad) 12%, transparent); }
+.btn-sm { padding: .4rem .7rem; font-size: .85rem; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+.icon-btn { width: 38px; height: 38px; display: inline-grid; place-items: center; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--strong); cursor: pointer; flex: none; }
+.icon-btn:hover { border-color: var(--btn-primary-bg); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: .45rem;
+  font: 600 .82rem/1.2 var(--font-sans); padding: .2rem .65rem;
+  border-radius: 999px; border: 1px solid var(--line-strong);
+  color: var(--strong); background: var(--surface); white-space: nowrap;
+}
+.pill::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--dot, var(--muted)); }
+.pill[data-s="running"], .pill[data-s="live"], .pill[data-s="active"] { --dot: var(--ok); }
+.pill[data-s="starting"], .pill[data-s="stopping"], .pill[data-s="restarting"], .pill[data-s="building"], .pill[data-s="syncing"] { --dot: var(--info); }
+.pill[data-s="stopped"], .pill[data-s="idle"], .pill[data-s="unknown"] { --dot: var(--muted); }
+.pill[data-s="warning"], .pill[data-s="outdated"] { --dot: var(--warn); }
+.pill[data-s="error"], .pill[data-s="failed"] { --dot: var(--bad); }
+
+.panel { border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+.panel > header { padding: 14px 18px; background: var(--surface-2); border-bottom: 1px solid var(--line); font: 600 1.05rem var(--font-serif); color: var(--strong); }
+.panel-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+.field {
+  font: 400 .95rem var(--font-mono); padding: .5rem .7rem;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--strong); width: 100%;
+}
+select.field { cursor: pointer; }
+.field-sans { font-family: var(--font-sans); }
+
+.switch { width: 46px; height: 26px; padding: 0; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface-2); position: relative; cursor: pointer; transition: background .15s; flex: none; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
+.switch[aria-checked="true"] { background: var(--btn-primary-bg); border-color: var(--btn-primary-bg); }
+.switch[aria-checked="true"]::after { transform: translateX(20px); background: var(--btn-primary-text); }
+
+.seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface-2); }
+.seg button { border: 0; background: transparent; border-radius: 6px; padding: .45rem .85rem; font: 600 .92rem var(--font-sans); color: var(--muted); cursor: pointer; }
+.seg button:hover { color: var(--strong); }
+.seg button[aria-checked="true"] { background: var(--btn-primary-bg); color: var(--btn-primary-text); }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { font: 600 1rem var(--font-sans); background: none; border: 0; padding: .75rem 1.1rem; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tabs button:hover { color: var(--strong); }
+.tabs button[aria-selected="true"] { color: var(--strong); border-bottom-color: var(--accent); }
+.tabpanel[hidden] { display: none; }
+
+.meter-top { display: flex; justify-content: space-between; gap: 8px; font-size: .9rem; margin-bottom: 4px; color: var(--muted); }
+.meter-top .v { font-family: var(--font-mono); color: var(--strong); }
+.meter-bar { position: relative; height: 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); }
+.meter-bar i { position: absolute; inset: 0 auto 0 0; background: var(--btn-primary-bg); border-radius: 3px; transition: width .25s ease; }
+.meter-bar i.over { background: var(--accent); }
+.meter-bar b { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--strong); }
+.meter-cap { font-size: .82rem; color: var(--muted); margin-top: 4px; }
+
+.term {
+  background: var(--term-bg); color: var(--term-fg);
+  font: 400 .84rem/1.65 var(--font-mono);
+  padding: 12px 18px; max-height: 190px; overflow: auto; overflow-wrap: anywhere;
+  border-radius: var(--radius-sm);
+}
+.term .t { color: var(--term-dim); margin-right: .9ch; }
+.term .w { color: var(--term-warn); }
+.term.tall { max-height: 360px; }
+
+/* ---------- Login (mirrors redesign-and-blend/login.html's two-column layout) ---------- */
+.login { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 72px; align-items: center; }
+@media (max-width: 900px) { .login { grid-template-columns: 1fr; gap: 36px; } }
+.form { display: flex; flex-direction: column; gap: 16px; }
+.form label { font-weight: 600; color: var(--strong); display: block; margin-bottom: 4px; }
+.error { padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--bad); color: var(--bad); background: color-mix(in srgb, var(--bad) 8%, transparent); }
+.aside-list { list-style: none; margin: 20px 0 0; padding: 0; border-top: 1px solid var(--line-strong); }
+.aside-list li { padding: 14px 0; border-bottom: 1px solid var(--line); max-width: 46ch; color: var(--text); }
+.aside-list b { color: var(--strong); }

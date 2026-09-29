@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { isAdminRole } from "@/components/requireAdmin";
+import { ThemeToggle } from "@/components/ui";
 
 export function Sidebar({ onLogout, onLogoutAll }: { onLogout: () => void; onLogoutAll: () => void }) {
   const router = useRouter();
@@ -44,11 +45,26 @@ export function Sidebar({ onLogout, onLogoutAll }: { onLogout: () => void; onLog
         className={`bg-brand-gradient text-white p-6 shadow-xl flex flex-col lg:static fixed top-0 left-0 h-full w-64 z-40 transform transition-transform duration-300 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"
           } lg:min-h-screen`}
       >
-        <img
-          src="/imgs/artisan-studios__lockup__light__2048w.webp"
-          alt="Artisan Hosting"
-          className="mb-6 h-8 w-auto max-w-full"
-        />
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <img
+            src="/imgs/artisan-studios__lockup__light__2048w.webp"
+            alt="Artisan Hosting"
+            className="h-8 w-auto max-w-full"
+          />
+          {/* The sidebar is a permanent dark panel in both themes (see
+              globals.css), so .icon-btn's --surface/--strong tokens (which
+              flip with the theme) are overridden here to stay legible on it
+              regardless of which theme the toggle itself is currently set to. */}
+          <div
+            style={{
+              ['--surface' as any]: 'rgba(255,255,255,.1)',
+              ['--strong' as any]: '#fff',
+              ['--line-strong' as any]: 'rgba(255,255,255,.25)',
+            }}
+          >
+            <ThemeToggle />
+          </div>
+        </div>
         <div className="relative mb-6">
           <div
             className="bg-white/10 p-4 rounded-xl cursor-pointer hover:bg-white/20 transition"
