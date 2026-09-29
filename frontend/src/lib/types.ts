@@ -206,29 +206,6 @@ export const statusColorMap: Record<Status, string> = {
   Unknown: 'text-gray-400',
 };
 
-// Mirrors the Rust `SmallVMStatus` returned by `ais_vm` — a flat struct, no
-// nested "metrics" object and no "name" field.
-export interface VmListItem {
-  vm_id: number;
-  status: string;      // e.g. "running" | "stopped"
-  cpu: number;          // fraction 0..1 (e.g. 0.17 -> 17%)
-  mem: number;           // bytes
-  maxmem: number;        // bytes
-  disk_read: number;     // bytes, cumulative since VM start
-  disk_write: number;    // bytes, cumulative since VM start
-  net_in: number;        // bytes, cumulative since VM start
-  net_out: number;       // bytes, cumulative since VM start
-  uptime: number;        // seconds
-}
-
-export type VmActionType = 'start' | 'stop' | 'restart' | 'shutdown';
-
-export interface VmActionRequest {
-  action: VmActionType;
-  // optional flags, e.g. force shutdown
-  force?: boolean;
-}
-
 // ======= Nodes / Admin Types =======
 
 export interface Identifier {

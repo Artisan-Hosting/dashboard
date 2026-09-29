@@ -27,9 +27,6 @@ import {
   SetOrgPolicyBody,
   SyncNodeOutcome,
   UsageSummary,
-  VmActionRequest,
-  VmActionType,
-  VmListItem,
   WatchdogConfigKind,
   WatchdogGetConfigResponse,
   WatchdogSetConfigResponse,
@@ -161,24 +158,6 @@ export async function fetchBilling(
   }
 
   return resp.data as BillingCosts;
-}
-
-export async function sendVmAction(
-  vmid: number,
-  action: VmActionType,
-): Promise<void> {
-  const res = await fetchWithAuth(`proxy/vms/${vmid}/${action}`);
-  if (!res.data && res.status !== 'success' && res.status !== 'ok') {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join(', '));
-  }
-}
-
-export async function fetchVmList(): Promise<VmListItem[]> {
-  const res = await fetchWithAuth('proxy/vms');
-  if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join(', '));
-  }
-  return res.data;
 }
 
 // ======= Projects =======

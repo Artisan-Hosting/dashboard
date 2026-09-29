@@ -91,7 +91,6 @@ export function Sidebar({ onLogout, onLogoutAll }: { onLogout: () => void; onLog
         </div>
         <nav className="flex flex-col space-y-4 text-gray-300 text-sm">
           <button onClick={() => router.push('/apps')} className="text-left hover:text-brand">Apps</button>
-          <button onClick={() => router.push('/vms')} className="text-left hover:text-brand">Vms</button>
           <button onClick={() => router.push('/domains')} className="text-left hover:text-brand">Domains</button>
           <button onClick={() => router.push('/secrets')} className="text-left hover:text-brand">Secrets</button>
           <button onClick={() => router.push('/billing')} className="text-left hover:text-brand">Billing</button>
