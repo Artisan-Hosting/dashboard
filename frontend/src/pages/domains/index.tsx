@@ -1,13 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
-import { TopBar } from '@/components/topbar';
+import { Sidebar } from '@/components/header';
 import { isSuperRole } from '@/components/requireAdmin';
 import LoadingOverlay from '@/components/loading';
 import { useUser } from '@/hooks/useUser';
 import { useElevatedSession } from '@/hooks/useElevatedSession';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { resolveRunnerLabel } from '@/lib/repoLabel';
-import { formatExpiry } from '@/lib/format';
 import {
   fetchWithAuth,
   fetchDomains,
@@ -27,6 +26,15 @@ interface Organization {
 }
 
 const PAGE_SIZE = 50;
+
+function formatExpiry(expiresAt: number): string {
+  if (!expiresAt) return 'no certificate on disk';
+  const days = Math.round((expiresAt * 1000 - Date.now()) / 86_400_000);
+  const date = new Date(expiresAt * 1000).toLocaleDateString();
+  if (days < 0) return `expired ${date}`;
+  if (days === 0) return `expires today`;
+  return `expires in ${days}d (${date})`;
+}
 
 // Per-row "assign" / "attach" editor. Kept as one component so its draft
 // state resets cleanly whenever a different domain's panel is opened.
@@ -339,10 +347,10 @@ export default function DomainsPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-page text-foreground">
+    <div className="relative min-h-screen flex bg-page text-foreground">
       <Toaster position="bottom-right" />
-      <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
-      <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h1 className="text-3xl font-bold text-brand">Domains</h1>
           <p className="text-sm" style={{ color: 'var(--muted)' }}>

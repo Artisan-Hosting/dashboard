@@ -5,6 +5,7 @@ import { PolicyMatrix } from '@/components/admin/PolicyMatrix';
 import { fetchWithAuth, postWithAuth } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { useUser } from '@/hooks/useUser';
+import { useElevatedSession } from '@/hooks/useElevatedSession';
 import { Button, Field, SelectField } from '@/components/ui';
 
 interface Organization {
