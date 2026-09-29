@@ -1,8 +1,15 @@
 // src/lib/api.ts
 import {
+  AdoptedVhost,
+  AssignDomainBody,
+  AttachDomainBody,
   AuditOutcome,
   BillingCosts,
   DeployNodeResult,
+  DomainFinding,
+  DomainRescanResult,
+  DomainsPage,
+  DomainSummary,
   GitConfigOp,
   LogEntry,
   MultiNodeConfigResponse,
@@ -436,4 +443,95 @@ export async function setOrgPolicyRow(orgId: string, body: SetOrgPolicyBody): Pr
     throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to set org policy');
   }
   return !!res.data;
+}
+
+// --- Domains (RBAC Phase 6) ---
+//
+// A `Super` may pass `organization_id`, or none for the whole fleet; everyone
+// else is pinned server-side to their own organization whatever they send,
+// so the frontend doesn't need to enforce that itself -- it just reflects
+// whatever Portal hands back.
+
+export async function fetchDomains(params: {
+  organizationId?: string;
+  unassignedOnly?: boolean;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<DomainsPage> {
+  const qs = new URLSearchParams();
+  if (params.organizationId) qs.set('organization_id', params.organizationId);
+  if (params.unassignedOnly) qs.set('unassigned_only', 'true');
+  if (params.limit != null) qs.set('limit', String(params.limit));
+  if (params.offset != null) qs.set('offset', String(params.offset));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  const res = await fetchWithAuth(`proxy/domains${suffix}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load domains');
+  }
+  return res.data as DomainsPage;
+}
+
+// Super-only: names file paths and certificate directories fleet-wide, with
+// no organization to scope it by.
+export async function fetchDomainFindings(params: {
+  code?: string;
+  severity?: 'info' | 'warn' | 'error';
+  openOnly?: boolean;
+  limit?: number;
+} = {}): Promise<DomainFinding[]> {
+  const qs = new URLSearchParams();
+  if (params.code) qs.set('code', params.code);
+  if (params.severity) qs.set('severity', params.severity);
+  if (params.openOnly) qs.set('open_only', 'true');
+  if (params.limit != null) qs.set('limit', String(params.limit));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  const res = await fetchWithAuth(`proxy/domains/findings${suffix}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load domain findings');
+  }
+  return (res.data ?? []) as DomainFinding[];
+}
+
+export async function fetchAdoptedVhosts(organizationId?: string): Promise<AdoptedVhost[]> {
+  const suffix = organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : '';
+  const res = await fetchWithAuth(`proxy/domains/vhosts${suffix}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load adopted vhosts');
+  }
+  return (res.data ?? []) as AdoptedVhost[];
+}
+
+// Claiming a currently-unassigned domain (organization_id empty) is Super
+// only -- otherwise the first Admin to ask would own an unowned name.
+// `elevated_token` is required only to move a domain that already belongs to
+// an organization.
+export async function assignDomain(body: AssignDomainBody): Promise<DomainSummary> {
+  const res = await postWithAuth('proxy/domains/assign', body);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to assign domain');
+  }
+  return res.data as DomainSummary;
+}
+
+// Needs Write on the runner and ownership of the domain. More than one
+// backend becomes a balanced upstream.
+export async function attachDomain(body: AttachDomainBody): Promise<DomainSummary> {
+  const res = await postWithAuth('proxy/domains/attach', body);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to attach domain');
+  }
+  return res.data as DomainSummary;
+}
+
+// Super-only: read-only on the host, but walks every nginx config file
+// there, and is slow with check_dns.
+export async function rescanDomains(body: { checkDns?: boolean; checkCloudflare?: boolean } = {}): Promise<DomainRescanResult> {
+  const res = await postWithAuth('proxy/domains/rescan', {
+    check_dns: body.checkDns ?? false,
+    check_cloudflare: body.checkCloudflare ?? false,
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to rescan domains');
+  }
+  return res.data as DomainRescanResult;
 }

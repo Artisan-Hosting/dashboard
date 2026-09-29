@@ -295,8 +295,9 @@ h1, h2 {
 }
 .pill::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--dot, var(--muted)); }
 .pill[data-s="running"], .pill[data-s="live"], .pill[data-s="active"], .pill[data-s="latest"] { --dot: var(--ok); }
-.pill[data-s="starting"], .pill[data-s="stopping"], .pill[data-s="restarting"], .pill[data-s="building"], .pill[data-s="syncing"] { --dot: var(--info); }
-.pill[data-s="stopped"], .pill[data-s="idle"], .pill[data-s="unknown"] { --dot: var(--muted); }
+.pill[data-s="starting"], .pill[data-s="stopping"], .pill[data-s="restarting"], .pill[data-s="building"], .pill[data-s="syncing"],
+.pill[data-s="pending_payment"], .pill[data-s="registering"], .pill[data-s="provisioning_dns"], .pill[data-s="pending_dns"], .pill[data-s="issuing"], .pill[data-s="renewing"] { --dot: var(--info); }
+.pill[data-s="stopped"], .pill[data-s="idle"], .pill[data-s="unknown"], .pill[data-s="unspecified"], .pill[data-s="removed"] { --dot: var(--muted); }
 .pill[data-s="warning"], .pill[data-s="outdated"] { --dot: var(--warn); }
 .pill[data-s="error"], .pill[data-s="failed"] { --dot: var(--bad); }
 

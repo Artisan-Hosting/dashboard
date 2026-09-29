@@ -439,6 +439,108 @@ export interface SetOrgPolicyBody {
   allow: boolean;
 }
 
+// --- Domains (RBAC Phase 6) ---
+//
+// `source`/`status` accept the literals below for autocomplete, but also any
+// other string: an unrecognised value from ais_domains arrives as
+// `unknown(<n>)` rather than failing the listing (ais_domains may learn a
+// value before Portal/the dashboard are rebuilt), so these are typed as an
+// open union rather than a strict enum.
+export type DomainSource = 'unspecified' | 'purchased' | 'byo' | 'imported' | (string & {});
+
+export type DomainStatus =
+  | 'unspecified'
+  | 'pending_payment'
+  | 'registering'
+  | 'provisioning_dns'
+  | 'pending_dns'
+  | 'issuing'
+  | 'active'
+  | 'renewing'
+  | 'error'
+  | 'removed'
+  | (string & {});
+
+export interface DomainEntry {
+  id: string;
+  fqdn: string;
+  organization_id: string; // empty = unassigned, a normal/durable state
+  runner_id: string; // empty = not attached to a project
+  source: DomainSource;
+  status: DomainStatus;
+  serves_tls: boolean;
+  vhost_paths: string[];
+  cert_dirs: string[];
+  expires_at: number; // unix seconds; 0 = nothing on disk
+  findings: string[];
+}
+
+export interface DomainsPage {
+  entries: DomainEntry[];
+  total: number;
+  unassigned: number;
+}
+
+export interface DomainSummary {
+  id: string;
+  fqdn: string;
+  organization_id: string;
+  runner_id: string;
+  source: DomainSource;
+  status: DomainStatus;
+  has_vhost: boolean;
+  expires_at: number;
+}
+
+export interface DomainFinding {
+  code: string; // e.g. vhost_only, cert_expiring, cert_without_snippet
+  severity: 'info' | 'warn' | 'error';
+  subject: string; // the domain or file the finding is about
+  message: string;
+  first_seen: number;
+  last_seen: number;
+  resolved_at: number; // 0 while still open
+}
+
+export interface AdoptedVhost {
+  path: string; // relative to the nginx tree root
+  domain_fqdn: string;
+  server_names: string[];
+  file_sha256: string;
+  drifted: boolean; // the file changed on disk since it was adopted
+}
+
+export interface DomainRescanResult {
+  scan_id: number;
+  domain_count: number;
+  finding_count: number;
+  server_count: number;
+}
+
+export interface AssignDomainBody {
+  id_or_fqdn: string;
+  organization_id?: string;
+  runner_id?: string;
+  // An empty string means "leave alone" -- clearing is explicit via these
+  // flags, so "not specified" and "remove it" can never be confused.
+  clear_org?: boolean;
+  clear_runner?: boolean;
+  elevated_token?: string;
+}
+
+export interface AttachDomainBackend {
+  node_id: string;
+  port: number;
+}
+
+export interface AttachDomainBody {
+  id_or_fqdn: string;
+  runner_id: string;
+  backends: AttachDomainBackend[];
+  extra_names?: string[];
+  no_http_redirect?: boolean;
+}
+
 // Sync status colors for UI
 export const syncStatusColorMap: Record<SyncStatus, string> = {
   idle: 'text-blue-400',
