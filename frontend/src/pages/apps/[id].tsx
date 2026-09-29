@@ -509,19 +509,22 @@ export default function ProjectPage() {
                             {historicalLoading[details.id] ? 'Loading…' : `Load last ${HISTORICAL_LOG_LINES} lines`}
                           </Button>
                           {historicalLogs[details.id] && (
-                            <div className="mt-2">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs" style={{ color: 'var(--muted)' }}>{historicalLogs[details.id].length} lines</span>
+                            <details className="mt-2" open>
+                              <summary className="cursor-pointer font-semibold text-sm mb-2 text-brand flex items-center justify-between">
+                                <span>Historical Logs ({historicalLogs[details.id].length} lines)</span>
                                 <button
-                                  onClick={() => setHistoricalLogs((prev) => { const next = { ...prev }; delete next[details.id]; return next; })}
-                                  className="text-xs hover:underline"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setHistoricalLogs((prev) => { const next = { ...prev }; delete next[details.id]; return next; });
+                                  }}
+                                  className="text-xs hover:underline ml-2"
                                   style={{ color: 'var(--muted)' }}
                                 >
                                   Close
                                 </button>
-                              </div>
+                              </summary>
                               <Term tall lines={historicalLogs[details.id].map((log) => `[${log.timestamp}] ${log.message}`)} />
-                            </div>
+                            </details>
                           )}
                         </div>
                       </div>
