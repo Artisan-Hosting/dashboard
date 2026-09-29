@@ -2,7 +2,6 @@
 import {
   AuditOutcome,
   BillingCosts,
-  DeployNodeResult,
   GitConfigOp,
   LogEntry,
   MultiNodeConfigResponse,
@@ -10,15 +9,10 @@ import {
   NodeDetails,
   NodeInfo,
   NodeReloadResult,
-  OrgPolicyRow,
-  ProjectDetails,
-  ProjectSummary,
-  RepoCatalogEntry,
-  RepoEntry,
   ReposEnvelope,
   ReposResponse,
-  SetOrgPolicyBody,
-  SyncNodeOutcome,
+  RunnerDetails,
+  RunnerSummary,
   UsageSummary,
   VmActionRequest,
   VmActionType,
@@ -161,68 +155,56 @@ export async function sendVmAction(
   action: VmActionType,
 ): Promise<void> {
   const res = await fetchWithAuth(`proxy/vms/${vmid}/${action}`);
-  if (!res.data && res.status !== 'success' && res.status !== 'ok') {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join(', '));
+  if (res.status !== 'ok') {
+    throw new Error(res.errors.join(', '));
   }
 }
 
 export async function fetchVmList(): Promise<VmListItem[]> {
   const res = await fetchWithAuth('proxy/vms');
-  if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join(', '));
+  if (res.status !== 'ok' || !res.data) {
+    throw new Error(res.errors.join(', '));
   }
   return res.data;
 }
 
-// ======= Projects =======
+// ======= Runners =======
 
-export async function fetchProjects(): Promise<ProjectSummary[]> {
+export async function fetchRunners(): Promise<RunnerSummary[]> {
   const res = await fetchWithAuth('proxy/runners');
-  if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load projects');
-  }
-  return (res.data ?? []) as ProjectSummary[];
+  return (res.data ?? []) as RunnerSummary[];
 }
 
-export async function fetchProjectDetails(projectId: string): Promise<ProjectDetails[]> {
-  const res = await fetchWithAuth(`proxy/runner/${projectId}`);
-  if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load details for ${projectId}`);
-  }
-  return (res.data ?? []) as ProjectDetails[];
+export async function fetchRunnerDetails(runnerId: string): Promise<RunnerDetails[]> {
+  const res = await fetchWithAuth(`proxy/runner/${runnerId}`);
+  return (res.data ?? []) as RunnerDetails[];
 }
 
-export interface ProjectGitInfo {
+export interface RunnerGitInfo {
   user: string;
   repo: string;
   branch: string;
 }
 
-// Returns null if the id has no git repo behind it (a system project) or the
+// Returns null if the id has no git repo behind it (a system app) or the
 // caller isn't permitted to see it — either is a normal "fall back to the
 // raw id" case for the resolver in `@/lib/repoLabel`, not an error to surface.
-export async function fetchProjectGitInfo(projectId: string): Promise<ProjectGitInfo | null> {
+export async function fetchRunnerGitInfo(runnerId: string): Promise<RunnerGitInfo | null> {
   try {
-    const res = await fetchWithAuth(`proxy/runner/${projectId}/git-info`);
-    return (res.data ?? null) as ProjectGitInfo | null;
+    const res = await fetchWithAuth(`proxy/runner/${runnerId}/git-info`);
+    return (res.data ?? null) as RunnerGitInfo | null;
   } catch {
     return null;
   }
 }
 
-export async function fetchGroupUsage(projectId: string): Promise<UsageSummary> {
-  const res = await fetchWithAuth(`proxy/usage/group/${projectId}`);
-  if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load usage for ${projectId}`);
-  }
+export async function fetchGroupUsage(runnerId: string): Promise<UsageSummary> {
+  const res = await fetchWithAuth(`proxy/usage/group/${runnerId}`);
   return res.data as UsageSummary;
 }
 
 export async function fetchInstanceUsage(instanceId: string): Promise<UsageSummary> {
   const res = await fetchWithAuth(`proxy/usage/single/${instanceId}`);
-  if (!res.data || (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load usage for ${instanceId}`);
-  }
   return res.data as UsageSummary;
 }
 
@@ -231,12 +213,8 @@ export async function fetchInstanceLogs(instanceId: string, limit: number): Prom
   return res.data?.lines ?? [];
 }
 
-export async function sendProjectControl(instanceId: string, command: string): Promise<any> {
-  const res = await fetchWithAuth(`proxy/control/${instanceId}/${command}`);
-  if (!res.data && res.status !== 'success' && res.status !== 'ok') {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Control command failed');
-  }
-  return res;
+export async function sendRunnerControl(instanceId: string, command: string): Promise<any> {
+  return fetchWithAuth(`proxy/control/${instanceId}/${command}`);
 }
 
 // --- multi-node app config (Apps page) ---
@@ -246,9 +224,6 @@ export async function fetchMultiNodeConfig(
   kind: WatchdogConfigKind,
 ): Promise<MultiNodeConfigResponse> {
   const res = await fetchWithAuth(`proxy/runner/${application}/config?kind=${kind}`);
-  if (!res.data && res.status !== 'success' && res.status !== 'ok') {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to fetch config for ${application}`);
-  }
   return res.data as MultiNodeConfigResponse;
 }
 
@@ -263,9 +238,6 @@ export async function setMultiNodeConfig(
     content,
     expected_shas: expectedShas,
   });
-  if (!res.data && res.status !== 'success' && res.status !== 'ok') {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to set config for ${application}`);
-  }
   return res.data as MultiNodeConfigSetResponse;
 }
 
@@ -273,25 +245,16 @@ export async function setMultiNodeConfig(
 
 export async function fetchNodes(): Promise<NodeInfo[]> {
   const res = await fetchWithAuth('proxy/nodes');
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load nodes');
-  }
   return (res.data ?? []) as NodeInfo[];
 }
 
 export async function fetchNodeDetails(nodeId: number): Promise<NodeDetails> {
   const res = await fetchWithAuth(`proxy/node/${nodeId}`);
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load details for node ${nodeId}`);
-  }
   return res.data as NodeDetails;
 }
 
 export async function reloadNode(nodeId: number): Promise<NodeReloadResult> {
   const res = await fetchWithAuth(`proxy/node_reload/${nodeId}`);
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to reload node ${nodeId}`);
-  }
   return res.data as NodeReloadResult;
 }
 
@@ -299,9 +262,6 @@ export async function reloadNode(nodeId: number): Promise<NodeReloadResult> {
 
 export async function fetchGitConfig(nodeId: number): Promise<ReposEnvelope> {
   const res = await fetchWithAuth(`proxy/node/${nodeId}/git-config`);
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to load git config for node ${nodeId}`);
-  }
   return res.data as ReposEnvelope;
 }
 
@@ -311,32 +271,7 @@ export async function setGitConfig(
   body: object,
 ): Promise<ReposResponse> {
   const res = await postWithAuth(`proxy/node/${nodeId}/git-config`, { op, ...body });
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to set git config');
-  }
   return res.data as ReposResponse;
-}
-
-// Super-only: edits one node's stored repo identity/credentials in place.
-// `repo` replaces the whole entry server-side (Manager does a full swap, not
-// a merge) -- callers must send back every field they want kept, token
-// included.
-export async function updateNodeRepo(
-  nodeId: number,
-  id: string,
-  repo: RepoEntry,
-  reload = true,
-): Promise<ReposResponse> {
-  return setGitConfig(nodeId, 'update', { id, repo, reload });
-}
-
-// Super-only: removes one repo from one node's git config.
-export async function removeNodeRepo(
-  nodeId: number,
-  id: string,
-  reload = true,
-): Promise<ReposResponse> {
-  return setGitConfig(nodeId, 'remove', { id, reload });
 }
 
 // `GitReposAudit` doesn't touch git.cf, so it answers with an `AuditOutcome`,
@@ -344,41 +279,7 @@ export async function removeNodeRepo(
 // widening that function's return type for one op.
 export async function auditGitConfig(nodeId: number): Promise<AuditOutcome> {
   const res = await postWithAuth(`proxy/node/${nodeId}/git-config`, { op: 'audit' });
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to audit git config');
-  }
   return res.data as AuditOutcome;
-}
-
-// --- Phase I: centralized repo/project catalog ---
-export async function fetchRepoCatalog(): Promise<RepoCatalogEntry[]> {
-  const res = await fetchWithAuth('proxy/repos');
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load repository catalog');
-  }
-  return (res.data ?? []) as RepoCatalogEntry[];
-}
-
-// Explicit "sync now" -- the only repo call that asks a node to actually
-// clone/fetch/reset. `nodeIds` omitted or empty means every node this repo
-// is currently configured on.
-export async function syncRepo(repoId: string, nodeIds?: number[]): Promise<SyncNodeOutcome[]> {
-  const res = await postWithAuth(`proxy/repos/${repoId}/sync`, { node_ids: nodeIds ?? [] });
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to sync repo');
-  }
-  return (res.data ?? []) as SyncNodeOutcome[];
-}
-
-// Adds a repo already in the catalog to more nodes. Reuses its existing
-// GitAuth (server + token) server-side, so -- unlike the deploy wizard --
-// this never needs a token re-entered for a private repo.
-export async function addRepoNodes(repoId: string, nodeIds: number[]): Promise<DeployNodeResult[]> {
-  const res = await postWithAuth(`proxy/repos/${repoId}/add-nodes`, { node_ids: nodeIds });
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to add repo to node(s)');
-  }
-  return (res.data?.results ?? []) as DeployNodeResult[];
 }
 
 // --- Watchdog config ---
@@ -391,9 +292,6 @@ export async function fetchWatchdogConfig(
 ): Promise<WatchdogGetConfigResponse> {
   const qs = `application=${encodeURIComponent(application)}&kind=${kind}&create_if_missing=${createIfMissing}`;
   const res = await fetchWithAuth(`proxy/node/${nodeId}/watchdog/config?${qs}`);
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to fetch watchdog config for ${application}`);
-  }
   return res.data as WatchdogGetConfigResponse;
 }
 
@@ -410,30 +308,5 @@ export async function setWatchdogConfig(
     content,
     expected_previous_sha256: expectedPreviousSha256,
   });
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || `Failed to set watchdog config for ${application}`);
-  }
   return res.data as WatchdogSetConfigResponse;
-}
-
-// --- Org role-policy editor ---
-//
-// `orgId` may be the literal string "GLOBAL" to read/write the platform-wide
-// default policy every org inherits -- portal maps that alias to ais_auth's
-// sentinel org id server-side (see `handler::admin::resolve_org_path_segment`).
-
-export async function fetchOrgPolicy(orgId: string): Promise<OrgPolicyRow[]> {
-  const res = await fetchWithAuth(`proxy/admin/organizations/${orgId}/policy`);
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load org policy');
-  }
-  return (res.data ?? []) as OrgPolicyRow[];
-}
-
-export async function setOrgPolicyRow(orgId: string, body: SetOrgPolicyBody): Promise<boolean> {
-  const res = await postWithAuth(`proxy/admin/organizations/${orgId}/policy`, body);
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to set org policy');
-  }
-  return !!res.data;
 }

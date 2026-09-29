@@ -79,62 +79,11 @@ pub async fn login(request: SimpleLoginRequest) -> Result<SessionData, String> {
         response.status()
     );
 
-    session_from_token_response(response, "login").await
-}
-
-/// An accepted invite ends the same way a login does: `ais_auth` hands back
-/// a fresh `TokenPair` for the brand-new account, which this turns into a
-/// session exactly like `login()` does -- accepting an invite doubles as
-/// logging in for the first time, no separate login step needed afterward.
-pub async fn accept_invite(
-    token: String,
-    display_name: String,
-    password: String,
-) -> Result<SessionData, String> {
-    log!(LogLevel::Debug, "accept_invite(): received request");
-
-    let client = get_state().http_client.clone();
-
-    let response = client
-        .post(&format!("{}auth/accept-invite", get_base_url()))
-        .json(&serde_json::json!({
-            "token": token,
-            "display_name": display_name,
-            "password": password,
-        }))
-        .send()
-        .await
-        .map_err(|err| {
-            log!(
-                LogLevel::Error,
-                "accept_invite(): HTTP request failed: {}",
-                err.to_string()
-            );
-            err.to_string()
-        })?;
-
-    log!(
-        LogLevel::Debug,
-        "accept_invite(): received HTTP status {}",
-        response.status()
-    );
-
-    session_from_token_response(response, "accept_invite").await
-}
-
-/// Shared tail of `login()`/`accept_invite()`: both hit an endpoint that
-/// returns `{"auth": ..., "refresh": ...}` on success and build a
-/// `SessionData` from it the exact same way.
-async fn session_from_token_response(
-    response: reqwest::Response,
-    label: &str,
-) -> Result<SessionData, String> {
     if response.status().is_success() {
         let json: serde_json::Value = response.json().await.map_err(|err| {
             log!(
                 LogLevel::Error,
-                "{}(): failed to parse JSON: {}",
-                label,
+                "login(): failed to parse JSON: {}",
                 err.to_string()
             );
             err.to_string()
@@ -143,8 +92,7 @@ async fn session_from_token_response(
         // Log the full returned JSON at Debug level (you may want to redact tokens in production).
         log!(
             LogLevel::Debug,
-            "{}(): response JSON = {}",
-            label,
+            "login(): response JSON = {}",
             json.to_string()
         );
 
@@ -155,8 +103,7 @@ async fn session_from_token_response(
             (Some(token), Some(refresh)) => {
                 log!(
                     LogLevel::Info,
-                    "{}(): successfully got auth and refresh tokens",
-                    label
+                    "login(): successfully got auth and refresh tokens"
                 );
 
                 // Decode expiration from refresh JWT
@@ -164,8 +111,7 @@ async fn session_from_token_response(
                     peek_exp_from_jwt_unverified(&refresh).map_err(|err| {
                         log!(
                             LogLevel::Error,
-                            "{}(): peek_exp_from_jwt_unverified failed: {}",
-                            label,
+                            "login(): peek_exp_from_jwt_unverified failed: {}",
                             err.to_string()
                         );
                         err.to_string()
@@ -175,8 +121,7 @@ async fn session_from_token_response(
                 let user_id: String = peek_sub_from_jwt_unverified(&token).map_err(|err| {
                     log!(
                         LogLevel::Error,
-                        "{}(): peek_sub_from_jwt_unverified failed: {}",
-                        label,
+                        "login(): peek_sub_from_jwt_unverified failed: {}",
                         err.to_string()
                     );
                     err.to_string()
@@ -199,8 +144,7 @@ async fn session_from_token_response(
 
                 log!(
                     LogLevel::Info,
-                    "{} success user {} session {}",
-                    label,
+                    "login success user {} session {}",
                     user_id,
                     session_id
                 );
@@ -210,21 +154,19 @@ async fn session_from_token_response(
             _ => {
                 log!(
                     LogLevel::Error,
-                    "{}: failed to parse both refresh and auth token",
-                    label
+                    "Failed to parse both refresh and auth token"
                 );
-                return Err(format!("{} failed", label));
+                return Err("Login failed".into());
             }
         };
     } else {
         log!(
             LogLevel::Warn,
-            "{} failed with status {}",
-            label,
+            "login failed with status {}",
             response.status()
         );
 
-        return Err(format!("{} failed", label));
+        return Err("Login failed".into());
     }
 }
 

@@ -1,10 +1,6 @@
 // Represents summarized usage data from /usage/group/{runner_id}
-//
-// This type has been updated to match the Portal API's BilledUsageSummary
-// which uses project_id (not runner_id) as part of the resource-taxonomy
-// migration.
 export interface UsageSummary {
-  project_id: string;
+  runner_id: string;
   instance_id: string;  // Will be "Grouped Data" if summarized across all
   total_cpu: number;
   peak_cpu: number;
@@ -16,39 +12,19 @@ export interface UsageSummary {
   instances: number;
 }
 
-// --- Repo Hydration Types ---
-
-// `unknown` is what a node that timed out, was unreachable, or hadn't
-// answered for a given repo id reports -- distinct from `idle`/`failed`
-// (which mean the node *did* answer).
-export type SyncStatus = 'idle' | 'syncing' | 'latest' | 'outdated' | 'failed' | 'unknown';
-
-export interface NodeHydrationStatus {
-  node_id: number;
-  hostname: string;
-  repo_id: string;
-  repo_path: string;
-  branch: string;
-  commit_sha: string | null;
-  is_hydrated: boolean;
-  last_sync_timestamp: number | null;
-  sync_status: SyncStatus;
-  error_message: string | null;
-}
-
-// If you later pull instance-level project details (optional future expansion)
-export interface ProjectDetails {
+// If you later pull instance-level runner details (optional future expansion)
+export interface RunnerDetails {
   id: string;
   status: string;
   version: SoftwareVersion;
   artisan_config: any;
   specific_config?: any;
   enviornment?: any;
-  health?: ProjectHealth;
-  logs?: ProjectLogs;
+  health?: RunnerHealth;
+  logs?: RunnerLogs;
 }
 
-export interface ProjectHealth {
+export interface RunnerHealth {
   uptime: number;
   last_check: number;
   cpu_usage: string;
@@ -57,7 +33,7 @@ export interface ProjectHealth {
   rx_bytes: number;
 }
 
-export interface ProjectLogs {
+export interface RunnerLogs {
   recent: string[];
 }
 
@@ -88,7 +64,7 @@ export interface BillingCosts {
 
 
 export interface FullInstance {
-  details: ProjectDetails;
+  details: RunnerDetails;
   usage: UsageSummary;
 }
 
@@ -117,9 +93,9 @@ export interface ProjectInstance {
   };
 }
 
-// Represents the summarized group usage for all instances under one runner.
+// Represents the summarized group usage for all instances under one runner
 export interface ProjectGroupUsage {
-  project_id: string;
+  runner_id: string;
   instance_id: string; // For group, you might set this manually like "Grouped Data"
   total_cpu: number;
   peak_cpu: number;
@@ -139,11 +115,11 @@ export interface ProjectCostSummary {
 }
 
 /**
- * A minimal summary of a project group for listing.
- * Mirrors the Rust `ProjectSummary`:
+ * A minimal summary of a runner group for listing.
+ * Mirrors the Rust `RunnerSummary`:
  */
-export interface ProjectSummary {
-  /** Short name or ID of the project */
+export interface RunnerSummary {
+  /** Short name or ID of the runner */
   name: string;
   /** Current state, e.g. "Running" or "Stopped" */
   status: string;
@@ -154,9 +130,9 @@ export interface ProjectSummary {
     /** Release channel or label, e.g. "Beta" */
     release?: string;
   };
-  /** IDs of nodes this project is deployed on */
+  /** IDs of nodes this runner is deployed on */
   nodes: number[];
-  /** Total seconds this project has been active (optional) */
+  /** Total seconds this runner has been active (optional) */
   uptime?: number;
 }
 
@@ -178,38 +154,19 @@ export interface LogEntry {
   message: string;
 }
 
-// The single canonical status type, matching artisan_middleware::aggregator::Status
-// (RESOURCE_TAXONOMY.md 7.1). This used to be two conflicting unions --
-// StatusType (4 variants, missing Starting/Idle/Unknown/Error) and NodeStatus
-// (8 variants, missing Error) -- plus a third hardcoded partial copy in
-// pages/nodes/index.tsx. All three are now this one type and one color map.
-export type Status =
-  | 'Starting'
-  | 'Running'
-  | 'Idle'
-  | 'Stopping'
-  | 'Stopped'
-  | 'Warning'
-  | 'Building'
-  | 'Error'
-  | 'Unknown';
+export type StatusType = 'Running' | 'Stopped' | 'Warning' | 'Building';
 
-export const statusColorMap: Record<Status, string> = {
-  Starting: 'text-blue-400',
+export const statusColorMap: Record<StatusType, string> = {
   Running: 'text-green-400',
-  Idle: 'text-gray-400',
-  Stopping: 'text-yellow-400',
   Stopped: 'text-red-400',
   Warning: 'text-yellow-400',
   Building: 'text-blue-400',
-  Error: 'text-red-500',
-  Unknown: 'text-gray-400',
 };
 
 // Mirrors the Rust `SmallVMStatus` returned by `ais_vm` — a flat struct, no
 // nested "metrics" object and no "name" field.
 export interface VmListItem {
-  vm_id: number;
+  vmid: number;
   status: string;      // e.g. "running" | "stopped"
   cpu: number;          // fraction 0..1 (e.g. 0.17 -> 17%)
   mem: number;           // bytes
@@ -236,12 +193,22 @@ export interface Identifier {
   _signature: string;
 }
 
+export type NodeStatus =
+  | 'Starting'
+  | 'Running'
+  | 'Idle'
+  | 'Stopping'
+  | 'Stopped'
+  | 'Unknown'
+  | 'Warning'
+  | 'Building';
+
 export interface NodeInfo {
   identity: Identifier;
   hostname: string;
-  status: Status;
+  status: NodeStatus;
   ip_address: string;
-  projects: string[];
+  runners: string[];
   created_at: string;
   last_updated: string;
 }
@@ -274,8 +241,8 @@ export interface ManagerData {
 
 export interface NodeDetails {
   identity: Identifier;
-  status: Status;
-  projects: string[];
+  status: NodeStatus;
+  runners: string[];
   created_at: string;
   last_updated: string;
   manager_data: ManagerData;
@@ -324,42 +291,6 @@ export interface ReposResponse extends ReposEnvelope {
 }
 
 export type GitConfigOp = 'set' | 'add' | 'update' | 'remove' | 'audit';
-
-// --- Phase I: centralized repo/project catalog ---
-
-// org_id not renamed yet -- same reasoning as UsageSummary above, and this
-// one is actually read/written against Portal's live /v1/repos JSON
-// (pages/repos/index.tsx), so renaming it here alone would be a type-level
-// rename with no matching backend change, not just an unused field.
-export interface RepoCatalogEntry {
-  id: string;
-  user: string;
-  repo: string;
-  branch: string;
-  nodes: NodeHydrationStatus[];  // Changed from number[] to include hydration info
-  org_id?: string | null;
-  sync_status: SyncStatus;
-}
-
-// Response of `POST /v1/repos/{id}/sync` -- one entry per node actually
-// synced, each carrying that node's real post-sync hydration row(s).
-export interface SyncNodeOutcome {
-  node_id: number;
-  ok: boolean;
-  hydration: NodeHydrationStatus[];
-  error: string | null;
-}
-
-// Per-node outcome from `POST /v1/repos/deploy` or `.../add-nodes` --
-// same shape either way (both go through the same GitReposAdd + try_start_app
-// per-node loop server-side).
-export interface DeployNodeResult {
-  node_id: number;
-  added: boolean;
-  config_written: boolean;
-  started: boolean;
-  error: string | null;
-}
 
 // Result of a `GitReposAudit` run: a force-resync/force-clean of every
 // configured checkout, plus a purge of any stale `/opt/artisan/tmp` state
@@ -420,31 +351,3 @@ export interface MultiNodeConfigSetResponse {
   kind: string;
   results: NodeConfigSetResult[];
 }
-
-// --- Org role-policy editor ---
-
-export interface OrgPolicyRow {
-  organization_id: string;
-  resource_type: string;
-  action: string;
-  role: string;
-  allow: boolean;
-}
-
-export interface SetOrgPolicyBody {
-  elevated_token: string;
-  resource_type: string;
-  action: string;
-  role: string;
-  allow: boolean;
-}
-
-// Sync status colors for UI
-export const syncStatusColorMap: Record<SyncStatus, string> = {
-  idle: 'text-blue-400',
-  syncing: 'text-yellow-400 animate-pulse',
-  latest: 'text-green-400',
-  outdated: 'text-orange-400',
-  failed: 'text-red-400',
-  unknown: 'text-gray-400',
-};

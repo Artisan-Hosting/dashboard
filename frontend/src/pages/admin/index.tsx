@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Sidebar } from '@/components/header';
-import { RequireAdmin, isSuperRole } from '@/components/requireAdmin';
-import { PolicyMatrix } from '@/components/admin/PolicyMatrix';
+import { RequireAdmin } from '@/components/requireAdmin';
 import { fetchWithAuth, postWithAuth } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { useUser } from '@/hooks/useUser';
@@ -18,24 +17,6 @@ interface UserSummary {
   display_name: string;
   role: string;
   org_id: string;
-}
-
-interface Invite {
-  id: string;
-  email: string;
-  org_id: string;
-  role: string;
-  created_at: number;
-  expires_at: number;
-}
-
-interface RepoCatalogEntry {
-  id: string;
-  user: string;
-  repo: string;
-  branch: string;
-  nodes: number[];
-  org_id?: string | null;
 }
 
 const ROLE_OPTIONS = ['SUPER', 'admin', 'controller', 'viewer', 'audit', 'none'];
@@ -77,7 +58,7 @@ function useElevatedSession() {
 
 export default function AdminPage() {
   const { role, orgId: myOrgId } = useUser();
-  const isSuper = isSuperRole(role);
+  const isSuper = role === 'SUPER';
   const elevated = useElevatedSession();
 
   const [orgs, setOrgs] = useState<Organization[]>([]);
@@ -88,16 +69,6 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-
-  const [invites, setInvites] = useState<Invite[]>([]);
-  const [invitesError, setInvitesError] = useState<string | null>(null);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('viewer');
-
-  const [orgProjects, setOrgProjects] = useState<string[]>([]);
-  const [projectsError, setProjectsError] = useState<string | null>(null);
-  const [repoCatalog, setRepoCatalog] = useState<RepoCatalogEntry[]>([]);
-  const [projectToAssign, setProjectToAssign] = useState('');
 
   const loadOrgs = useCallback(async () => {
     if (!isSuper) return;
@@ -140,61 +111,6 @@ export default function AdminPage() {
     loadUsers(selectedOrgId);
   }, [selectedOrgId, loadUsers]);
 
-  const loadInvites = useCallback(async (orgId: string) => {
-    if (!orgId) {
-      setInvites([]);
-      return;
-    }
-    try {
-      const res = await fetchWithAuth(`proxy/admin/invites?org_id=${encodeURIComponent(orgId)}`);
-      setInvites(res.data || []);
-      setInvitesError(null);
-    } catch (err) {
-      setInvitesError('Failed to load invites for that organization.');
-      setInvites([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadInvites(selectedOrgId);
-  }, [selectedOrgId, loadInvites]);
-
-  const loadOrgProjects = useCallback(async (orgId: string) => {
-    if (!orgId) {
-      setOrgProjects([]);
-      return;
-    }
-    try {
-      const res = await fetchWithAuth(`proxy/admin/organizations/${orgId}/runners`);
-      setOrgProjects(res.data || []);
-      setProjectsError(null);
-    } catch (err) {
-      setProjectsError('Failed to load projects for that organization.');
-      setOrgProjects([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadOrgProjects(selectedOrgId);
-  }, [selectedOrgId, loadOrgProjects]);
-
-  // The fleet-wide repo catalog backs the "assign an existing repo" picker
-  // and resolves runner ids to readable `user/repo @ branch` labels -- only
-  // Super sees the whole fleet here (an org-scoped Admin's own catalog view
-  // is empty until Phase H has assigned them something, same as the Repos
-  // page).
-  useEffect(() => {
-    if (!isSuper) return;
-    fetchWithAuth('proxy/repos')
-      .then((res) => setRepoCatalog(res.data || []))
-      .catch(() => setRepoCatalog([]));
-  }, [isSuper]);
-
-  const repoLabel = (runnerName: string) => {
-    const entry = repoCatalog.find((r) => r.id === runnerName);
-    return entry ? `${entry.user}/${entry.repo} @ ${entry.branch}` : runnerName;
-  };
-
   const createOrg = async () => {
     if (!newOrgName.trim() || !elevated.token) return;
     setStatusMessage(null);
@@ -224,68 +140,6 @@ export default function AdminPage() {
       loadUsers(selectedOrgId);
     } catch (err) {
       setStatusMessage('Failed to update user -- check the role/org and your access level.');
-    }
-  };
-
-  const createInvite = async () => {
-    if (!inviteEmail.trim() || !selectedOrgId || !elevated.token) return;
-    setStatusMessage(null);
-    try {
-      await postWithAuth('proxy/admin/invites', {
-        elevated_token: elevated.token,
-        email: inviteEmail.trim(),
-        org_id: selectedOrgId,
-        role: inviteRole,
-      });
-      setInviteEmail('');
-      setStatusMessage(`Invited ${inviteEmail.trim()}.`);
-      loadInvites(selectedOrgId);
-    } catch (err) {
-      setStatusMessage('Failed to create invite -- check the role and your access level.');
-    }
-  };
-
-  const revokeInvite = async (inviteId: string) => {
-    if (!elevated.token) return;
-    setStatusMessage(null);
-    try {
-      await postWithAuth(`proxy/admin/invites/${inviteId}/revoke`, {
-        elevated_token: elevated.token,
-      });
-      setStatusMessage('Invite revoked.');
-      loadInvites(selectedOrgId);
-    } catch (err) {
-      setStatusMessage('Failed to revoke invite.');
-    }
-  };
-
-  const assignProject = async () => {
-    if (!projectToAssign || !selectedOrgId || !elevated.token) return;
-    setStatusMessage(null);
-    try {
-      await postWithAuth(`proxy/admin/runners/${projectToAssign}/org`, {
-        elevated_token: elevated.token,
-        org_id: selectedOrgId,
-      });
-      setProjectToAssign('');
-      setStatusMessage('Project assigned.');
-      loadOrgProjects(selectedOrgId);
-    } catch (err) {
-      setStatusMessage('Failed to assign project -- check your access level.');
-    }
-  };
-
-  const removeProject = async (projectName: string) => {
-    if (!elevated.token) return;
-    setStatusMessage(null);
-    try {
-      await postWithAuth(`proxy/admin/runners/${projectName}/org/remove`, {
-        elevated_token: elevated.token,
-      });
-      setStatusMessage('Project removed from organization.');
-      loadOrgProjects(selectedOrgId);
-    } catch (err) {
-      setStatusMessage('Failed to remove project.');
     }
   };
 
@@ -429,141 +283,6 @@ export default function AdminPage() {
               ))}
             </div>
           </div>
-
-          {/* Pending invites for the selected org */}
-          <div className="card p-6 space-y-4">
-            <h2 className="font-semibold text-brand">
-              Invites{selectedOrgId ? ` -- org ${selectedOrgId}` : ''}
-            </h2>
-            {invitesError && <p className="text-sm text-red-500">{invitesError}</p>}
-            {!selectedOrgId && <p className="text-gray-500 text-sm">Select an organization above.</p>}
-
-            {selectedOrgId && (
-              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center border-b border-gray-300 dark:border-gray-700 pb-4">
-                <input
-                  type="email"
-                  placeholder="Email to invite"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  className="w-full sm:w-64 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
-                />
-                <select
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value)}
-                  className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-sm"
-                >
-                  {(isSuper ? ROLE_OPTIONS : ROLE_OPTIONS.filter((r) => r !== 'SUPER')).map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={createInvite}
-                  disabled={!elevated.isElevated || !inviteEmail.trim()}
-                  className="btn-brand px-4 py-2 rounded disabled:opacity-50"
-                  title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
-                >
-                  Invite
-                </button>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              {invites.map((invite) => (
-                <div
-                  key={invite.id}
-                  className="card-hover p-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{invite.email}</p>
-                    <p className="text-xs text-gray-400">
-                      {invite.role} -- expires{' '}
-                      {new Date(invite.expires_at * 1000).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => revokeInvite(invite.id)}
-                    disabled={!elevated.isElevated}
-                    className="text-sm text-red-500 hover:text-red-600 disabled:opacity-50"
-                    title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
-                  >
-                    Revoke
-                  </button>
-                </div>
-              ))}
-              {invites.length === 0 && selectedOrgId && !invitesError && (
-                <p className="text-gray-500 text-sm">No pending invites.</p>
-              )}
-            </div>
-          </div>
-
-          {/* Projects (repos/runners) assigned to the selected org */}
-          <div className="card p-6 space-y-4">
-            <h2 className="font-semibold text-brand">
-              Projects{selectedOrgId ? ` -- org ${selectedOrgId}` : ''}
-            </h2>
-            {projectsError && <p className="text-sm text-red-500">{projectsError}</p>}
-            {!selectedOrgId && <p className="text-gray-500 text-sm">Select an organization above.</p>}
-
-            {selectedOrgId && isSuper && (
-              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center border-b border-gray-300 dark:border-gray-700 pb-4">
-                <select
-                  value={projectToAssign}
-                  onChange={(e) => setProjectToAssign(e.target.value)}
-                  className="w-full sm:w-96 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-sm"
-                >
-                  <option value="">Assign an existing repo...</option>
-                  {repoCatalog
-                    .filter((r) => !orgProjects.includes(r.id))
-                    .map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.user}/{r.repo} @ {r.branch}
-                        {r.org_id ? ` (currently org ${r.org_id})` : ''}
-                      </option>
-                    ))}
-                </select>
-                <button
-                  onClick={assignProject}
-                  disabled={!elevated.isElevated || !projectToAssign}
-                  className="btn-brand px-4 py-2 rounded disabled:opacity-50"
-                  title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
-                >
-                  Assign
-                </button>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              {orgProjects.map((projectName) => (
-                <div
-                  key={projectName}
-                  className="card-hover p-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{repoLabel(projectName)}</p>
-                    <p className="text-xs text-gray-400 truncate">{projectName}</p>
-                  </div>
-                  <button
-                    onClick={() => removeProject(projectName)}
-                    disabled={!elevated.isElevated}
-                    className="text-sm text-red-500 hover:text-red-600 disabled:opacity-50"
-                    title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-              {orgProjects.length === 0 && selectedOrgId && !projectsError && (
-                <p className="text-gray-500 text-sm">No projects assigned to this organization.</p>
-              )}
-            </div>
-          </div>
-
-          {/* What each role in the selected org can actually do */}
-          {selectedOrgId && (
-            <PolicyMatrix orgId={selectedOrgId} isSuper={isSuper} elevated={elevated} />
-          )}
         </main>
       </div>
     </RequireAdmin>

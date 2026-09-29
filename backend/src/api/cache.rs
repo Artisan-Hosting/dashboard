@@ -6,12 +6,8 @@ use artisan_middleware::dusa_collection_utils::core::types::rwarc::LockWithTimeo
 /// Builds the proxy cache key exactly as `generic_proxy_handler` does, so every
 /// reader/writer of `proxy_cache` (including the background pre-warmer) agrees
 /// on the same key for the same request.
-///
-/// Scoped by `session_id`: without this, two different sessions (different
-/// users/orgs) hitting the same tail within the TTL window would read/write
-/// the same cache entry and could be served each other's data.
-pub fn proxy_cache_key(session_id: &str, tail: &str, raw_query: &str) -> String {
-    format!("{}:{}?{}", session_id, tail, raw_query)
+pub fn proxy_cache_key(tail: &str, raw_query: &str) -> String {
+    format!("{}?{}", tail, raw_query)
 }
 
 #[derive(Clone)]

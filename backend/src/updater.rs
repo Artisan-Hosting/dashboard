@@ -10,7 +10,7 @@ use chrono::Utc;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 
-async fn refresh_endpoint(session_id: &str, path: &str, token: &str) {
+async fn refresh_endpoint(path: &str, token: &str) {
     let url = format!("{}{}", get_base_url(), path);
     let client = get_state().http_client.clone();
     match client.get(&url).bearer_auth(token).send().await {
@@ -27,7 +27,7 @@ async fn refresh_endpoint(session_id: &str, path: &str, token: &str) {
                     get_state()
                         .proxy_cache
                         .insert(
-                            proxy_cache_key(session_id, path, ""),
+                            proxy_cache_key(path, ""),
                             CachedResponse {
                                 status: status.as_u16(),
                                 content_type,
@@ -58,8 +58,8 @@ pub fn spawn_session_refresh(session: SessionData) {
             }
 
             if let Ok(token) = get_token(session.clone()).await {
-                refresh_endpoint(&session.session_id, "vms", &token).await;
-                refresh_endpoint(&session.session_id, "runners", &token).await;
+                refresh_endpoint("vms", &token).await;
+                refresh_endpoint("apps", &token).await;
             } else {
                 log!(
                     LogLevel::Warn,

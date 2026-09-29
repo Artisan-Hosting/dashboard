@@ -1,6 +1,7 @@
 mod api;
 mod auth;
 mod database;
+mod grpc;
 
 use api::routes::create_api_routes;
 // use api::http::create_api_routes;

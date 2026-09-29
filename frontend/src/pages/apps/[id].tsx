@@ -6,13 +6,13 @@ import {
   fetchGroupUsage,
   fetchInstanceLogs,
   fetchInstanceUsage,
-  fetchProjectDetails,
+  fetchRunnerDetails,
   fetchMultiNodeConfig,
   setMultiNodeConfig,
-  sendProjectControl,
+  sendRunnerControl,
 } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
-import { FullInstance, ProjectDetails, UsageSummary, BillingCosts, LogEntry, statusColorMap, Status, MultiNodeConfigResponse, NodeConfigEntry, WatchdogConfigKind } from '@/lib/types';
+import { FullInstance, RunnerDetails, UsageSummary, BillingCosts, LogEntry, statusColorMap, StatusType, MultiNodeConfigResponse, NodeConfigEntry, WatchdogConfigKind } from '@/lib/types';
 import { resolveRunnerLabel } from '@/lib/repoLabel';
 import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
@@ -32,10 +32,10 @@ export const truncate = (str: string, max = 10) =>
 
 export default function ProjectPage() {
   const router = useRouter();
-  const { id: projectId } = router.query as { id?: string };
+  const { id: runnerId } = router.query as { id?: string };
 
   const [instances, setInstances] = useState<FullInstance[]>([]);
-  const [detailsList, setDetailsList] = useState<ProjectDetails[]>([]);
+  const [detailsList, setDetailsList] = useState<RunnerDetails[]>([]);
   const [groupUsage, setGroupUsage] = useState<UsageSummary | null>(null);
   const [instanceCosts, setInstanceCosts] = useState<Record<string, BillingCosts>>({});
   const [groupCosts, setGroupCosts] = useState<BillingCosts | null>(null);
@@ -49,15 +49,15 @@ export default function ProjectPage() {
   const [runnerLabel, setRunnerLabel] = useState<string>('');
 
   useEffect(() => {
-    if (!router.isReady || !projectId) return;
+    if (!router.isReady || !runnerId) return;
     let cancelled = false;
-    resolveRunnerLabel(projectId).then((label) => {
+    resolveRunnerLabel(runnerId).then((label) => {
       if (!cancelled) setRunnerLabel(label);
     });
     return () => {
       cancelled = true;
     };
-  }, [router.isReady, projectId]);
+  }, [router.isReady, runnerId]);
 
   // --- application config, applied across every node running this app ---
   const [configKind, setConfigKind] = useState<WatchdogConfigKind>('config');
@@ -67,10 +67,10 @@ export default function ProjectPage() {
   const [configSaving, setConfigSaving] = useState(false);
 
   const loadAppConfig = async () => {
-    if (!projectId) return;
+    if (!runnerId) return;
     setConfigLoading(true);
     try {
-      const data = await fetchMultiNodeConfig(projectId, configKind);
+      const data = await fetchMultiNodeConfig(runnerId, configKind);
       setConfigData(data);
       if (data.all_match) {
         setConfigContent(data.nodes.find((n) => n.found)?.content ?? '');
@@ -90,7 +90,7 @@ export default function ProjectPage() {
   };
 
   const saveAppConfig = async () => {
-    if (!projectId || !configData) return;
+    if (!runnerId || !configData) return;
     const targets = configData.nodes.filter((n) => n.found && n.sha256);
     if (targets.length === 0) {
       toast.error('No nodes available to save to');
@@ -115,7 +115,7 @@ export default function ProjectPage() {
 
     setConfigSaving(true);
     try {
-      const result = await setMultiNodeConfig(projectId, configKind, configContent, expectedShas);
+      const result = await setMultiNodeConfig(runnerId, configKind, configContent, expectedShas);
       const failed = result.results.filter((r) => !r.accepted);
       if (failed.length === 0) {
         toast.success(`Config applied to ${result.results.length} node(s)`);
@@ -149,7 +149,7 @@ export default function ProjectPage() {
 
   const handleCommand = async (instanceId: string, command: string) => {
     try {
-      const res = await sendProjectControl(instanceId, command);
+      const res = await sendRunnerControl(instanceId, command);
       toast.success(`${command} sent to ${instanceId}`);
       console.log(`${command} sent to ${instanceId}`, res);
     } catch (e) {
@@ -159,15 +159,15 @@ export default function ProjectPage() {
   };
 
   useEffect(() => {
-    if (!router.isReady || !projectId) return;
+    if (!router.isReady || !runnerId) return;
 
     (async () => {
       try {
 
-        const details = await fetchProjectDetails(projectId!);
+        const details = await fetchRunnerDetails(runnerId);
         setDetailsList(details);
 
-        const grpUsage = await fetchGroupUsage(projectId!);
+        const grpUsage = await fetchGroupUsage(runnerId);
         setGroupUsage(grpUsage);
 
         const full: FullInstance[] = await Promise.all(
@@ -206,12 +206,12 @@ export default function ProjectPage() {
         );
         setLogs(logMap);
       } catch (err) {
-        console.error("Error loading project + usage:", err);
+        console.error("Error loading runner + usage:", err);
       } finally {
         setLoading(false);
       }
     })();
-  }, [router.isReady, projectId]);
+  }, [router.isReady, runnerId]);
 
   const pollInFlight = useRef(false);
 
@@ -220,7 +220,7 @@ export default function ProjectPage() {
     let poller: NodeJS.Timeout;
 
     const poll = async () => {
-      // if (!projectId || detailsList.length === 0) return;
+      // if (!runnerId || detailsList.length === 0) return;
 
       // Skip this tick if the previous poll hasn't finished, so a slow
       // upstream can't pile up overlapping batches of requests.
@@ -230,7 +230,7 @@ export default function ProjectPage() {
       try {
         const updated: FullInstance[] = await Promise.all(
           detailsList.map(async (inst) => {
-            const latestDetailsList = await fetchProjectDetails(String(projectId!));
+            const latestDetailsList = await fetchRunnerDetails(String(runnerId));
             const updatedDetails = latestDetailsList.find(d => d.id === inst.id) || inst;
 
             return {
@@ -276,7 +276,7 @@ export default function ProjectPage() {
     poll();
     poller = setInterval(poll, pollInterval);
     return () => clearInterval(poller);
-  }, [projectId, detailsList]);
+  }, [runnerId, detailsList]);
 
 
   return (
@@ -285,7 +285,7 @@ export default function ProjectPage() {
       <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
       <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-        <h1 className="text-3xl font-bold text-brand mb-6">Project: {runnerLabel || projectId}</h1>
+        <h1 className="text-3xl font-bold text-brand mb-6">Project: {runnerLabel || runnerId}</h1>
 
         {!loading && (
           <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
@@ -300,12 +300,12 @@ export default function ProjectPage() {
                   <div className="flex justify-between items-center mb-2">
                     <div>
                       <h2 className="text-xl font-semibold text-brand text-pretty">
-                        {runnerLabel || projectId}
+                        {runnerLabel || runnerId}
                       </h2>
                       <p className="text-xs text-gray-500 truncate" title={String(details.id)}>
                         Instance {String(details.id).slice(-8)}
                       </p>
-                      <p className={`text-sm ${statusColorMap[details.status as Status] || 'text-black'}`}>
+                      <p className={`text-sm ${statusColorMap[details.status as StatusType] || 'text-black'}`}>
                         {details.status}
                       </p>
                     </div>
