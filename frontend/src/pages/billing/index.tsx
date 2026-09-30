@@ -10,6 +10,9 @@ import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { Button, Tabs, TabPanel } from '@/components/ui';
 import Link from 'next/link';
 import { useUser } from '@/hooks/useUser';
+import { isAdminRole } from '@/components/requireAdmin';
+import { PlanSection } from '@/components/billing/PlanSection';
+import { PaymentHistory } from '@/components/billing/PaymentHistory';
 
 interface BillingBlock {
   name: string;
@@ -23,7 +26,7 @@ const usd = (cents: number) =>
 
 export default function BillingPage() {
   const router = useRouter();
-  const { orgId } = useUser();
+  const { orgId, role } = useUser();
   const [loading, setLoading] = useState(true);
   const [blocks, setBlocks] = useState<BillingBlock[]>([]);
   const [tab, setTab] = useState('summary');
@@ -103,6 +106,10 @@ export default function BillingPage() {
           onChange={handleTabChange}
         >
           <TabPanel tabKey="summary" active={tab}>
+            <div className="mb-8">
+              <PlanSection orgId={orgId} canChange={isAdminRole(role)} />
+            </div>
+
             <div className="card p-6 mb-6">
               <h2 className="text-xl font-semibold text-brand mb-4">Overview</h2>
               <p className="text-sm" style={{ color: 'var(--muted)' }}>
@@ -152,7 +159,7 @@ export default function BillingPage() {
           </TabPanel>
 
           <TabPanel tabKey="payments" active={tab}>
-            <PaymentsTab />
+            <PaymentHistory orgId={orgId} />
           </TabPanel>
         </Tabs>
       </main>
@@ -225,74 +232,6 @@ function CreditsTab() {
         >
           View Credit Balance & Top-Up
         </a>
-      </div>
-    </div>
-  );
-}
-
-function PaymentsTab() {
-  const planRates = {
-    builder: { name: 'Builder', price: '$8/mo', includes: '0.5 GB memory, 0.25 processor, 10 GB traffic, 1,000 emails' },
-    pro: { name: 'Pro', price: '$32/mo', includes: '2 GB memory, 1 processor, 50 GB traffic, 5,000 emails' },
-    team: { name: 'Team', price: '$95/mo', includes: '6 GB memory, 3 processors, 200 GB traffic, 25,000 emails' },
-    essentials: { name: 'Essentials Care', price: '$30/mo', includes: '0.25 GB memory, 0.25 processor, We look after it' },
-    business: { name: 'Business Care', price: '$99/mo', includes: '1 GB memory, 1 processor, We look after it' },
-    managed: { name: 'Managed Platform', price: '$300/mo', includes: '4 GB memory, 2 processors, We look after it' },
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="card p-6">
-        <h2 className="text-xl font-semibold text-brand mb-4">Current Plans</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="border rounded-lg p-4">
-            <h3 className="font-semibold text-brand mb-2">Developer Plans</h3>
-            <ul className="space-y-2 text-sm">
-              <li className="flex justify-between">
-                <span>{planRates.builder.name}</span>
-                <span className="font-medium">{planRates.builder.price}</span>
-              </li>
-              <li style={{ color: 'var(--muted)' }}>{planRates.builder.includes}</li>
-              <li className="flex justify-between">
-                <span>{planRates.pro.name}</span>
-                <span className="font-medium">{planRates.pro.price}</span>
-              </li>
-              <li style={{ color: 'var(--muted)' }}>{planRates.pro.includes}</li>
-              <li className="flex justify-between">
-                <span>{planRates.team.name}</span>
-                <span className="font-medium">{planRates.team.price}</span>
-              </li>
-              <li style={{ color: 'var(--muted)' }}>{planRates.team.includes}</li>
-            </ul>
-          </div>
-          <div className="border rounded-lg p-4">
-            <h3 className="font-semibold text-brand mb-2">Business Plans</h3>
-            <ul className="space-y-2 text-sm">
-              <li className="flex justify-between">
-                <span>{planRates.essentials.name}</span>
-                <span className="font-medium">{planRates.essentials.price}</span>
-              </li>
-              <li style={{ color: 'var(--muted)' }}>{planRates.essentials.includes}</li>
-              <li className="flex justify-between">
-                <span>{planRates.business.name}</span>
-                <span className="font-medium">{planRates.business.price}</span>
-              </li>
-              <li style={{ color: 'var(--muted)' }}>{planRates.business.includes}</li>
-              <li className="flex justify-between">
-                <span>{planRates.managed.name}</span>
-                <span className="font-medium">{planRates.managed.price}</span>
-              </li>
-              <li style={{ color: 'var(--muted)' }}>{planRates.managed.includes}</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div className="card p-6">
-        <h2 className="text-xl font-semibold text-brand mb-4">Payment History</h2>
-        <p className="text-sm" style={{ color: 'var(--muted)' }}>
-          Payment history and billing statements are available on the Credit page.
-        </p>
       </div>
     </div>
   );

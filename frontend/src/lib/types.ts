@@ -631,3 +631,78 @@ export interface ApplyFreeformVhostResponse {
   diff: string;
   validation: ValidateFreeformVhostResponse;
 }
+
+// --- Billing: plans, subscriptions, invoices ---
+
+export type Storefront = 'developer' | 'business' | 'email';
+
+export interface PlanUnit {
+  unit_code: string;
+  included_qty: number;
+  // Cents per unit above the allowance; only meaningful when overage_billed.
+  overage_rate_cents_per_unit: number;
+  overage_billed: boolean;
+}
+
+export interface Plan {
+  plan_code: string;
+  storefront: Storefront | string;
+  display_name: string;
+  price_cents: number;
+  currency: string;
+  units: PlanUnit[];
+}
+
+export interface Subscription {
+  id: string;
+  organization_id: string;
+  storefront: Storefront | string;
+  plan_code: string;
+  // active | past_due | grace_period | suspended | deleted | canceled
+  status: string;
+  current_period_start: number;
+  current_period_end: number;
+  // A downgrade queued for current_period_end; empty when none.
+  pending_plan_code: string;
+  cancel_at_period_end: boolean;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface InvoiceLineItem {
+  unit_code: string;
+  description: string;
+  quantity: number;
+  unit_price_cents: number;
+  amount_cents: number;
+}
+
+export interface Invoice {
+  id: string;
+  organization_id: string;
+  subscription_id: string;
+  period_start: number;
+  period_end: number;
+  // draft | open | paid | void | uncollectible
+  status: string;
+  total_cents: number;
+  currency: string;
+  stripe_payment_intent_id: string;
+  created_at: number;
+  updated_at: number;
+  line_items: InvoiceLineItem[];
+}
+
+export interface InvoicePage {
+  invoices: Invoice[];
+  total: number;
+}
+
+// Nothing is owed (a free plan, or a downgrade) when stripe_client_secret is
+// empty, so there is no card to collect.
+export interface SubscriptionCheckout {
+  subscription: Subscription | null;
+  invoice: Invoice | null;
+  stripe_client_secret: string;
+  stripe_publishable_key: string;
+}
