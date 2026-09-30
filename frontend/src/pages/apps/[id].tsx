@@ -1,23 +1,28 @@
 // src/pages/dashboard/[id].tsx
-import { Sidebar } from '@/components/header';
 import LoadingOverlay from '@/components/loading';
 import {
-  fetchBilling,
   fetchGroupUsage,
   fetchInstanceLogs,
   fetchInstanceUsage,
   fetchProjectDetails,
+  fetchProjectGitInfo,
   fetchMultiNodeConfig,
   setMultiNodeConfig,
   sendProjectControl,
+  fetchDomains,
 } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
-import { FullInstance, ProjectDetails, UsageSummary, BillingCosts, LogEntry, statusColorMap, Status, MultiNodeConfigResponse, NodeConfigEntry, WatchdogConfigKind } from '@/lib/types';
+import { DomainEntry, FullInstance, ProjectDetails, UsageSummary, LogEntry, MultiNodeConfigResponse, NodeConfigEntry, WatchdogConfigKind } from '@/lib/types';
 import { resolveRunnerLabel } from '@/lib/repoLabel';
+import { formatExpiry } from '@/lib/format';
 import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
 import { Menu } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
+import { Button, Meter, Panel, Pill, SelectField, TabPanel, Tabs, Term } from '@/components/ui';
+import { SecretsManager } from '@/components/SecretsManager';
+import { TopBar } from '@/components/topbar';
+import Link from 'next/link';
 
 function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -26,9 +31,12 @@ function formatBytes(bytes: number): string {
   return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
 }
 
-
-export const truncate = (str: string, max = 10) =>
-  str.length > max ? str.slice(12, max) + '…' : str;
+const TABS = [
+  { key: 'config', label: 'Config' },
+  { key: 'secrets', label: 'Secrets' },
+  { key: 'logs', label: 'Logs' },
+  { key: 'source', label: 'Source' },
+];
 
 export default function ProjectPage() {
   const router = useRouter();
@@ -37,16 +45,15 @@ export default function ProjectPage() {
   const [instances, setInstances] = useState<FullInstance[]>([]);
   const [detailsList, setDetailsList] = useState<ProjectDetails[]>([]);
   const [groupUsage, setGroupUsage] = useState<UsageSummary | null>(null);
-  const [instanceCosts, setInstanceCosts] = useState<Record<string, BillingCosts>>({});
-  const [groupCosts, setGroupCosts] = useState<BillingCosts | null>(null);
   const [logs, setLogs] = useState<Record<string, LogEntry[]>>({});
   const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<string>('');
   const previousStatusRef = useRef<Record<string, string>>({});
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [historicalLogs, setHistoricalLogs] = useState<Record<string, LogEntry[]>>({});
   const [historicalLoading, setHistoricalLoading] = useState<Record<string, boolean>>({});
   const [runnerLabel, setRunnerLabel] = useState<string>('');
+  const [activeTab, setActiveTab] = useState('config');
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   useEffect(() => {
     if (!router.isReady || !projectId) return;
@@ -54,6 +61,41 @@ export default function ProjectPage() {
     resolveRunnerLabel(projectId).then((label) => {
       if (!cancelled) setRunnerLabel(label);
     });
+    return () => {
+      cancelled = true;
+    };
+  }, [router.isReady, projectId]);
+
+  // --- source info (repo/branch), for the Source tab ---
+  const [gitInfo, setGitInfo] = useState<{ user: string; repo: string; branch: string } | null>(null);
+
+  useEffect(() => {
+    if (!router.isReady || !projectId) return;
+    let cancelled = false;
+    fetchProjectGitInfo(projectId).then((info) => {
+      if (!cancelled) setGitInfo(info);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [router.isReady, projectId]);
+
+  // --- domains attached to this project, for the Domains panel ---
+  const [domains, setDomains] = useState<DomainEntry[]>([]);
+
+  useEffect(() => {
+    if (!router.isReady || !projectId) return;
+    let cancelled = false;
+    // /domains has no runner_id filter, so this fetches the caller's
+    // visible page of domains and filters client-side -- fine at the scale
+    // one org's domain count actually reaches.
+    fetchDomains({ limit: 500 })
+      .then((page) => {
+        if (!cancelled) setDomains((page.entries ?? []).filter((d) => d.runner_id === projectId));
+      })
+      .catch(() => {
+        if (!cancelled) setDomains([]);
+      });
     return () => {
       cancelled = true;
     };
@@ -158,12 +200,28 @@ export default function ProjectPage() {
     }
   };
 
+  // Project-level start/stop/restart -- `/control/{runner_or_instance}/{command}`
+  // accepts either id, so this is one call against the project itself rather
+  // than looping every instance client-side.
+  const handleBulkCommand = async (command: string) => {
+    if (!projectId) return;
+    setBulkBusy(true);
+    try {
+      await sendProjectControl(projectId, command);
+      toast.success(`${command} sent to every instance`);
+    } catch (e) {
+      toast.error(`Failed to ${command} the project`);
+      console.error(`Failed to send bulk command '${command}'`, e);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   useEffect(() => {
     if (!router.isReady || !projectId) return;
 
     (async () => {
       try {
-
         const details = await fetchProjectDetails(projectId!);
         setDetailsList(details);
 
@@ -177,22 +235,6 @@ export default function ProjectPage() {
           }))
         );
         setInstances(full);
-
-        // const costMap: Record<string, BillingCosts> = {};
-        // await Promise.all(
-        //   full.map(async ({ details, usage }) => {
-        //     try {
-        //       const costs = await fetchBilling(usage);
-        //       costMap[details.id] = costs;
-        //     } catch (e) {
-        //       console.error(`Failed billing for ${details.id}`, e);
-        //     }
-        //   })
-        // );
-        // setInstanceCosts(costMap);
-
-        // const gc = await fetchBilling(grpUsage);
-        // setGroupCosts(gc);
 
         const logMap: Record<string, LogEntry[]> = {};
         await Promise.all(
@@ -220,10 +262,6 @@ export default function ProjectPage() {
     let poller: NodeJS.Timeout;
 
     const poll = async () => {
-      // if (!projectId || detailsList.length === 0) return;
-
-      // Skip this tick if the previous poll hasn't finished, so a slow
-      // upstream can't pile up overlapping batches of requests.
       if (pollInFlight.current) return;
       pollInFlight.current = true;
 
@@ -240,7 +278,6 @@ export default function ProjectPage() {
           })
         );
 
-
         const previous = previousStatusRef.current;
         updated.forEach(({ details }) => {
           const prevStatus = previous[details.id];
@@ -253,7 +290,6 @@ export default function ProjectPage() {
         });
 
         setInstances(updated);
-        setLastUpdated(new Date().toLocaleTimeString());
 
         const logMap: Record<string, LogEntry[]> = {};
         await Promise.all(
@@ -278,241 +314,252 @@ export default function ProjectPage() {
     return () => clearInterval(poller);
   }, [projectId, detailsList]);
 
-
   return (
-    <div className="relative min-h-screen flex bg-page text-foreground">
+    <div className="relative min-h-screen bg-page text-foreground">
       <Toaster position="bottom-right" />
-      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+      <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-        <h1 className="text-3xl font-bold text-brand mb-6">Project: {runnerLabel || projectId}</h1>
-
+      <main className="overflow-y-auto p-4 sm:p-6 lg:p-8">
         {!loading && (
-          <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {instances.map(({ details, usage }) => {
-              const costs = instanceCosts[details.id];
-              const instanceLogs = logs[details.id] || [];
-              return (
-                <div
-                  key={details.id}
-                  className="card p-4"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <div>
-                      <h2 className="text-xl font-semibold text-brand text-pretty">
-                        {runnerLabel || projectId}
-                      </h2>
-                      <p className="text-xs text-gray-500 truncate" title={String(details.id)}>
-                        Instance {String(details.id).slice(-8)}
-                      </p>
-                      <p className={`text-sm ${statusColorMap[details.status as Status] || 'text-black'}`}>
-                        {details.status}
-                      </p>
+          <>
+            <div className="page-head">
+              <div>
+                <h1 className="text-3xl font-bold text-brand">{runnerLabel || projectId}</h1>
+                <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
+                  {instances.length} instance{instances.length === 1 ? '' : 's'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid3">
+              {/* Instances */}
+              <Panel
+                title={
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span>Instances</span>
+                    <div className="flex gap-2">
+                      <Button small variant="ghost" disabled={bulkBusy} onClick={() => handleBulkCommand('start')}>Start all</Button>
+                      <Button small variant="ghost" disabled={bulkBusy} onClick={() => handleBulkCommand('restart')}>Restart all</Button>
+                      <Button small variant="danger" disabled={bulkBusy} onClick={() => handleBulkCommand('stop')}>Stop all</Button>
                     </div>
-                    <div className="hidden sm:flex gap-2">
-                      <button onClick={() => handleCommand(details.id, 'start')} className="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-white text-sm">Start</button>
-                      <button onClick={() => handleCommand(details.id, 'stop')} className="bg-yellow-500 hover:bg-yellow-600 px-2 py-1 rounded text-white text-sm">Stop</button>
-                      <button onClick={() => handleCommand(details.id, 'restart')} className="btn-brand px-2 py-1 rounded text-sm">Restart</button>
+                  </div>
+                }
+              >
+                {instances.map(({ details }) => (
+                  <div key={details.id} className="flex items-center justify-between gap-2 py-2" style={{ borderBottom: '1px solid var(--line)' }}>
+                    <div className="min-w-0">
+                      <p className="text-xs truncate" style={{ fontFamily: 'var(--font-mono)', color: 'var(--strong)' }} title={String(details.id)}>
+                        {String(details.id).slice(-8)}
+                      </p>
+                      <Pill status={details.status} />
                     </div>
-                    <div className="relative sm:hidden">
-                      <button
-                        onClick={() => setOpenMenu(openMenu === details.id ? null : details.id)}
-                        className="p-2 btn-brand rounded"
-                      >
-                        <Menu className="w-5 h-5" />
+                    <div className="hidden sm:flex gap-2 shrink-0">
+                      <Button small variant="ghost" onClick={() => handleCommand(details.id, 'start')}>Start</Button>
+                      <Button small variant="danger" onClick={() => handleCommand(details.id, 'stop')}>Stop</Button>
+                      <Button small variant="ghost" onClick={() => handleCommand(details.id, 'restart')}>Restart</Button>
+                    </div>
+                    <div className="relative sm:hidden shrink-0">
+                      <button onClick={() => setOpenMenu(openMenu === details.id ? null : details.id)} className="p-2 btn-brand rounded">
+                        <Menu className="w-4 h-4" />
                       </button>
                       {openMenu === details.id && (
-                        <div className="absolute right-0 mt-2 bg-[#1b1e2e] p-2 rounded shadow-lg space-y-1 z-20">
-                          <button onClick={() => {handleCommand(details.id, 'start'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-gray-700 text-sm">Start</button>
-                          <button onClick={() => {handleCommand(details.id, 'stop'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-gray-700 text-sm">Stop</button>
-                          <button onClick={() => {handleCommand(details.id, 'restart'); setOpenMenu(null);}} className="block w-full text-left px-2 py-1 rounded hover:bg-gray-700 text-sm">Restart</button>
+                        <div className="absolute right-0 mt-2 p-2 rounded shadow-lg space-y-1 z-20 panel">
+                          <button onClick={() => { handleCommand(details.id, 'start'); setOpenMenu(null); }} className="block w-full text-left px-2 py-1 rounded hover:bg-[color:var(--surface-2)] text-sm">Start</button>
+                          <button onClick={() => { handleCommand(details.id, 'stop'); setOpenMenu(null); }} className="block w-full text-left px-2 py-1 rounded hover:bg-[color:var(--surface-2)] text-sm">Stop</button>
+                          <button onClick={() => { handleCommand(details.id, 'restart'); setOpenMenu(null); }} className="block w-full text-left px-2 py-1 rounded hover:bg-[color:var(--surface-2)] text-sm">Restart</button>
                         </div>
                       )}
                     </div>
                   </div>
+                ))}
+                {instances.length === 0 && (
+                  <p className="text-sm" style={{ color: 'var(--muted)' }}>No instances running.</p>
+                )}
+              </Panel>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 text-sm text-gray-300">
+              {/* Usage */}
+              <Panel title="Usage, last 30 days">
+                {groupUsage ? (
+                  <>
+                    <Meter
+                      label="Memory, average"
+                      value={groupUsage.avg_memory}
+                      valueLabel={`${groupUsage.avg_memory.toFixed(1)} MB`}
+                      included={groupUsage.peak_memory}
+                      includedLabel={`${groupUsage.peak_memory.toFixed(1)} MB`}
+                      capNote={`Peak was ${groupUsage.peak_memory.toFixed(1)} MB.`}
+                    />
+                    <Meter
+                      label="CPU, average"
+                      value={groupUsage.total_cpu}
+                      valueLabel={`${groupUsage.total_cpu.toFixed(2)} hrs`}
+                      included={groupUsage.peak_cpu}
+                      includedLabel={`${groupUsage.peak_cpu.toFixed(2)} hrs`}
+                      capNote={`Peak was ${groupUsage.peak_cpu.toFixed(2)} hrs.`}
+                    />
+                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                      TX {formatBytes(groupUsage.total_tx)} -- RX {formatBytes(groupUsage.total_rx)}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm" style={{ color: 'var(--muted)' }}>No usage data yet.</p>
+                )}
+              </Panel>
 
-                    <div className="space-y-1">
-                      <h3 className="font-semibold text-brand">Health</h3>
-                      <p>CPU Usage: {details.health?.cpu_usage ?? 'N/A'}</p>
-                      <p>RAM Usage: {details.health?.ram_usage ?? 'N/A'}</p>
-                      <p>TX: {formatBytes(details.health?.tx_bytes ?? 0)}</p>
-                      <p>RX: {formatBytes(details.health?.rx_bytes ?? 0)}</p>
+              {/* Domains */}
+              <Panel title="Domains">
+                {domains.map((d) => (
+                  <div key={d.id} className="py-2" style={{ borderBottom: '1px solid var(--line)' }}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span style={{ fontFamily: 'var(--font-mono)' }}>{d.fqdn}</span>
+                      <Pill status={d.status} />
                     </div>
+                    <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>{formatExpiry(d.expires_at)}</p>
+                  </div>
+                ))}
+                {domains.length === 0 && (
+                  <p className="text-sm" style={{ color: 'var(--muted)' }}>No domains attached.</p>
+                )}
+                <Link href="/domains" className="text-sm text-brand hover:underline">
+                  Manage domains
+                </Link>
+              </Panel>
+            </div>
 
-                    <div className="space-y-1">
-                      <h3 className="font-semibold text-brand">Usage</h3>
-                      <p>Total CPU Time: {usage.total_cpu.toFixed(3)} hrs</p>
-                      <p>Avg Memory: {usage.avg_memory.toFixed(3)} MB</p>
-                      <p>Peak Memory: {usage.peak_memory.toFixed(3)} MB</p>
-                    </div>
-
-                    {/* {costs && (
-                      <div className="space-y-1">
-                        <h3 className="font-semibold text-brand">Billing</h3>
-                        <p>CPU Cost: ${costs.cpu_cost.toFixed(3)}</p>
-                        <p>RAM Cost: ${costs.ram_cost.toFixed(3)}</p>
-                        <p>Bandwidth: ${costs.bandwidth_cost.toFixed(2)}</p>
-                      </div>
-                    )} */}
+            <div className="mt-10">
+              <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab}>
+                <TabPanel tabKey="config" active={activeTab}>
+                  <p className="help mb-3" style={{ color: 'var(--muted)' }}>
+                    Reads and writes the watchdog config for every instance of this app at once.
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-3 items-center">
+                    <SelectField value={configKind} onChange={(e) => setConfigKind(e.target.value as WatchdogConfigKind)} style={{ width: 'auto' }}>
+                      <option value="config">config</option>
+                      <option value="overrides">overrides</option>
+                    </SelectField>
+                    <Button small onClick={loadAppConfig} disabled={configLoading}>
+                      {configLoading ? 'Loading…' : 'Load Config'}
+                    </Button>
                   </div>
 
-
-                  {instanceLogs.length > 0 && (
-                    <details className="mt-4">
-                      <summary className="cursor-pointer font-semibold text-sm mb-2 text-brand">
-                        Recent Logs
-                      </summary>
-                      <div className="max-h-40 overflow-y-auto bg-black text-green-400 text-xs p-2 rounded border border-gray-700">
-                        {instanceLogs.map((log, i) => (
-                          <pre key={i} className="whitespace-pre-wrap">[{log.timestamp}] {log.message}</pre>
+                  {configData && !configData.all_match && (
+                    <div className="mb-3 p-3 rounded text-sm" style={{ border: '1px solid var(--warn)', background: 'color-mix(in srgb, var(--warn) 10%, transparent)' }}>
+                      <p className="font-semibold mb-2" style={{ color: 'var(--warn)' }}>
+                        Configs differ across nodes — pick a version below before saving.
+                      </p>
+                      <div className="space-y-2">
+                        {configData.nodes.map((node) => (
+                          <div key={node.node_id} className="flex flex-wrap items-center justify-between gap-2 pb-2" style={{ borderBottom: '1px solid var(--line)' }}>
+                            <div style={{ color: 'var(--text)' }}>
+                              <span className="font-medium" style={{ color: 'var(--strong)' }}>{node.hostname}</span>{' '}
+                              {node.found ? (
+                                <span className="text-xs" style={{ color: 'var(--muted)' }}>({(node.content ?? '').length} bytes)</span>
+                              ) : (
+                                <span className="text-xs" style={{ color: 'var(--bad)' }}>{node.error ?? 'unavailable'}</span>
+                              )}
+                            </div>
+                            {node.found && (
+                              <Button small variant="ghost" onClick={() => useNodeVersion(node)}>
+                                Use this version
+                              </Button>
+                            )}
+                          </div>
                         ))}
                       </div>
-                    </details>
+                    </div>
                   )}
 
+                  {configData && configData.nodes.length === 0 && (
+                    <p className="text-sm mb-3" style={{ color: 'var(--muted)' }}>No nodes are currently running this app.</p>
+                  )}
+
+                  <textarea
+                    value={configContent}
+                    onChange={(e) => setConfigContent(e.target.value)}
+                    rows={14}
+                    className="code"
+                    placeholder="Load a config to edit it"
+                  />
                   <div className="mt-3">
-                    <button
-                      onClick={() => loadHistoricalLogs(details.id)}
-                      disabled={!!historicalLoading[details.id]}
-                      className="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-white text-xs disabled:opacity-50"
-                    >
-                      {historicalLoading[details.id] ? 'Loading…' : `Load last ${HISTORICAL_LOG_LINES} lines`}
-                    </button>
-
-                    {historicalLogs[details.id] && (
-                      <details className="mt-2" open>
-                        <summary className="cursor-pointer font-semibold text-sm mb-2 text-brand flex items-center justify-between">
-                          <span>Historical Logs ({historicalLogs[details.id].length} lines)</span>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setHistoricalLogs((prev) => {
-                                const next = { ...prev };
-                                delete next[details.id];
-                                return next;
-                              });
-                            }}
-                            className="text-gray-400 hover:text-white text-xs ml-2"
-                          >
-                            Close
-                          </button>
-                        </summary>
-                        <div className="max-h-96 overflow-y-auto bg-black text-green-400 text-xs p-2 rounded border border-gray-700">
-                          {historicalLogs[details.id].map((log, i) => (
-                            <pre key={i} className="whitespace-pre-wrap">[{log.timestamp}] {log.message}</pre>
-                          ))}
-                        </div>
-                      </details>
-                    )}
+                    <Button small onClick={saveAppConfig} disabled={configSaving || !configData || configData.nodes.every((n) => !n.found)}>
+                      {configSaving ? 'Saving…' : 'Save to all instances'}
+                    </Button>
                   </div>
+                </TabPanel>
 
-                </div>
-              );
-            })}
-          </div>
-        )}
+                <TabPanel tabKey="secrets" active={activeTab}>
+                  {projectId && <SecretsManager projectId={projectId} />}
+                </TabPanel>
 
-        {!loading && (
-          <div className="mt-10 card p-6">
-            <h2 className="text-xl font-bold mb-4 text-brand">Application Config</h2>
-            <p className="text-sm text-gray-400 mb-3">
-              Reads and writes the watchdog config for every instance of this app at once.
-            </p>
-            <div className="flex flex-wrap gap-2 mb-3">
-              <select
-                value={configKind}
-                onChange={(e) => setConfigKind(e.target.value as WatchdogConfigKind)}
-                className="bg-gray-800 rounded px-2 py-1 text-sm"
-              >
-                <option value="config">config</option>
-                <option value="overrides">overrides</option>
-              </select>
-              <button
-                onClick={loadAppConfig}
-                disabled={configLoading}
-                className="btn-brand px-3 py-1 rounded text-sm disabled:opacity-50"
-              >
-                {configLoading ? 'Loading…' : 'Load Config'}
-              </button>
-            </div>
-
-            {configData && !configData.all_match && (
-              <div className="mb-3 p-3 rounded border border-yellow-600 bg-yellow-900/20 text-sm">
-                <p className="text-yellow-400 font-semibold mb-2">
-                  Configs differ across nodes — pick a version below before saving.
-                </p>
-                <div className="space-y-2">
-                  {configData.nodes.map((node) => (
-                    <div key={node.node_id} className="flex flex-wrap items-center justify-between gap-2 border-b border-yellow-800/50 pb-2">
-                      <div className="text-gray-300">
-                        <span className="font-medium text-white">{node.hostname}</span>{' '}
-                        {node.found ? (
-                          <span className="text-xs text-gray-500">({(node.content ?? '').length} bytes)</span>
+                <TabPanel tabKey="logs" active={activeTab}>
+                  {instances.map(({ details }) => {
+                    const instanceLogs = logs[details.id] || [];
+                    return (
+                      <div key={details.id} className="mb-8">
+                        <h3 className="font-semibold text-sm mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--strong)' }}>
+                          {String(details.id).slice(-8)}
+                        </h3>
+                        {instanceLogs.length > 0 ? (
+                          <Term lines={instanceLogs.map((log) => `[${log.timestamp}] ${log.message}`)} />
                         ) : (
-                          <span className="text-xs text-red-400">{node.error ?? 'unavailable'}</span>
+                          <p className="text-sm" style={{ color: 'var(--muted)' }}>No recent logs.</p>
                         )}
+                        <div className="mt-2">
+                          <Button small variant="ghost" onClick={() => loadHistoricalLogs(details.id)} disabled={!!historicalLoading[details.id]}>
+                            {historicalLoading[details.id] ? 'Loading…' : `Load last ${HISTORICAL_LOG_LINES} lines`}
+                          </Button>
+                          {historicalLogs[details.id] && (
+                            <details className="mt-2" open>
+                              <summary className="cursor-pointer font-semibold text-sm mb-2 text-brand flex items-center justify-between">
+                                <span>Historical Logs ({historicalLogs[details.id].length} lines)</span>
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setHistoricalLogs((prev) => { const next = { ...prev }; delete next[details.id]; return next; });
+                                  }}
+                                  className="text-xs hover:underline ml-2"
+                                  style={{ color: 'var(--muted)' }}
+                                >
+                                  Close
+                                </button>
+                              </summary>
+                              <Term tall lines={historicalLogs[details.id].map((log) => `[${log.timestamp}] ${log.message}`)} />
+                            </details>
+                          )}
+                        </div>
                       </div>
-                      {node.found && (
-                        <button
-                          onClick={() => useNodeVersion(node)}
-                          className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs"
-                        >
-                          Use this version
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                    );
+                  })}
+                  {instances.length === 0 && (
+                    <p className="text-sm" style={{ color: 'var(--muted)' }}>No instances to show logs for.</p>
+                  )}
+                </TabPanel>
 
-            {configData && configData.nodes.length === 0 && (
-              <p className="text-sm text-gray-400 mb-3">No nodes are currently running this app.</p>
-            )}
-
-            <textarea
-              value={configContent}
-              onChange={(e) => setConfigContent(e.target.value)}
-              rows={14}
-              className="w-full bg-black text-green-400 text-xs p-2 rounded border border-gray-700 font-mono"
-              placeholder="Load a config to edit it"
-            />
-            <div className="mt-3">
-              <button
-                onClick={saveAppConfig}
-                disabled={configSaving || !configData || configData.nodes.every((n) => !n.found)}
-                className="btn-brand px-3 py-1 rounded text-sm disabled:opacity-50"
-              >
-                {configSaving ? 'Saving…' : 'Save to all instances'}
-              </button>
+                <TabPanel tabKey="source" active={activeTab}>
+                  <dl className="kv">
+                    <dt>Repository</dt>
+                    <dd>{gitInfo ? `${gitInfo.user}/${gitInfo.repo}` : 'unavailable'}</dd>
+                    <dt>Branch</dt>
+                    <dd>{gitInfo?.branch ?? 'unavailable'}</dd>
+                    <dt>Project ID</dt>
+                    <dd>{projectId}</dd>
+                    <dt>Reference</dt>
+                    <dd>
+                      urn:artisan:project:{projectId}{' '}
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        type="button"
+                        style={{ marginLeft: 8 }}
+                        onClick={() => navigator.clipboard?.writeText(`urn:artisan:project:${projectId}`)}
+                      >
+                        Copy
+                      </button>
+                    </dd>
+                  </dl>
+                </TabPanel>
+              </Tabs>
             </div>
-          </div>
-        )}
-
-        {groupUsage && !loading && groupCosts && (
-          <div className="mt-10 card p-6">
-            <h2 className="text-xl font-bold mb-4 text-brand">
-              Overall Usage & Billing
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-1 text-gray-300">
-                <p>Total CPU Time: {groupUsage.total_cpu.toFixed(2)} hrs</p>
-                <p>Avg Memory:       {groupUsage.avg_memory.toFixed(2)} MB</p>
-                <p>Total Instances:  {instances.length}</p>
-                <p>Samples:          {groupUsage.total_samples}</p>
-              </div>
-              <div className="space-y-1 text-gray-300">
-                <p>CPU Cost:      ${groupCosts.cpu_cost.toFixed(2)}</p>
-                <p>RAM Cost:      ${groupCosts.ram_cost.toFixed(2)}</p>
-                <p>Bandwidth:     ${groupCosts.bandwidth_cost.toFixed(2)}</p>
-                <p className="font-semibold text-white">
-                  Total Cost:    ${groupCosts.total_cost.toFixed(2)}
-                </p>
-              </div>
-            </div>
-          </div>
+          </>
         )}
       </main>
       {loading && <LoadingOverlay />}

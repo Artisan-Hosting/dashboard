@@ -1,10 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Sidebar } from '@/components/header';
+import { TopBar } from '@/components/topbar';
 import { RequireAdmin, isSuperRole } from '@/components/requireAdmin';
 import { PolicyMatrix } from '@/components/admin/PolicyMatrix';
 import { fetchWithAuth, postWithAuth } from '@/lib/api';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { useUser } from '@/hooks/useUser';
+import { useElevatedSession } from '@/hooks/useElevatedSession';
+import { Button, Field, SelectField } from '@/components/ui';
 
 interface Organization {
   id: string;
@@ -39,41 +41,6 @@ interface RepoCatalogEntry {
 }
 
 const ROLE_OPTIONS = ['SUPER', 'admin', 'controller', 'viewer', 'audit', 'none'];
-
-/// Step-up auth: an elevated token is only ever held in memory (state, not
-/// storage) and only for the few minutes ais_auth's ElevateSession actually
-/// grants it for -- a page refresh means re-entering the password again.
-function useElevatedSession() {
-  const [token, setToken] = useState<string | null>(null);
-  const [expiresAt, setExpiresAt] = useState<number | null>(null);
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const secondsLeft = expiresAt ? Math.max(0, Math.round((expiresAt - Date.now()) / 1000)) : 0;
-  const isElevated = !!token && secondsLeft > 0;
-
-  const elevate = async () => {
-    if (!password) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await postWithAuth('proxy/admin/elevate', { password });
-      const data = res.data;
-      setToken(data.elevated_token);
-      setExpiresAt(Date.now() + data.expires_in * 1000);
-      setPassword('');
-    } catch (err: any) {
-      setError('Incorrect password, or elevation failed.');
-      setToken(null);
-      setExpiresAt(null);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return { token, isElevated, secondsLeft, password, setPassword, busy, error, elevate };
-}
 
 export default function AdminPage() {
   const { role, orgId: myOrgId } = useUser();
@@ -291,9 +258,9 @@ export default function AdminPage() {
 
   return (
     <RequireAdmin>
-      <div className="min-h-screen flex bg-page text-foreground">
-        <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
+      <div className="min-h-screen bg-page text-foreground">
+        <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6">
           <h1 className="text-3xl font-bold text-brand mb-2">Admin</h1>
           <p className="text-sm text-gray-400">
             Signed in as <span className="font-semibold">{role}</span>
@@ -310,21 +277,18 @@ export default function AdminPage() {
               </p>
             ) : (
               <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                <input
+                <Field
+                  sans
                   type="password"
                   placeholder="Re-enter your password to unlock write actions"
                   value={elevated.password}
                   onChange={(e) => elevated.setPassword(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && elevated.elevate()}
-                  className="w-full sm:w-96 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
+                  className="w-full sm:w-96"
                 />
-                <button
-                  onClick={elevated.elevate}
-                  disabled={elevated.busy || !elevated.password}
-                  className="btn-brand px-4 py-2 rounded disabled:opacity-50"
-                >
+                <Button onClick={elevated.elevate} disabled={elevated.busy || !elevated.password}>
                   {elevated.busy ? 'Checking...' : 'Unlock'}
-                </button>
+                </Button>
               </div>
             )}
             {elevated.error && <p className="text-sm text-red-500">{elevated.error}</p>}
@@ -354,23 +318,23 @@ export default function AdminPage() {
                 )}
               </div>
 
-              <div className="border-t border-gray-300 dark:border-gray-700 pt-4">
+              <div className="pt-4" style={{ borderTop: '1px solid var(--line)' }}>
                 <h3 className="font-semibold text-brand mb-2 text-sm">Create Organization</h3>
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <input
+                  <Field
+                    sans
                     placeholder="Organization name"
                     value={newOrgName}
                     onChange={(e) => setNewOrgName(e.target.value)}
-                    className="w-full sm:w-72 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
+                    className="w-full sm:w-72"
                   />
-                  <button
+                  <Button
                     onClick={createOrg}
                     disabled={!elevated.isElevated || !newOrgName.trim()}
-                    className="btn-brand px-4 py-2 rounded disabled:opacity-50"
                     title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
                   >
                     Create
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -399,31 +363,31 @@ export default function AdminPage() {
                     <p className="font-semibold truncate">{user.display_name || user.email}</p>
                     <p className="text-xs text-gray-400 truncate">{user.email}</p>
                   </div>
-                  <select
+                  <SelectField
                     defaultValue={user.role}
                     disabled={!elevated.isElevated}
                     onChange={(e) => reassignUser(user.id, user.org_id, e.target.value)}
-                    className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-sm disabled:opacity-50"
+                    className="text-sm"
                   >
                     {ROLE_OPTIONS.map((r) => (
                       <option key={r} value={r}>
                         {r}
                       </option>
                     ))}
-                  </select>
+                  </SelectField>
                   {isSuper && (
-                    <select
+                    <SelectField
                       defaultValue={user.org_id}
                       disabled={!elevated.isElevated}
                       onChange={(e) => reassignUser(user.id, e.target.value, user.role)}
-                      className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-sm disabled:opacity-50"
+                      className="text-sm"
                     >
                       {orgs.map((org) => (
                         <option key={org.id} value={org.id}>
                           {org.name}
                         </option>
                       ))}
-                    </select>
+                    </SelectField>
                   )}
                 </div>
               ))}
@@ -439,33 +403,29 @@ export default function AdminPage() {
             {!selectedOrgId && <p className="text-gray-500 text-sm">Select an organization above.</p>}
 
             {selectedOrgId && (
-              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center border-b border-gray-300 dark:border-gray-700 pb-4">
-                <input
+              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center pb-4" style={{ borderBottom: '1px solid var(--line)' }}>
+                <Field
+                  sans
                   type="email"
                   placeholder="Email to invite"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className="w-full sm:w-64 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
+                  className="w-full sm:w-64"
                 />
-                <select
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value)}
-                  className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-sm"
-                >
+                <SelectField value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="text-sm">
                   {(isSuper ? ROLE_OPTIONS : ROLE_OPTIONS.filter((r) => r !== 'SUPER')).map((r) => (
                     <option key={r} value={r}>
                       {r}
                     </option>
                   ))}
-                </select>
-                <button
+                </SelectField>
+                <Button
                   onClick={createInvite}
                   disabled={!elevated.isElevated || !inviteEmail.trim()}
-                  className="btn-brand px-4 py-2 rounded disabled:opacity-50"
                   title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
                 >
                   Invite
-                </button>
+                </Button>
               </div>
             )}
 
@@ -482,14 +442,15 @@ export default function AdminPage() {
                       {new Date(invite.expires_at * 1000).toLocaleDateString()}
                     </p>
                   </div>
-                  <button
+                  <Button
+                    small
+                    variant="danger"
                     onClick={() => revokeInvite(invite.id)}
                     disabled={!elevated.isElevated}
-                    className="text-sm text-red-500 hover:text-red-600 disabled:opacity-50"
                     title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
                   >
                     Revoke
-                  </button>
+                  </Button>
                 </div>
               ))}
               {invites.length === 0 && selectedOrgId && !invitesError && (
@@ -507,11 +468,11 @@ export default function AdminPage() {
             {!selectedOrgId && <p className="text-gray-500 text-sm">Select an organization above.</p>}
 
             {selectedOrgId && isSuper && (
-              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center border-b border-gray-300 dark:border-gray-700 pb-4">
-                <select
+              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center pb-4" style={{ borderBottom: '1px solid var(--line)' }}>
+                <SelectField
                   value={projectToAssign}
                   onChange={(e) => setProjectToAssign(e.target.value)}
-                  className="w-full sm:w-96 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-sm"
+                  className="w-full sm:w-96 text-sm"
                 >
                   <option value="">Assign an existing repo...</option>
                   {repoCatalog
@@ -522,15 +483,14 @@ export default function AdminPage() {
                         {r.org_id ? ` (currently org ${r.org_id})` : ''}
                       </option>
                     ))}
-                </select>
-                <button
+                </SelectField>
+                <Button
                   onClick={assignProject}
                   disabled={!elevated.isElevated || !projectToAssign}
-                  className="btn-brand px-4 py-2 rounded disabled:opacity-50"
                   title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
                 >
                   Assign
-                </button>
+                </Button>
               </div>
             )}
 
@@ -544,14 +504,15 @@ export default function AdminPage() {
                     <p className="font-semibold truncate">{repoLabel(projectName)}</p>
                     <p className="text-xs text-gray-400 truncate">{projectName}</p>
                   </div>
-                  <button
+                  <Button
+                    small
+                    variant="danger"
                     onClick={() => removeProject(projectName)}
                     disabled={!elevated.isElevated}
-                    className="text-sm text-red-500 hover:text-red-600 disabled:opacity-50"
                     title={!elevated.isElevated ? 'Unlock admin actions first' : undefined}
                   >
                     Remove
-                  </button>
+                  </Button>
                 </div>
               ))}
               {orgProjects.length === 0 && selectedOrgId && !projectsError && (

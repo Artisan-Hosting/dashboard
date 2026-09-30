@@ -2,10 +2,11 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
 import { fetchProjects, fetchGroupUsage } from "@/lib/api";
 import { UsageSummary } from "@/lib/types";
-import { Sidebar } from "@/components/header";
+import { TopBar } from "@/components/topbar";
 import LoadingOverlay from "@/components/loading";
 import { handleLogout, handleLogoutAll } from "@/lib/logout";
 import { resolveRunnerLabel } from "@/lib/repoLabel";
+import { Button, Pill } from "@/components/ui";
 
 const REFRESH_INTERVAL = 10_000; // 10s
 
@@ -81,12 +82,10 @@ export default function Dashboard() {
   }, [projects]);
 
   return (
-    <div className="relative min-h-screen flex bg-page text-foreground">
-      {/* Sidebar should be a sibling of <main>, not a child */}
-      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+    <div className="relative min-h-screen bg-page text-foreground">
+      <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
-      {/* Content area */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8">
+      <main className="p-4 sm:p-6 lg:p-8">
         <h2 className="text-2xl font-semibold mb-8 text-brand">
           Current Projects
         </h2>
@@ -119,43 +118,34 @@ export default function Dashboard() {
                     <p className="text-xl font-semibold text-brand">
                       {labels[r.name] ?? r.name}
                     </p>
-                    <p
-                      className={`text-sm mt-1 ${
-                        r.status === "Running"
-                          ? "text-green-400"
-                          : "text-red-400"
-                      }`}
-                    >
-                      {r.status}
-                    </p>
+                    <div className="mt-1">
+                      <Pill status={r.status} />
+                    </div>
                   </div>
-                  <button
-                    onClick={() => router.push(`/apps/${r.name}`)}
-                    className="btn-brand px-4 py-2 rounded-full text-sm font-medium"
-                  >
+                  <Button small onClick={() => router.push(`/apps/${r.name}`)}>
                     Details →
-                  </button>
+                  </Button>
                 </div>
 
                 {r.summary && (
-                  <div className="text-sm text-gray-300 space-y-1 mb-4">
+                  <div className="text-sm space-y-1 mb-4" style={{ color: 'var(--muted)' }}>
                     <p>
                       Total CPU Time:{" "}
-                      <span className="font-medium text-white">
+                      <span className="font-medium" style={{ color: 'var(--strong)' }}>
                         {r.summary.total_cpu.toFixed(2)}
                       </span>{" "}
                       hrs
                     </p>
                     <p>
                       Avg RAM:{" "}
-                      <span className="font-medium text-white">
+                      <span className="font-medium" style={{ color: 'var(--strong)' }}>
                         {r.summary.avg_memory.toFixed(2)}
                       </span>{" "}
                       MB
                     </p>
                     <p>
                       Peak RAM:{" "}
-                      <span className="font-medium text-white">
+                      <span className="font-medium" style={{ color: 'var(--strong)' }}>
                         {r.summary.peak_memory.toFixed(2)}
                       </span>{" "}
                       MB

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
-import { Sidebar } from '@/components/header';
+import { TopBar } from '@/components/topbar';
 import { RequireAdmin, isSuperRole } from '@/components/requireAdmin';
 import LoadingOverlay from '@/components/loading';
 import {
@@ -21,8 +21,8 @@ import {
   NodeInfo,
   GitServer,
   NodeHydrationStatus,
-  syncStatusColorMap,
 } from '@/lib/types';
+import { Button, Field, Pill, SelectField } from '@/components/ui';
 
 interface ConfigBasics {
   build_command: string;
@@ -357,21 +357,20 @@ export default function ReposPage() {
 
   return (
     <RequireAdmin>
-      <div className="relative min-h-screen flex bg-page text-foreground">
+      <div className="relative min-h-screen bg-page text-foreground">
         <Toaster position="bottom-right" />
-        <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
+        <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-brand">Repos</h1>
-            <button
+            <Button
               onClick={() => {
                 resetWizard();
                 setWizardOpen(true);
               }}
-              className="btn-brand px-4 py-2 rounded"
             >
               Deploy repo
-            </button>
+            </Button>
           </div>
 
           <div className="card p-6 space-y-4">
@@ -386,147 +385,122 @@ export default function ReposPage() {
                         <p className="font-semibold truncate">
                           {r.user}/{r.repo} @ {r.branch}
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs" style={{ color: 'var(--muted)' }}>
                           id: {r.id} -- {r.nodes.length} node{r.nodes.length === 1 ? '' : 's'}
                           {r.org_id ? ` -- org ${r.org_id}` : ' -- unassigned'}
                         </p>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        <span
-                          className={`px-2 py-0.5 rounded text-sm font-medium ${syncStatusColorMap[r.sync_status]}`}
-                        >
-                          {r.sync_status}
-                        </span>
-                        <button
-                          onClick={() => handleSyncRepo(r.id)}
-                          disabled={syncingId === r.id}
-                          className="btn-brand px-3 py-1 rounded text-sm disabled:opacity-50"
-                        >
+                        <Pill status={r.sync_status} />
+                        <Button small onClick={() => handleSyncRepo(r.id)} disabled={syncingId === r.id}>
                           {syncingId === r.id ? 'Syncing...' : 'Sync now'}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          small
+                          variant="ghost"
                           onClick={() => (addNodesTargetId === r.id ? setAddNodesTargetId(null) : openAddNodes(r.id))}
-                          className="px-3 py-1 rounded text-sm border border-gray-500 hover:bg-gray-700"
                         >
                           Add to node{addNodesTargetId === r.id ? '...' : ''}
-                        </button>
-                        <button
-                          onClick={() => setManageTargetId(manageTargetId === r.id ? null : r.id)}
-                          className="px-3 py-1 rounded text-sm border border-gray-500 hover:bg-gray-700"
-                        >
+                        </Button>
+                        <Button small variant="ghost" onClick={() => setManageTargetId(manageTargetId === r.id ? null : r.id)}>
                           Manage nodes ({r.nodes.length})
-                        </button>
+                        </Button>
                       </div>
                     </div>
 
                     {manageTargetId === r.id && (
-                      <div className="mt-2 border-t border-gray-700 pt-3 space-y-2">
+                      <div className="mt-2 pt-3 space-y-2" style={{ borderTop: '1px solid var(--line)' }}>
                         {isSuper && r.nodes.length > 0 && (
                           <div className="flex justify-end">
                             <button
                               onClick={() => removeFromAllNodes(r)}
                               disabled={removingAllId === r.id}
-                              className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+                              className="text-xs hover:underline disabled:opacity-50"
+                              style={{ color: 'var(--bad)' }}
                             >
                               {removingAllId === r.id ? 'Removing from all nodes...' : 'Remove from all nodes'}
                             </button>
                           </div>
                         )}
                         {r.nodes.length === 0 && (
-                          <p className="text-sm text-gray-400">Not deployed on any node.</p>
+                          <p className="text-sm" style={{ color: 'var(--muted)' }}>Not deployed on any node.</p>
                         )}
                         {r.nodes.map((node: NodeHydrationStatus) => (
-                          <div key={node.node_id} className="bg-black/20 rounded p-2 space-y-2">
+                          <div key={node.node_id} className="rounded p-2 space-y-2" style={{ background: 'var(--surface-2)' }}>
                             <div className="flex items-center justify-between gap-2 text-sm">
                               <div className="min-w-0">
                                 <p className="truncate font-medium">{node.hostname}</p>
-                                <p className="text-xs text-gray-400 truncate">
+                                <p className="text-xs truncate" style={{ color: 'var(--muted)' }}>
                                   {node.branch}
                                   {node.commit_sha ? ` @ ${node.commit_sha.slice(0, 8)}` : ''}
                                 </p>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                <span className={`px-1.5 py-0.5 rounded text-xs ${syncStatusColorMap[node.sync_status]}`}>
-                                  {node.sync_status}
-                                </span>
+                                <Pill status={node.sync_status} />
                                 {isSuper && (
                                   <>
-                                    <button
-                                      onClick={() => openEdit(r.id, node.node_id)}
-                                      disabled={editLoading}
-                                      className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs disabled:opacity-50"
-                                    >
+                                    <Button small variant="ghost" onClick={() => openEdit(r.id, node.node_id)} disabled={editLoading}>
                                       Edit
-                                    </button>
-                                    <button
+                                    </Button>
+                                    <Button
+                                      small
+                                      variant="danger"
                                       onClick={() => removeFromNode(r.id, node.node_id, node.hostname)}
                                       disabled={removingKey === `${r.id}:${node.node_id}`}
-                                      className="px-2 py-1 rounded bg-red-700 hover:bg-red-600 text-xs disabled:opacity-50"
                                     >
                                       {removingKey === `${r.id}:${node.node_id}` ? 'Removing...' : 'Remove'}
-                                    </button>
+                                    </Button>
                                   </>
                                 )}
                               </div>
                             </div>
 
                             {isSuper && editing?.repoId === r.id && editing.nodeId === node.node_id && (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-gray-700 pt-2">
-                                <input
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2" style={{ borderTop: '1px solid var(--line)' }}>
+                                <Field
                                   placeholder="user"
                                   value={editForm.user}
                                   onChange={(e) => setEditForm({ ...editForm, user: e.target.value })}
-                                  className="bg-gray-800 rounded px-2 py-1 text-sm"
                                 />
-                                <input
+                                <Field
                                   placeholder="repo"
                                   value={editForm.repo}
                                   onChange={(e) => setEditForm({ ...editForm, repo: e.target.value })}
-                                  className="bg-gray-800 rounded px-2 py-1 text-sm"
                                 />
-                                <input
+                                <Field
                                   placeholder="branch"
                                   value={editForm.branch}
                                   onChange={(e) => setEditForm({ ...editForm, branch: e.target.value })}
-                                  className="bg-gray-800 rounded px-2 py-1 text-sm"
                                 />
-                                <select
+                                <SelectField
                                   value={editForm.serverKind}
                                   onChange={(e) => setEditForm({ ...editForm, serverKind: e.target.value as any })}
-                                  className="bg-gray-800 rounded px-2 py-1 text-sm"
                                 >
                                   <option value="GitHub">GitHub</option>
                                   <option value="GitLab">GitLab</option>
                                   <option value="Custom">Custom</option>
-                                </select>
+                                </SelectField>
                                 {editForm.serverKind === 'Custom' && (
-                                  <input
+                                  <Field
                                     placeholder="custom server URL"
                                     value={editForm.customUrl}
                                     onChange={(e) => setEditForm({ ...editForm, customUrl: e.target.value })}
-                                    className="bg-gray-800 rounded px-2 py-1 text-sm sm:col-span-2"
+                                    className="sm:col-span-2"
                                   />
                                 )}
-                                <input
+                                <Field
                                   placeholder="token (blank clears it)"
                                   value={editForm.token}
                                   onChange={(e) => setEditForm({ ...editForm, token: e.target.value })}
-                                  className="bg-gray-800 rounded px-2 py-1 text-sm sm:col-span-2"
+                                  className="sm:col-span-2"
                                 />
                                 <div className="flex gap-2 sm:col-span-2">
-                                  <button
-                                    onClick={submitEdit}
-                                    disabled={savingEdit}
-                                    className="btn-brand px-3 py-1 rounded text-sm disabled:opacity-50"
-                                  >
+                                  <Button small onClick={submitEdit} disabled={savingEdit}>
                                     {savingEdit ? 'Saving...' : 'Save changes'}
-                                  </button>
-                                  <button
-                                    onClick={() => setEditing(null)}
-                                    className="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm"
-                                  >
+                                  </Button>
+                                  <Button small variant="ghost" onClick={() => setEditing(null)}>
                                     Cancel
-                                  </button>
+                                  </Button>
                                 </div>
                               </div>
                             )}
@@ -539,9 +513,9 @@ export default function ReposPage() {
                       const assignedIds = new Set(r.nodes.map((n) => n.node_id));
                       const candidates = nodes.filter((n) => !assignedIds.has(n.identity.id));
                       return (
-                        <div className="mt-2 border-t border-gray-700 pt-3 space-y-2">
+                        <div className="mt-2 pt-3 space-y-2" style={{ borderTop: '1px solid var(--line)' }}>
                           {candidates.length === 0 ? (
-                            <p className="text-xs text-gray-500">Already on every known node.</p>
+                            <p className="text-xs" style={{ color: 'var(--muted)' }}>Already on every known node.</p>
                           ) : (
                             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                               {candidates.map((n) => (
@@ -557,19 +531,12 @@ export default function ReposPage() {
                             </div>
                           )}
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => handleAddNodes(r.id)}
-                              disabled={addingNodes || addNodesSelected.length === 0}
-                              className="btn-brand px-3 py-1 rounded text-sm disabled:opacity-50"
-                            >
+                            <Button small onClick={() => handleAddNodes(r.id)} disabled={addingNodes || addNodesSelected.length === 0}>
                               {addingNodes ? 'Adding...' : `Add to ${addNodesSelected.length || ''} node${addNodesSelected.length === 1 ? '' : 's'}`}
-                            </button>
-                            <button
-                              onClick={() => setAddNodesTargetId(null)}
-                              className="px-3 py-1 rounded text-sm text-gray-400 hover:text-gray-200"
-                            >
+                            </Button>
+                            <Button small variant="ghost" onClick={() => setAddNodesTargetId(null)}>
                               Cancel
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       );
@@ -587,60 +554,25 @@ export default function ReposPage() {
             <div className="card p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold text-brand">Deploy a repo</h2>
-                <button onClick={() => setWizardOpen(false)} className="text-sm text-gray-400 hover:text-gray-200">
+                <button onClick={() => setWizardOpen(false)} className="text-sm hover:underline" style={{ color: 'var(--muted)' }}>
                   Close
                 </button>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <input
-                  placeholder="Git user/org"
-                  value={user}
-                  onChange={(e) => setUser(e.target.value)}
-                  className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
-                />
-                <input
-                  placeholder="Repo name"
-                  value={repo}
-                  onChange={(e) => setRepo(e.target.value)}
-                  className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
-                />
-                <input
-                  placeholder="Branch"
-                  value={branch}
-                  onChange={(e) => setBranch(e.target.value)}
-                  className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
-                />
-                <select
-                  value={serverKind}
-                  onChange={(e) => setServerKind(e.target.value as 'GitHub' | 'GitLab' | 'Custom')}
-                  className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
-                >
+                <Field sans placeholder="Git user/org" value={user} onChange={(e) => setUser(e.target.value)} />
+                <Field sans placeholder="Repo name" value={repo} onChange={(e) => setRepo(e.target.value)} />
+                <Field sans placeholder="Branch" value={branch} onChange={(e) => setBranch(e.target.value)} />
+                <SelectField value={serverKind} onChange={(e) => setServerKind(e.target.value as 'GitHub' | 'GitLab' | 'Custom')}>
                   <option value="GitHub">GitHub</option>
                   <option value="GitLab">GitLab</option>
                   <option value="Custom">Custom</option>
-                </select>
+                </SelectField>
                 {serverKind === 'Custom' && (
-                  <input
-                    placeholder="Custom git URL"
-                    value={customUrl}
-                    onChange={(e) => setCustomUrl(e.target.value)}
-                    className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 sm:col-span-2"
-                  />
+                  <Field sans placeholder="Custom git URL" value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} className="sm:col-span-2" />
                 )}
-                <input
-                  placeholder="Access token (optional)"
-                  type="password"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 sm:col-span-2"
-                />
-                <input
-                  placeholder="Org id to assign (optional)"
-                  value={orgId}
-                  onChange={(e) => setOrgId(e.target.value)}
-                  className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 sm:col-span-2"
-                />
+                <Field sans placeholder="Access token (optional)" type="password" value={token} onChange={(e) => setToken(e.target.value)} className="sm:col-span-2" />
+                <Field sans placeholder="Org id to assign (optional)" value={orgId} onChange={(e) => setOrgId(e.target.value)} className="sm:col-span-2" />
               </div>
 
               <div>
@@ -656,42 +588,28 @@ export default function ReposPage() {
                       {n.hostname}
                     </label>
                   ))}
-                  {nodes.length === 0 && <p className="text-gray-500 text-sm">No nodes available.</p>}
+                  {nodes.length === 0 && <p className="text-sm" style={{ color: 'var(--muted)' }}>No nodes available.</p>}
                 </div>
               </div>
 
               {isNewRepo && (
-                <div className="border-t border-gray-300 dark:border-gray-700 pt-4 space-y-3">
+                <div className="pt-4 space-y-3" style={{ borderTop: '1px solid var(--line)' }}>
                   <h3 className="text-sm font-semibold text-brand">
                     This repo hasn't been deployed anywhere yet -- config basics required
                   </h3>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <input
-                      placeholder="Install command (optional)"
-                      value={config.install_command}
-                      onChange={(e) => setConfig({ ...config, install_command: e.target.value })}
-                      className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
-                    />
-                    <input
-                      placeholder="Build command (optional)"
-                      value={config.build_command}
-                      onChange={(e) => setConfig({ ...config, build_command: e.target.value })}
-                      className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
-                    />
-                    <input
-                      placeholder="Run command"
-                      value={config.run_command}
-                      onChange={(e) => setConfig({ ...config, run_command: e.target.value })}
-                      className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
-                    />
+                    <Field sans placeholder="Install command (optional)" value={config.install_command} onChange={(e) => setConfig({ ...config, install_command: e.target.value })} />
+                    <Field sans placeholder="Build command (optional)" value={config.build_command} onChange={(e) => setConfig({ ...config, build_command: e.target.value })} />
+                    <Field sans placeholder="Run command" value={config.run_command} onChange={(e) => setConfig({ ...config, run_command: e.target.value })} />
                   </div>
 
-                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
                     Initial secrets (optional)
                   </h4>
                   {secrets.map((s, i) => (
                     <div key={i} className="flex gap-2">
-                      <input
+                      <Field
+                        sans
                         placeholder="Key"
                         value={s.key}
                         onChange={(e) => {
@@ -699,9 +617,10 @@ export default function ReposPage() {
                           next[i] = { ...next[i], key: e.target.value };
                           setSecrets(next);
                         }}
-                        className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
+                        className="flex-1"
                       />
-                      <input
+                      <Field
+                        sans
                         placeholder="Value"
                         value={s.value}
                         onChange={(e) => {
@@ -709,13 +628,13 @@ export default function ReposPage() {
                           next[i] = { ...next[i], value: e.target.value };
                           setSecrets(next);
                         }}
-                        className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700"
+                        className="flex-1"
                       />
                     </div>
                   ))}
                   <button
                     onClick={() => setSecrets([...secrets, { key: '', value: '' }])}
-                    className="text-sm text-blue-500 hover:text-blue-600"
+                    className="text-sm hover:underline text-brand"
                   >
                     + Add another secret
                   </button>
@@ -725,11 +644,11 @@ export default function ReposPage() {
               {deployError && <p className="text-sm text-red-500">{deployError}</p>}
 
               {deployResults && (
-                <div className="border-t border-gray-300 dark:border-gray-700 pt-4 space-y-1">
+                <div className="pt-4 space-y-1" style={{ borderTop: '1px solid var(--line)' }}>
                   <h3 className="text-sm font-semibold text-brand">Deploy results</h3>
-                  {deployNote && <p className="text-xs text-yellow-500">{deployNote}</p>}
+                  {deployNote && <p className="text-xs" style={{ color: 'var(--warn)' }}>{deployNote}</p>}
                   {deployResults.map((r) => (
-                    <p key={r.node_id} className="text-sm text-gray-400">
+                    <p key={r.node_id} className="text-sm" style={{ color: 'var(--muted)' }}>
                       Node {r.node_id}: added={String(r.added)}, config={String(r.config_written)}, started=
                       {String(r.started)}
                       {r.error ? ` -- ${r.error}` : ''}
@@ -738,7 +657,7 @@ export default function ReposPage() {
                 </div>
               )}
 
-              <button
+              <Button
                 onClick={submitDeploy}
                 disabled={
                   deploying ||
@@ -747,10 +666,9 @@ export default function ReposPage() {
                   selectedNodeIds.length === 0 ||
                   (isNewRepo && !config.run_command.trim())
                 }
-                className="btn-brand px-4 py-2 rounded disabled:opacity-50"
               >
                 {deploying ? 'Deploying...' : 'Deploy'}
-              </button>
+              </Button>
             </div>
           )}
         </main>

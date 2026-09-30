@@ -2,10 +2,11 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@/hooks/useUser'
 
-import { Sidebar } from '@/components/header'
+import { TopBar } from '@/components/topbar'
 import LoadingOverlay from '@/components/loading'
 import { handleLogout, handleLogoutAll } from '@/lib/logout'
 import { API_URL } from '@/lib/config'
+import { Button, Field } from '@/components/ui'
 
 export default function AccountPage() {
   const { username, email: loadedEmail, isLoading, error } = useUser()
@@ -79,7 +80,7 @@ export default function AccountPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0b0c10] text-red-400">
+      <div className="flex items-center justify-center min-h-screen bg-page text-red-400">
         Error loading user info: {error.message}
       </div>
     )
@@ -87,11 +88,10 @@ export default function AccountPage() {
 
 
   return (
-    <div className="relative min-h-screen flex bg-page text-foreground">
-      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+    <div className="relative min-h-screen bg-page text-foreground">
+      <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
-      {/* Main content on the right */}
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-12">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-12">
         <h1 className="text-3xl font-bold text-brand">Account Settings</h1>
 
         {/* 1. User Info */}
@@ -106,8 +106,8 @@ export default function AccountPage() {
               className="w-14 h-14 rounded-full border border-brand"
             />
             <div>
-              <p className="text-white font-medium">{username}</p>
-              <p className="text-sm text-gray-400">{loadedEmail}</p>
+              <p className="font-medium" style={{ color: 'var(--strong)' }}>{username}</p>
+              <p className="text-sm" style={{ color: 'var(--muted)' }}>{loadedEmail}</p>
             </div>
           </div>
         </section>
@@ -117,40 +117,19 @@ export default function AccountPage() {
           <h2 className="text-xl font-semibold text-brand mb-2">Security Settings</h2>
           <div className="space-y-2">
             <label className="block text-sm">New Password</label>
-            <input
-              type="password"
-              className="w-full p-2 rounded bg-gray-800 text-white"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <Field sans type="password" className="w-full" value={password} onChange={(e) => setPassword(e.target.value)} />
             <label className="block text-sm mt-2">Confirm Password</label>
-            <input
-              type="password"
-              className="w-full p-2 rounded bg-gray-800 text-white"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
-            <button
-              onClick={handleChangePassword}
-              className="mt-2 px-4 py-2 btn-brand rounded"
-            >
+            <Field sans type="password" className="w-full" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+            <Button onClick={handleChangePassword} className="mt-2">
               Change Password
-            </button>
+            </Button>
           </div>
           <div className="space-y-2">
             <label className="block text-sm">Update Email</label>
-            <input
-              type="email"
-              className="w-full p-2 rounded bg-gray-800 text-white"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <button
-              onClick={handleUpdateEmail}
-              className="mt-2 px-4 py-2 btn-brand rounded"
-            >
+            <Field sans type="email" className="w-full" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Button onClick={handleUpdateEmail} className="mt-2">
               Update Email
-            </button>
+            </Button>
           </div>
         </section>
 
@@ -158,28 +137,20 @@ export default function AccountPage() {
         <section className="card p-6">
           <h2 className="text-xl font-semibold text-brand mb-4">Personalization</h2>
           <label className="block text-sm mb-2">Set Pretty Project Name</label>
-          <input
-            type="text"
-            className="w-full p-2 rounded bg-gray-800 text-white mb-2"
-            value={prettyName}
-            onChange={(e) => setPrettyName(e.target.value)}
-          />
+          <Field sans type="text" className="w-full mb-2" value={prettyName} onChange={(e) => setPrettyName(e.target.value)} />
           {/* <button …>Save Pretty Name</button> */}
         </section>
 
         {/* 4. Danger Zone */}
-        <section className="bg-brand-gradient text-white p-6 rounded-xl border border-red-600">
-          <h2 className="text-xl font-semibold text-red-400 mb-4">Danger Zone</h2>
+        <section className="bg-brand-gradient text-white p-6 rounded-xl" style={{ border: '1px solid var(--bad)' }}>
+          <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--bad)' }}>Danger Zone</h2>
           <div className="space-y-4">
-            <button
-              onClick={handleLogoutAll}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
-            >
+            <Button variant="danger" onClick={handleLogoutAll}>
               Logout of All Devices
-            </button>
-            <button className="px-4 py-2 bg-red-700 hover:bg-red-800 rounded opacity-50 cursor-not-allowed">
+            </Button>
+            <Button variant="danger" disabled title="Coming soon">
               Delete Account (Coming Soon)
-            </button>
+            </Button>
           </div>
         </section>
 

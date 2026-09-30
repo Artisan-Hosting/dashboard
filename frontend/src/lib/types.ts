@@ -61,9 +61,19 @@ export interface ProjectLogs {
   recent: string[];
 }
 
+// Every service on the platform reports its own app version alongside the
+// artisan_middleware ("ais_library") version it's built against -- verified
+// against real GET /node/{id} and GET /runners responses, both nested this
+// way. `code` is the release channel (e.g. "Production", "ReleaseCandidate"),
+// not a version number.
+export interface VersionField {
+  number: string;
+  code: string;
+}
+
 export interface SoftwareVersion {
-  version: string;   // E.g., "1.2.3"
-  release: string;   // E.g., "Production" or "Beta"
+  application: VersionField;
+  library: VersionField;
 }
 
 
@@ -92,30 +102,6 @@ export interface FullInstance {
   usage: UsageSummary;
 }
 
-
-// Represents a single instance of a runner (individual app instance)
-export interface ProjectInstance {
-  id: string;
-  status: string;
-  version: {
-    version: string;
-    code: string;
-  };
-  artisan_config: object; // you can later strongly type this if you want
-  specific_config?: object;
-  enviornment?: object;
-  health?: {
-    uptime: number;
-    last_check: number;
-    cpu_usage: string;
-    ram_usage: string;
-    tx_bytes: number;
-    rx_bytes: number;
-  };
-  logs?: {
-    recent: string[];
-  };
-}
 
 // Represents the summarized group usage for all instances under one runner.
 export interface ProjectGroupUsage {
@@ -147,14 +133,15 @@ export interface ProjectSummary {
   name: string;
   /** Current state, e.g. "Running" or "Stopped" */
   status: string;
-  /** Software version info (you can expand this as needed) */
-  version: {
-    /** SemVer string, e.g. "1.2.3" */
-    version: string;
-    /** Release channel or label, e.g. "Beta" */
-    release?: string;
-  };
-  /** IDs of nodes this project is deployed on */
+  version: SoftwareVersion;
+  /**
+   * IDs of nodes this project is deployed on. For the platform's own system
+   * apps (manager, gitmon, mailler) this is always empty -- Portal's
+   * `/nodes` response never lists them in a node's own `projects` array, so
+   * there's no per-node linkage for them here. Every node runs its own
+   * manager + gitmon, but GET /runners folds all of those into one row per
+   * app name (aggregated fleet-wide, worst-of status), not one per node.
+   */
   nodes: number[];
   /** Total seconds this project has been active (optional) */
   uptime?: number;
@@ -206,29 +193,6 @@ export const statusColorMap: Record<Status, string> = {
   Unknown: 'text-gray-400',
 };
 
-// Mirrors the Rust `SmallVMStatus` returned by `ais_vm` — a flat struct, no
-// nested "metrics" object and no "name" field.
-export interface VmListItem {
-  vm_id: number;
-  status: string;      // e.g. "running" | "stopped"
-  cpu: number;          // fraction 0..1 (e.g. 0.17 -> 17%)
-  mem: number;           // bytes
-  maxmem: number;        // bytes
-  disk_read: number;     // bytes, cumulative since VM start
-  disk_write: number;    // bytes, cumulative since VM start
-  net_in: number;        // bytes, cumulative since VM start
-  net_out: number;       // bytes, cumulative since VM start
-  uptime: number;        // seconds
-}
-
-export type VmActionType = 'start' | 'stop' | 'restart' | 'shutdown';
-
-export interface VmActionRequest {
-  action: VmActionType;
-  // optional flags, e.g. force shutdown
-  force?: boolean;
-}
-
 // ======= Nodes / Admin Types =======
 
 export interface Identifier {
@@ -262,12 +226,25 @@ export interface GitCredentials {
 
 export interface ManagerData {
   identity: Identifier;
+  /** This node's own manager: its application version and the ais_library
+   *  (artisan_middleware) version it's built against. */
   version: SoftwareVersion;
   git_config: GitCredentials;
   hostname: string;
   address: string;
+  /** Bare counts for this node -- no names or per-app status. See
+   *  ais_manager's get_manager_data(): summed by walking this node's local
+   *  app-status array and checking is_system_application(), not a fleet
+   *  breakdown. */
   system_apps: number;
   client_apps: number;
+  /**
+   * NOT a count of warnings. A sticky 0/1 flag: 1 once this node's local
+   * watchdog has reported a security/tamper trip at any point since the
+   * manager process last started, and it stays 1 until the manager
+   * restarts -- it does not clear when the underlying issue does. There is
+   * no list of individual warnings anywhere in what Portal exposes today.
+   */
   warning: number;
   uptime: number;
 }
@@ -437,6 +414,163 @@ export interface SetOrgPolicyBody {
   action: string;
   role: string;
   allow: boolean;
+}
+
+// --- Domains (RBAC Phase 6) ---
+//
+// `source`/`status` accept the literals below for autocomplete, but also any
+// other string: an unrecognised value from ais_domains arrives as
+// `unknown(<n>)` rather than failing the listing (ais_domains may learn a
+// value before Portal/the dashboard are rebuilt), so these are typed as an
+// open union rather than a strict enum.
+export type DomainSource = 'unspecified' | 'purchased' | 'byo' | 'imported' | (string & {});
+
+export type DomainStatus =
+  | 'unspecified'
+  | 'pending_payment'
+  | 'registering'
+  | 'provisioning_dns'
+  | 'pending_dns'
+  | 'issuing'
+  | 'active'
+  | 'renewing'
+  | 'error'
+  | 'removed'
+  | (string & {});
+
+export interface DomainEntry {
+  id: string;
+  fqdn: string;
+  organization_id: string; // empty = unassigned, a normal/durable state
+  runner_id: string; // empty = not attached to a project
+  source: DomainSource;
+  status: DomainStatus;
+  serves_tls: boolean;
+  vhost_paths: string[];
+  cert_dirs: string[];
+  expires_at: number; // unix seconds; 0 = nothing on disk
+  findings: string[];
+}
+
+export interface DomainsPage {
+  entries: DomainEntry[];
+  total: number;
+  unassigned: number;
+}
+
+export interface DomainSummary {
+  id: string;
+  fqdn: string;
+  organization_id: string;
+  runner_id: string;
+  source: DomainSource;
+  status: DomainStatus;
+  has_vhost: boolean;
+  expires_at: number;
+}
+
+export interface DomainFinding {
+  code: string; // e.g. vhost_only, cert_expiring, cert_without_snippet
+  severity: 'info' | 'warn' | 'error';
+  subject: string; // the domain or file the finding is about
+  message: string;
+  first_seen: number;
+  last_seen: number;
+  resolved_at: number; // 0 while still open
+}
+
+export interface AdoptedVhost {
+  path: string; // relative to the nginx tree root
+  domain_fqdn: string;
+  server_names: string[];
+  file_sha256: string;
+  drifted: boolean; // the file changed on disk since it was adopted
+}
+
+export interface DomainRescanResult {
+  scan_id: number;
+  domain_count: number;
+  finding_count: number;
+  server_count: number;
+}
+
+export interface AssignDomainBody {
+  id_or_fqdn: string;
+  organization_id?: string;
+  runner_id?: string;
+  // An empty string means "leave alone" -- clearing is explicit via these
+  // flags, so "not specified" and "remove it" can never be confused.
+  clear_org?: boolean;
+  clear_runner?: boolean;
+  elevated_token?: string;
+}
+
+export interface AttachDomainBackend {
+  node_id: string;
+  port: number;
+}
+
+export interface AttachDomainBody {
+  id_or_fqdn: string;
+  runner_id: string;
+  backends: AttachDomainBackend[];
+  extra_names?: string[];
+  no_http_redirect?: boolean;
+}
+
+// --- Billing (Portal's /v1/billing/*, backed by the separate Billing
+// service + Stripe) ---
+//
+// Shapes verified against portal/src/api/handler/billing.rs's
+// SubscriptionSummary/InvoiceSummary/InvoiceLineItemSummary/
+// SubscriptionCheckoutSummary -- these are exactly what Portal serializes,
+// not guessed from the proto (Billing's own proto isn't vendored here).
+
+export interface SubscriptionSummary {
+  id: string;
+  organization_id: string;
+  storefront: string;
+  plan_code: string;
+  /** e.g. "active", "trialing", "past_due", "canceled", "unpaid" -- the
+   *  proto's BILLING_STATUS_* enum, lowercased with the prefix stripped. */
+  status: string;
+  current_period_start: number;
+  current_period_end: number;
+  /** Empty when no downgrade is queued. */
+  pending_plan_code: string;
+  cancel_at_period_end: boolean;
+}
+
+export interface InvoiceLineItem {
+  /** Empty for the plan's own base-price line. */
+  unit_code: string;
+  description: string;
+  quantity: number;
+  unit_price_cents: number;
+  amount_cents: number;
+}
+
+export interface InvoiceSummary {
+  id: string;
+  organization_id: string;
+  /** Empty for a one-off charge with no subscription behind it. */
+  subscription_id: string;
+  period_start: number;
+  period_end: number;
+  /** draft | open | paid | void | uncollectible */
+  status: string;
+  total_cents: number;
+  currency: string;
+  line_items: InvoiceLineItem[];
+}
+
+export interface SubscriptionCheckout {
+  subscription: SubscriptionSummary | null;
+  invoice: InvoiceSummary | null;
+  /** Empty when nothing is owed (a $0 plan, or a downgrade) -- nothing for
+   *  Stripe Elements to collect. */
+  stripe_client_secret: string;
+  stripe_publishable_key: string;
 }
 
 // Sync status colors for UI

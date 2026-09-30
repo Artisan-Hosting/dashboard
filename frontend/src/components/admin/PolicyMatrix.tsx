@@ -113,7 +113,7 @@ export function PolicyMatrix({ orgId, isSuper, elevated }: PolicyMatrixProps) {
           {editingOrgId === GLOBAL_ORG_ALIAS ? ' -- GLOBAL (platform default)' : ''}
         </h2>
         {isSuper && (
-          <label className="flex items-center gap-2 text-sm text-gray-400">
+          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--muted)' }}>
             <input
               type="checkbox"
               checked={viewingGlobal}
@@ -124,7 +124,7 @@ export function PolicyMatrix({ orgId, isSuper, elevated }: PolicyMatrixProps) {
         )}
       </div>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs" style={{ color: 'var(--muted)' }}>
         {editingOrgId === GLOBAL_ORG_ALIAS
           ? 'Editing the platform-wide default every organization inherits.'
           : 'An organization can only grant a role more than the platform default already allows -- it can never take a permission away that the platform default grants. Greyed, checked cells are already allowed by the platform default and cannot be revoked here.'}
@@ -133,7 +133,7 @@ export function PolicyMatrix({ orgId, isSuper, elevated }: PolicyMatrixProps) {
       {loadError && <p className="text-sm text-red-500">{loadError}</p>}
       {saveError && <p className="text-sm text-red-500">{saveError}</p>}
       {!elevated.isElevated && (
-        <p className="text-xs text-gray-500">Unlock admin actions above to edit policy.</p>
+        <p className="text-xs" style={{ color: 'var(--muted)' }}>Unlock admin actions above to edit policy.</p>
       )}
 
       <div className="space-y-6">
@@ -144,9 +144,9 @@ export function PolicyMatrix({ orgId, isSuper, elevated }: PolicyMatrixProps) {
               <table className="text-sm w-full">
                 <thead>
                   <tr>
-                    <th className="text-left font-medium text-gray-400 pr-4 py-1">Action</th>
+                    <th className="text-left font-medium pr-4 py-1" style={{ color: 'var(--muted)' }}>Action</th>
                     {ROLES.map((role) => (
-                      <th key={role} className="text-left font-medium text-gray-400 px-2 py-1 capitalize">
+                      <th key={role} className="text-left font-medium px-2 py-1 capitalize" style={{ color: 'var(--muted)' }}>
                         {role}
                       </th>
                     ))}

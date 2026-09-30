@@ -1,99 +1,261 @@
 // src/pages/billing/index.tsx
-import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
-import { fetchBilling, fetchWithAuth, postWithAuth } from '@/lib/api';
-import { UsageSummary, BillingCosts, ProjectSummary } from '@/lib/types';
-import { Sidebar } from '@/components/header';
+import { useEffect, useState, useCallback } from 'react';
+import { toast, Toaster } from 'react-hot-toast';
+import {
+  fetchSubscription,
+  fetchInvoices,
+  upgradeSubscription,
+  scheduleDowngrade,
+  cancelSubscription,
+} from '@/lib/api';
+import { SubscriptionSummary, InvoiceSummary } from '@/lib/types';
+import { PLAN_CATALOG, STOREFRONTS, Storefront, findPlan } from '@/lib/plans';
+import { TopBar } from '@/components/topbar';
 import LoadingOverlay from '@/components/loading';
+import { useUser } from '@/hooks/useUser';
+import { useElevatedSession } from '@/hooks/useElevatedSession';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
+import { Button, Field, Panel, Pill, Seg, SelectField } from '@/components/ui';
 
-interface BillingBlock {
-  name: string;
-  summary: UsageSummary;
-  costs: BillingCosts;
-  instanceIds: string[];
+function formatCents(cents: number, currency = 'usd'): string {
+  return (cents / 100).toLocaleString(undefined, {
+    style: 'currency',
+    currency: currency.toUpperCase() || 'USD',
+  });
+}
+
+function formatDate(unixSeconds: number): string {
+  if (!unixSeconds) return '--';
+  return new Date(unixSeconds * 1000).toLocaleDateString();
 }
 
 export default function BillingPage() {
-  const router = useRouter();
+  const { orgId } = useUser();
+  const elevated = useElevatedSession();
+
+  const [storefront, setStorefront] = useState<Storefront>('developer');
+  const [subscription, setSubscription] = useState<SubscriptionSummary | null>(null);
+  const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [blocks, setBlocks] = useState<BillingBlock[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async (sf: Storefront) => {
+    setLoading(true);
+    try {
+      const [sub, inv] = await Promise.all([
+        fetchSubscription(sf, orgId),
+        fetchInvoices(sf, orgId).catch(() => []),
+      ]);
+      setSubscription(sub);
+      setInvoices(inv);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load billing data');
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetchWithAuth('proxy/runners');
-        const projects: ProjectSummary[] = res.data || [];
+    load(storefront);
+    setSelectedPlan('');
+  }, [storefront, load]);
 
-        const results = await Promise.all(
-          projects.map(async (r) => {
-            const name = r.name.replace('ais_', '');
-            const usageRes = await fetchWithAuth(`proxy/usage/group/${name}`);
-            const summary = usageRes.data as UsageSummary;
-            console.log(summary);
+  const plans = PLAN_CATALOG[storefront];
+  const currentPlan = subscription ? findPlan(storefront, subscription.plan_code) : undefined;
+  const targetPlan = selectedPlan ? findPlan(storefront, selectedPlan) : undefined;
+  const isUpgrade = !subscription || (targetPlan && currentPlan && targetPlan.priceCents > currentPlan.priceCents) || (targetPlan && !currentPlan);
+  const isDowngrade = !!(subscription && targetPlan && currentPlan && targetPlan.priceCents < currentPlan.priceCents);
 
+  const handleUpgrade = async () => {
+    if (!targetPlan) return;
+    if (!elevated.isElevated) {
+      toast.error('Unlock the elevated session first -- an upgrade charges the card now.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await upgradeSubscription(storefront, targetPlan.code, elevated.token!, orgId);
+      toast.success(`Switched to ${targetPlan.name}`);
+      setSelectedPlan('');
+      load(storefront);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to upgrade');
+    } finally {
+      setBusy(false);
+    }
+  };
 
-            const costs = await fetchBilling(summary);
-            console.log(costs);
+  const handleDowngrade = async () => {
+    if (!targetPlan) return;
+    setBusy(true);
+    try {
+      await scheduleDowngrade(storefront, targetPlan.code, orgId);
+      toast.success(`Downgrade to ${targetPlan.name} scheduled for the end of the period`);
+      setSelectedPlan('');
+      load(storefront);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to schedule downgrade');
+    } finally {
+      setBusy(false);
+    }
+  };
 
-            return {
-              name,
-              summary,
-              costs,
-              instanceIds: Array.isArray(summary.instance_id) ? summary.instance_id : []
-            };
-          })
-        );
-
-        setBlocks(results);
-      } catch (err) {
-        console.error('Billing load error', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+  const handleCancel = async () => {
+    if (!confirm('Cancel this subscription at the end of the current period?')) return;
+    setBusy(true);
+    try {
+      await cancelSubscription(storefront, orgId);
+      toast.success('Subscription set to cancel at period end');
+      load(storefront);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to cancel');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
-    <div className="relative min-h-screen flex bg-page text-foreground">
-      <Sidebar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
+    <div className="relative min-h-screen bg-page text-foreground">
+      <Toaster position="bottom-right" />
+      <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
 
+      <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+        <div className="page-head">
+          <div>
+            <h1 className="text-3xl font-bold text-brand">Billing</h1>
+            <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
+              Subscription and invoices, by product line.
+            </p>
+          </div>
+          <Seg value={storefront} onChange={(v) => setStorefront(v)} label="Storefront" options={STOREFRONTS.map((s) => ({ value: s.key, label: s.label }))} />
+        </div>
 
-      <main className="flex-1 p-4 sm:p-6 lg:p-8">
-        <h1 className="text-3xl font-bold text-brand mb-6">Billing Summary</h1>
+        {/* Step-up auth -- only an upgrade (charges now) needs this;
+            downgrade/cancel take effect at period end and charge nothing. */}
+        <div className="card p-6 space-y-3">
+          <h2 className="font-semibold text-brand">Elevated session</h2>
+          {elevated.isElevated ? (
+            <p className="text-sm" style={{ color: 'var(--ok)' }}>
+              Unlocked -- expires in {elevated.secondsLeft}s.
+            </p>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+              <Field
+                sans
+                type="password"
+                placeholder="Re-enter your password to unlock upgrades"
+                value={elevated.password}
+                onChange={(e) => elevated.setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && elevated.elevate()}
+                className="w-full sm:w-96"
+              />
+              <Button onClick={elevated.elevate} disabled={elevated.busy || !elevated.password}>
+                {elevated.busy ? 'Checking...' : 'Unlock'}
+              </Button>
+            </div>
+          )}
+          {elevated.error && <p className="text-sm text-red-500">{elevated.error}</p>}
+        </div>
+
         {!loading && (
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {blocks.map((block) => (
-              <div key={block.name} className="card p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-brand">{block.name}</h2>
-                  <button
-                    onClick={() =>
-                      router.push({
-                        pathname: `/billing/${block.name}`,
-                        query: { instances: block.instanceIds.join(',') },
-                      })
-                    }
-                    className="btn-brand text-sm px-4 py-2 rounded-full"
-                  >
-                    View Daily Breakdown
-                  </button>
-                </div>
-                <ul className="text-sm text-gray-300 space-y-1">
-                  <li>RAM Usage: ${block.costs?.ram_cost?.toFixed(2) ?? 'N/A'}</li>
-                  <li>CPU Usage: ${block.costs?.cpu_cost?.toFixed(2) ?? 'N/A'}</li>
-                  <li>Bandwidth: ${block.costs?.bandwidth_cost?.toFixed(2) ?? 'N/A'}</li>
-                  <li className="text-white font-medium mt-2">Total: ${block.costs?.total_cost?.toFixed(2) ?? 'N/A'}</li>
-                </ul>
+          <div className="grid3">
+            <Panel title="Subscription">
+              {subscription ? (
+                <dl className="kv">
+                  <dt>Plan</dt>
+                  <dd>{currentPlan?.name ?? subscription.plan_code}</dd>
+                  <dt>Status</dt>
+                  <dd><Pill status={subscription.status} /></dd>
+                  <dt>Current period</dt>
+                  <dd>{formatDate(subscription.current_period_start)} -- {formatDate(subscription.current_period_end)}</dd>
+                  {subscription.pending_plan_code && (
+                    <>
+                      <dt>Pending change</dt>
+                      <dd>Switching to {findPlan(storefront, subscription.pending_plan_code)?.name ?? subscription.pending_plan_code} at period end</dd>
+                    </>
+                  )}
+                  {subscription.cancel_at_period_end && (
+                    <>
+                      <dt>Cancellation</dt>
+                      <dd style={{ color: 'var(--warn)' }}>Cancels at period end</dd>
+                    </>
+                  )}
+                </dl>
+              ) : (
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                  No active {STOREFRONTS.find((s) => s.key === storefront)?.label} subscription.
+                </p>
+              )}
+              {subscription && !subscription.cancel_at_period_end && (
+                <Button small variant="danger" className="mt-4" disabled={busy} onClick={handleCancel}>
+                  Cancel subscription
+                </Button>
+              )}
+            </Panel>
+
+            <Panel title="Change plan">
+              <div className="space-y-3">
+                <SelectField value={selectedPlan} onChange={(e) => setSelectedPlan(e.target.value)}>
+                  <option value="">Choose a plan...</option>
+                  {plans.map((p) => (
+                    <option key={p.code} value={p.code} disabled={p.code === subscription?.plan_code}>
+                      {p.name} -- {formatCents(p.priceCents)}/mo
+                    </option>
+                  ))}
+                </SelectField>
+                {targetPlan && (
+                  <div className="flex gap-2">
+                    {isDowngrade ? (
+                      <Button small disabled={busy} onClick={handleDowngrade}>
+                        {busy ? 'Working...' : `Schedule downgrade to ${targetPlan.name}`}
+                      </Button>
+                    ) : (
+                      <Button small disabled={busy || !elevated.isElevated} onClick={handleUpgrade}>
+                        {busy ? 'Working...' : subscription ? `Upgrade to ${targetPlan.name}` : `Subscribe to ${targetPlan.name}`}
+                      </Button>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                  Upgrades charge the card immediately (prorated) and need an unlocked elevated session.
+                  Downgrades take effect at the end of the current period and charge nothing now.
+                </p>
               </div>
-            ))}
+            </Panel>
+
+            <Panel title="Invoices">
+              {invoices.length === 0 && (
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>No invoices yet.</p>
+              )}
+              <div className="space-y-3">
+                {invoices.map((inv) => (
+                  <details key={inv.id} className="text-sm" style={{ borderBottom: '1px solid var(--line)', paddingBottom: '0.5rem' }}>
+                    <summary className="flex items-center justify-between gap-2 cursor-pointer py-1">
+                      <span style={{ color: 'var(--strong)' }}>
+                        {formatDate(inv.period_start)} -- {formatDate(inv.period_end)}
+                      </span>
+                      <span className="flex items-center gap-2 shrink-0">
+                        <Pill status={inv.status} />
+                        <span className="font-medium" style={{ color: 'var(--strong)' }}>{formatCents(inv.total_cents, inv.currency)}</span>
+                      </span>
+                    </summary>
+                    <ul className="mt-2 pl-4 space-y-1" style={{ color: 'var(--muted)' }}>
+                      {inv.line_items.map((item, i) => (
+                        <li key={i} className="flex justify-between gap-2">
+                          <span>{item.description}{item.quantity !== 1 ? ` x${item.quantity}` : ''}</span>
+                          <span className="shrink-0">{formatCents(item.amount_cents, inv.currency)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ))}
+              </div>
+            </Panel>
           </div>
         )}
       </main>
       {loading && <LoadingOverlay />}
     </div>
   );
-
 }

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in | Artisan console (mock)</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('ah-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}</script>
+<link rel="stylesheet" href="console.css">
+</head>
+<body data-page="login">
+<main id="main" class="wrap">
+  <div class="login">
+    <div>
+      <a class="brand" href="index.html" style="margin-bottom:32px">
+        <svg viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="7" fill="var(--btn-bg)"/><path d="M7.5 19 13 7l5.5 12M9.8 14.6h6.4" fill="none" stroke="var(--btn-fg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Artisan Hosting
+      </a>
+      <h1 style="font-size:2.2rem">Sign in</h1>
+      <form class="form" id="f" novalidate>
+        <div class="error" id="err" role="alert" hidden></div>
+        <div><label for="u">Username or email</label><input class="field" id="u" type="text" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
+        <div><label for="p">Password</label><input class="field" id="p" type="password" autocomplete="current-password"></div>
+        <button class="btn btn-primary" type="submit">Sign in</button>
+        <p><a href="#" id="forgot">Forgot your password?</a></p>
+      </form>
+    </div>
+    <div>
+      <h2>No account yet?</h2>
+      <p style="margin-top:8px;max-width:46ch">You can still use the console with sample data. Here is what changes when you sign in.</p>
+      <ul class="aside-list">
+        <li><b>The screens stay the same.</b> Only the data changes.</li>
+        <li><b>Your projects, domains and usage</b> replace the samples.</li>
+        <li><b>Apply works.</b> The dry-run panel you have been seeing gets a button that makes the change.</li>
+      </ul>
+      <p style="margin-top:24px"><a class="btn btn-ghost" href="index.html">Keep using the sample console</a></p>
+    </div>
+  </div>
+</main>
+<script>
+  (function () {
+    var f = document.getElementById('f'), err = document.getElementById('err');
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var u = document.getElementById('u').value.trim(), p = document.getElementById('p').value;
+      err.hidden = false;
+      err.textContent = !u || !p
+        ? 'Enter your username or email and your password.'
+        : 'That username and password did not match. Check them and try again, or reset your password.';
+    });
+    document.getElementById('forgot').addEventListener('click', function (e) {
+      e.preventDefault(); err.hidden = false;
+      err.textContent = 'In the real console this opens the password reset page.';
+    });
+  })();
+</script>
+<script src="console.js"></script>
+</body>
+</html>

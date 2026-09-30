@@ -26,3 +26,19 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
   if (!isAdmin) return null;
   return <>{children}</>;
 }
+
+export function RequireSuper({ children }: { children: React.ReactNode }) {
+  const { role, isLoading } = useUser();
+  const router = useRouter();
+  const isSuper = isSuperRole(role);
+
+  useEffect(() => {
+    if (!isLoading && !isSuper) {
+      router.replace('/apps');
+    }
+  }, [isLoading, isSuper, router]);
+
+  if (isLoading) return <LoadingOverlay />;
+  if (!isSuper) return null;
+  return <>{children}</>;
+}
