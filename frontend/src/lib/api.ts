@@ -18,6 +18,9 @@ import {
   NodeInfo,
   NodeReloadResult,
   OrgPolicyRow,
+  CreditBalance,
+  CreditLedgerPage,
+  TopUpCheckout,
   ProjectDetails,
   ProjectSummary,
   RepoCatalogEntry,
@@ -133,6 +136,34 @@ export async function deleteWithAuth(endpoint: string, body?: any) {
   return res.json();
 }
 
+
+export async function fetchBilling(
+  usage: UsageSummary
+): Promise<BillingCosts> {
+  const res = await fetch(
+    `${API_URL}/proxy/billing/calculate?instances=${usage.instances}`,
+    {
+      method: "POST",
+      credentials: "include", // ← send the cookie
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(usage),
+    }
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API Error: ${res.status} ${text}`);
+  }
+
+  const resp = await res.json();
+  if (resp.errors?.length) {
+    throw new Error(resp.errors.map((e: any) => e.message).join("; "));
+  }
+
+  return resp.data as BillingCosts;
+}
 
 // ======= Projects =======
 
@@ -489,79 +520,281 @@ export async function rescanDomains(body: { checkDns?: boolean; checkCloudflare?
   return res.data as DomainRescanResult;
 }
 
-// --- Billing (Portal's /v1/billing/*, forwards to the separate Billing
-// service + Stripe) ---
-//
-// `storefront` is required on every one of these calls -- Portal has no
-// default and rejects a missing one outright, unlike `organization_id`
-// (empty lets Billing infer it from the caller's own access token, same
-// "no authorization decision here" shape as Domains).
+// --- DNS Records ---
 
-export async function fetchSubscription(storefront: string, organizationId = ''): Promise<SubscriptionSummary | null> {
-  const qs = new URLSearchParams({ storefront });
-  if (organizationId) qs.set('organization_id', organizationId);
-  const res = await fetchWithAuth(`proxy/billing/subscription?${qs.toString()}`);
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    // No subscription yet reads the same as any other "nothing here" --
-    // callers treat null as "not subscribed", not an error.
-    return null;
-  }
-  return (res.data ?? null) as SubscriptionSummary | null;
+export interface DnsRecord {
+  id: string;
+  cf_record_id: string;
+  type: string;
+  name: string;
+  content: string;
+  ttl: number;
+  proxied: boolean;
 }
 
-export async function fetchInvoices(storefront: string, organizationId = '', limit = 20, offset = 0): Promise<InvoiceSummary[]> {
-  const qs = new URLSearchParams({ storefront, limit: String(limit), offset: String(offset) });
-  if (organizationId) qs.set('organization_id', organizationId);
-  const res = await fetchWithAuth(`proxy/billing/invoices?${qs.toString()}`);
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load invoices');
-  }
-  return (res.data ?? []) as InvoiceSummary[];
+export interface CreateDnsRecordBody {
+  type: string;
+  name: string;
+  content: string;
+  ttl?: number;
+  proxied?: boolean;
 }
 
-// Creates the subscription if none exists yet, or upgrades it in place --
-// prorated and charged now. Needs a fresh `elevatedToken` (step-up auth):
-// this is the one billing call that can move money immediately.
-export async function upgradeSubscription(
-  storefront: string,
-  planCode: string,
-  elevatedToken: string,
-  organizationId = '',
-): Promise<SubscriptionCheckout> {
-  const res = await postWithAuth('proxy/billing/subscription/upgrade', {
-    organization_id: organizationId,
-    storefront,
-    plan_code: planCode,
+export interface UpdateDnsRecordBody extends CreateDnsRecordBody {
+  id: string;
+}
+
+export async function listDnsRecords(domainId: string): Promise<DnsRecord[]> {
+  const res = await fetchWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/dns-records`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to list DNS records');
+  }
+  return (res.data ?? []) as DnsRecord[];
+}
+
+export async function createDnsRecord(domainId: string, body: CreateDnsRecordBody): Promise<DnsRecord> {
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/dns-records`, body);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to create DNS record');
+  }
+  return res.data as DnsRecord;
+}
+
+export async function updateDnsRecord(domainId: string, recordId: string, body: UpdateDnsRecordBody): Promise<DnsRecord> {
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/dns-records/${encodeURIComponent(recordId)}`, body);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to update DNS record');
+  }
+  return res.data as DnsRecord;
+}
+
+export async function deleteDnsRecord(domainId: string, recordId: string, elevatedToken: string): Promise<void> {
+  const res = await deleteWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/dns-records/${encodeURIComponent(recordId)}`, { elevated_token: elevatedToken });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to delete DNS record');
+  }
+}
+
+// --- Certificates ---
+
+export interface Certificate {
+  domain_id: string;
+  key_type: 'ecc' | 'rsa' | string;
+  serial: string;
+  not_before: number;
+  not_after: number;
+  renew_after: number;
+  fail_count: number;
+  last_error: string;
+}
+
+export async function listCertificates(organizationId?: string, expiringWithinDays?: number): Promise<Certificate[]> {
+  const qs = new URLSearchParams();
+  if (organizationId) qs.set('organization_id', organizationId);
+  if (expiringWithinDays !== undefined) qs.set('expiring_within_days', String(expiringWithinDays));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  const res = await fetchWithAuth(`proxy/domains/certificates${suffix}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to list certificates');
+  }
+  return (res.data ?? []) as Certificate[];
+}
+
+export async function forceRenewCertificate(domainId: string, keyType?: 'ecc' | 'rsa', elevatedToken?: string): Promise<{ job_id: string }> {
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/force-renew`, {
+    key_type: keyType,
     elevated_token: elevatedToken,
   });
   if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to upgrade subscription');
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to force certificate renewal');
   }
-  return res.data as SubscriptionCheckout;
+  return res.data as { job_id: string };
 }
 
-// Queues a plan change for the end of the current period -- charges
-// nothing now, so no elevated token needed.
-export async function scheduleDowngrade(storefront: string, planCode: string, organizationId = ''): Promise<SubscriptionSummary> {
-  const res = await postWithAuth('proxy/billing/subscription/downgrade', {
-    organization_id: organizationId,
-    storefront,
-    plan_code: planCode,
-  });
-  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to schedule downgrade');
-  }
-  return res.data as SubscriptionSummary;
+// --- Orders ---
+
+export interface Order {
+  id: string;
+  fqdn: string;
+  organization_id: string;
+  user_id: string;
+  cost: { amount_cents: number; currency: string };
+  price: { amount_cents: number; currency: string };
+  state: string;
+  cf_workflow_state: string;
+  stripe_payment_intent_id: string;
+  domain_id: string;
+  last_error: string;
+  created_at: number;
+  updated_at: number;
 }
 
-// Takes effect at the end of the current period; charges/refunds nothing now.
-export async function cancelSubscription(storefront: string, organizationId = ''): Promise<SubscriptionSummary> {
-  const res = await postWithAuth('proxy/billing/subscription/cancel', {
-    organization_id: organizationId,
-    storefront,
+export async function listOrders(organizationId?: string, limit?: number, offset?: number): Promise<Order[]> {
+  const qs = new URLSearchParams();
+  if (organizationId) qs.set('organization_id', organizationId);
+  if (limit !== undefined) qs.set('limit', String(limit));
+  if (offset !== undefined) qs.set('offset', String(offset));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  const res = await fetchWithAuth(`proxy/domains/orders${suffix}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to list orders');
+  }
+  return (res.data ?? []) as Order[];
+}
+
+export async function getOrder(orderId: string): Promise<Order> {
+  const res = await fetchWithAuth(`proxy/domains/orders/${encodeURIComponent(orderId)}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to get order');
+  }
+  return res.data as Order;
+}
+
+// --- Domain Members ---
+
+export interface DomainMember {
+  domain_id: string;
+  email: string;
+  cf_member_id: string;
+  role: string;
+  status: string;
+  invited_at: number;
+}
+
+export async function listDomainMembers(domainId: string): Promise<DomainMember[]> {
+  const res = await fetchWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/members`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to list domain members');
+  }
+  return (res.data ?? []) as DomainMember[];
+}
+
+export async function inviteDomainMember(domainId: string, email: string, role?: string): Promise<DomainMember> {
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/members`, {
+    email,
+    role: role || 'Domain DNS',
   });
   if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
-    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to cancel subscription');
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to invite domain member');
   }
-  return res.data as SubscriptionSummary;
+  return res.data as DomainMember;
+}
+
+export async function removeDomainMember(domainId: string, email: string, elevatedToken?: string): Promise<void> {
+  const res = await deleteWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/members`, {
+    elevated_token: elevatedToken,
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to remove domain member');
+  }
+}
+
+// --- Freeform Vhost ---
+
+export interface FreeformLintFinding {
+  code: string;
+  severity: string;
+  message: string;
+}
+
+export interface ValidateFreeformVhostResponse {
+  nginx_ok: boolean;
+  nginx_output: string;
+  new_findings: FreeformLintFinding[];
+  corrected: string;
+}
+
+export interface ApplyFreeformVhostResponse {
+  applied: boolean;
+  diff: string;
+  validation: ValidateFreeformVhostResponse;
+}
+
+export async function validateFreeformVhost(domainId: string, serverBlock: string): Promise<ValidateFreeformVhostResponse> {
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/validate-vhost`, {
+    server_block: serverBlock,
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to validate vhost');
+  }
+  return res.data as ValidateFreeformVhostResponse;
+}
+
+export async function applyFreeformVhost(domainId: string, serverBlock: string, elevatedToken?: string, dryRun?: boolean): Promise<ApplyFreeformVhostResponse> {
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/apply-vhost`, {
+    server_block: serverBlock,
+    elevated_token: elevatedToken,
+    dry_run: dryRun ?? false,
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to apply vhost');
+  }
+  return res.data as ApplyFreeformVhostResponse;
+}
+// --- Billing: credits ---
+//
+// Billing decides who may see or spend: Admins always, other roles only when
+// the organization has opted them in (see `setViewerBillingAccess`).
+
+export async function fetchCreditBalance(organizationId?: string): Promise<CreditBalance> {
+  const suffix = organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : '';
+  const res = await fetchWithAuth(`proxy/billing/credits${suffix}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load credit balance');
+  }
+  return res.data as CreditBalance;
+}
+
+export async function fetchCreditLedger(params: {
+  organizationId?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<CreditLedgerPage> {
+  const qs = new URLSearchParams();
+  if (params.organizationId) qs.set('organization_id', params.organizationId);
+  if (params.limit != null) qs.set('limit', String(params.limit));
+  if (params.offset != null) qs.set('offset', String(params.offset));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  const res = await fetchWithAuth(`proxy/billing/credits/ledger${suffix}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load credit history');
+  }
+  return res.data as CreditLedgerPage;
+}
+
+// Needs an elevated token (this creates a real charge) and a minimum of
+// 2500 cents, enforced by Billing.
+export async function topUpCredit(body: {
+  amountCents: number;
+  elevatedToken: string;
+  organizationId?: string;
+}): Promise<TopUpCheckout> {
+  const res = await postWithAuth('proxy/billing/credits/topup', {
+    organization_id: body.organizationId ?? '',
+    amount_cents: body.amountCents,
+    elevated_token: body.elevatedToken,
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to start the top-up');
+  }
+  return res.data as TopUpCheckout;
+}
+
+// Whether the org has opted its viewers into seeing billing. Default is off:
+// it is the org's own `subscription:read` row for the viewer role.
+export async function fetchViewerBillingAccess(orgId: string): Promise<boolean> {
+  const rows = await fetchOrgPolicy(orgId);
+  return rows.some(
+    (r) => r.resource_type === 'subscription' && r.action === 'read' && r.role === 'viewer' && r.allow,
+  );
+}
+
+export async function setViewerBillingAccess(orgId: string, allow: boolean, elevatedToken: string): Promise<boolean> {
+  return setOrgPolicyRow(orgId, {
+    elevated_token: elevatedToken,
+    resource_type: 'subscription',
+    action: 'read',
+    role: 'viewer',
+    allow,
+  });
 }

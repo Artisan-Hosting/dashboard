@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchWithAuth, postWithAuth, fetchMultiNodeConfig } from '@/lib/api';
-import { detectEnvironmentFromConfig } from '@/lib/envDetect';
+import { useCallback, useEffect, useState } from 'react';
+import { fetchWithAuth, postWithAuth } from '@/lib/api';
 import { Button, Field, SelectField } from '@/components/ui';
 
 interface SecretItem {
@@ -8,52 +7,18 @@ interface SecretItem {
   value: string;
 }
 
-const KNOWN_ENVS = ['development', 'staging', 'production'];
-
 // Per-project secrets CRUD, shared by the Secrets tab on a project's page.
 // Scoped to one `projectId` -- unlike the old standalone /secrets page this
 // replaced, there's no project picker here, just the environment.
 export function SecretsManager({ projectId }: { projectId: string }) {
   const [selectedEnv, setSelectedEnv] = useState('production');
   const [customEnv, setCustomEnv] = useState('');
-  const [autoDetected, setAutoDetected] = useState(false);
   const [items, setItems] = useState<SecretItem[]>([]);
   const [newName, setNewName] = useState('');
   const [newValue, setNewValue] = useState('');
   const [secretsError, setSecretsError] = useState<string | null>(null);
-  const userChangedEnv = useRef(false);
 
   const envValue = selectedEnv === '__custom__' ? customEnv : selectedEnv;
-
-  // Best-effort: try to read the environment this project's watchdog
-  // overrides are actually configured for, and pre-select it -- falls back
-  // to the 'production' default above if there's no overrides file, the
-  // fetch fails, or nothing in it looks like an environment field.
-  useEffect(() => {
-    if (!projectId) return;
-    let cancelled = false;
-    fetchMultiNodeConfig(projectId, 'overrides')
-      .then((data) => {
-        if (cancelled || userChangedEnv.current) return;
-        const withContent = data.nodes.find((n) => n.found && n.content);
-        const detected = detectEnvironmentFromConfig(withContent?.content);
-        if (!detected) return;
-        setAutoDetected(true);
-        if (KNOWN_ENVS.includes(detected)) {
-          setSelectedEnv(detected);
-        } else {
-          setSelectedEnv('__custom__');
-          setCustomEnv(detected);
-        }
-      })
-      .catch(() => {
-        // No overrides file, no access to it, or the fetch failed -- the
-        // 'production' default above stands.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId]);
 
   const loadSecrets = useCallback(async () => {
     if (!projectId || !envValue) {
@@ -145,37 +110,14 @@ export function SecretsManager({ projectId }: { projectId: string }) {
     <div className="space-y-6">
       <div>
         <label className="block text-sm font-medium mb-1">Environment</label>
-        <SelectField
-          className="w-full sm:w-64"
-          value={selectedEnv}
-          onChange={(e) => {
-            userChangedEnv.current = true;
-            setAutoDetected(false);
-            setSelectedEnv(e.target.value);
-          }}
-        >
+        <SelectField className="w-full sm:w-64" value={selectedEnv} onChange={(e) => setSelectedEnv(e.target.value)}>
           <option value="development">Development</option>
           <option value="staging">Staging</option>
           <option value="production">Production</option>
           <option value="__custom__">Custom...</option>
         </SelectField>
         {selectedEnv === '__custom__' && (
-          <Field
-            sans
-            className="mt-2 w-full sm:w-64"
-            placeholder="Environment name"
-            value={customEnv}
-            onChange={(e) => {
-              userChangedEnv.current = true;
-              setAutoDetected(false);
-              setCustomEnv(e.target.value);
-            }}
-          />
-        )}
-        {autoDetected && (
-          <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-            Detected from this project's overrides config.
-          </p>
+          <Field sans className="mt-2 w-full sm:w-64" placeholder="Environment name" value={customEnv} onChange={(e) => setCustomEnv(e.target.value)} />
         )}
       </div>
 

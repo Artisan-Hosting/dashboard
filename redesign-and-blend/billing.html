@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Billing | Artisan console (mock)</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('ah-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}</script>
+<link rel="stylesheet" href="console.css">
+<link rel="stylesheet" href="billing.css">
+</head>
+<body data-page="billing">
+<main id="main" class="wrap">
+
+  <div class="page-head">
+    <div>
+      <h1>Billing</h1>
+      <p>Your plan, your credit, and everything you have paid. Amounts are in US dollars.</p>
+    </div>
+  </div>
+
+  <section class="tabpanel wide" id="locked" hidden></section>
+
+  <div class="tabs" role="tablist" aria-label="Billing">
+    <button role="tab" id="t-plan" aria-controls="p-plan" aria-selected="true" type="button">Plan</button>
+    <button role="tab" id="t-credit" aria-controls="p-credit" aria-selected="false" type="button">Credit</button>
+    <button role="tab" id="t-pay" aria-controls="p-pay" aria-selected="false" type="button">Payments</button>
+  </div>
+
+  <section class="tabpanel wide" id="p-plan" role="tabpanel" aria-labelledby="t-plan"></section>
+  <section class="tabpanel wide" id="p-credit" role="tabpanel" aria-labelledby="t-credit" hidden></section>
+  <section class="tabpanel wide" id="p-pay" role="tabpanel" aria-labelledby="t-pay" hidden></section>
+
+</main>
+<script src="console.js"></script>
+<script src="signed.js"></script>
+<script src="billing.js"></script>
+</body>
+</html>

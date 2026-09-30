@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buy a domain | Artisan console (mock)</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('ah-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}</script>
+<link rel="stylesheet" href="console.css">
+<link rel="stylesheet" href="billing.css">
+</head>
+<body data-page="buy-domain">
+<main id="main" class="wrap">
+
+  <div class="page-head">
+    <div>
+      <h1>Buy a domain</h1>
+      <p>Search for a name, see the price, and buy it. We set up the DNS and the certificate for you afterwards.</p>
+    </div>
+  </div>
+
+  <ol class="steps-h" id="steps" aria-label="Steps">
+    <li>Search</li><li>Review</li><li>Pay</li><li>Setting it up</li>
+  </ol>
+
+  <div class="stack" style="padding-bottom:80px">
+    <div id="notice"></div>
+    <section id="s-search" aria-labelledby="h-search">
+      <h2 id="h-search" class="visually-hidden">Search</h2>
+      <form class="searchbar" id="sform" role="search">
+        <label class="visually-hidden" for="q">Domain name</label>
+        <input class="field" id="q" placeholder="Try &ldquo;artisan-widgets&rdquo;" autocomplete="off" spellcheck="false">
+        <button class="btn btn-primary" type="submit">Search</button>
+      </form>
+      <ul class="results" id="results" hidden></ul>
+    </section>
+    <section id="s-quote" hidden aria-labelledby="h-quote"></section>
+    <section id="s-order" hidden aria-labelledby="h-order"></section>
+    <section aria-labelledby="h-orders">
+      <h2 id="h-orders" style="margin-bottom:12px">Your orders</h2>
+      <div class="scroll-x"><table class="tbl"><thead><tr><th>Date</th><th>Domain</th><th class="r">Paid</th><th>Status</th></tr></thead><tbody id="orders"></tbody></table></div>
+    </section>
+  </div>
+
+</main>
+<script src="console.js"></script>
+<script src="signed.js"></script>
+<script src="buy-domain.js"></script>
+</body>
+</html>

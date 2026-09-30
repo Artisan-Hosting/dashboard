@@ -518,61 +518,6 @@ export interface AttachDomainBody {
   no_http_redirect?: boolean;
 }
 
-// --- Billing (Portal's /v1/billing/*, backed by the separate Billing
-// service + Stripe) ---
-//
-// Shapes verified against portal/src/api/handler/billing.rs's
-// SubscriptionSummary/InvoiceSummary/InvoiceLineItemSummary/
-// SubscriptionCheckoutSummary -- these are exactly what Portal serializes,
-// not guessed from the proto (Billing's own proto isn't vendored here).
-
-export interface SubscriptionSummary {
-  id: string;
-  organization_id: string;
-  storefront: string;
-  plan_code: string;
-  /** e.g. "active", "trialing", "past_due", "canceled", "unpaid" -- the
-   *  proto's BILLING_STATUS_* enum, lowercased with the prefix stripped. */
-  status: string;
-  current_period_start: number;
-  current_period_end: number;
-  /** Empty when no downgrade is queued. */
-  pending_plan_code: string;
-  cancel_at_period_end: boolean;
-}
-
-export interface InvoiceLineItem {
-  /** Empty for the plan's own base-price line. */
-  unit_code: string;
-  description: string;
-  quantity: number;
-  unit_price_cents: number;
-  amount_cents: number;
-}
-
-export interface InvoiceSummary {
-  id: string;
-  organization_id: string;
-  /** Empty for a one-off charge with no subscription behind it. */
-  subscription_id: string;
-  period_start: number;
-  period_end: number;
-  /** draft | open | paid | void | uncollectible */
-  status: string;
-  total_cents: number;
-  currency: string;
-  line_items: InvoiceLineItem[];
-}
-
-export interface SubscriptionCheckout {
-  subscription: SubscriptionSummary | null;
-  invoice: InvoiceSummary | null;
-  /** Empty when nothing is owed (a $0 plan, or a downgrade) -- nothing for
-   *  Stripe Elements to collect. */
-  stripe_client_secret: string;
-  stripe_publishable_key: string;
-}
-
 // Sync status colors for UI
 export const syncStatusColorMap: Record<SyncStatus, string> = {
   idle: 'text-blue-400',
@@ -582,3 +527,107 @@ export const syncStatusColorMap: Record<SyncStatus, string> = {
   failed: 'text-red-400',
   unknown: 'text-gray-400',
 };
+// --- Billing: credits ---
+
+export interface CreditBalance {
+  organization_id: string;
+  balance_cents: number;
+  // 0 means no cap configured.
+  monthly_spend_cap_cents: number;
+}
+
+export interface CreditLedgerEntry {
+  id: number;
+  entry_type: 'topup' | 'debit' | 'adjustment' | string;
+  // Signed: top-ups positive, debits negative.
+  amount_cents: number;
+  balance_after_cents: number;
+  // Stripe payment intent or session id; empty when there is none.
+  external_reference: string;
+  created_at: number;
+}
+
+export interface CreditLedgerPage {
+  entries: CreditLedgerEntry[];
+  total: number;
+}
+
+// The balance only changes once Stripe confirms the payment, so the caller
+// confirms the card with these and then polls the balance.
+export interface TopUpCheckout {
+  payment_intent_id: string;
+  amount_cents: number;
+  currency: string;
+  stripe_client_secret: string;
+  stripe_publishable_key: string;
+}
+
+// --- DNS Records ---
+export interface DnsRecord {
+  id: string;
+  cf_record_id: string;
+  type: string;
+  name: string;
+  content: string;
+  ttl: number;
+  proxied: boolean;
+}
+
+// --- Certificates ---
+export interface Certificate {
+  domain_id: string;
+  key_type: 'ecc' | 'rsa' | string;
+  serial: string;
+  not_before: number;
+  not_after: number;
+  renew_after: number;
+  fail_count: number;
+  last_error: string;
+}
+
+// --- Orders ---
+export interface Order {
+  id: string;
+  fqdn: string;
+  organization_id: string;
+  user_id: string;
+  cost: { amount_cents: number; currency: string };
+  price: { amount_cents: number; currency: string };
+  state: string;
+  cf_workflow_state: string;
+  stripe_payment_intent_id: string;
+  domain_id: string;
+  last_error: string;
+  created_at: number;
+  updated_at: number;
+}
+
+// --- Domain Members ---
+export interface DomainMember {
+  domain_id: string;
+  email: string;
+  cf_member_id: string;
+  role: string;
+  status: string;
+  invited_at: number;
+}
+
+// --- Freeform Vhost ---
+export interface FreeformLintFinding {
+  code: string;
+  severity: string;
+  message: string;
+}
+
+export interface ValidateFreeformVhostResponse {
+  nginx_ok: boolean;
+  nginx_output: string;
+  new_findings: FreeformLintFinding[];
+  corrected: string;
+}
+
+export interface ApplyFreeformVhostResponse {
+  applied: boolean;
+  diff: string;
+  validation: ValidateFreeformVhostResponse;
+}
