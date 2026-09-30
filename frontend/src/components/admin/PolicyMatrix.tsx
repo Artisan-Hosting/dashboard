@@ -6,6 +6,7 @@ import { OrgPolicyRow } from '@/lib/types';
 // access engine (`resolve_resource_org`) -- an org-level policy row for any
 // other resource type is silently inert today, so this editor doesn't offer
 // them: showing a toggle that changes nothing would be dishonest UI.
+// `subscription` resolves because its resource id is the organization id.
 const RESOURCE_TYPES = ['project', 'instance', 'secret', 'subscription'] as const;
 const ACTIONS = ['read', 'write', 'control', 'delete', 'grant', 'purchase'] as const;
 // Never SUPER (always allowed, not policy-driven) or none (rejected by
