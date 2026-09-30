@@ -5,108 +5,56 @@ import { fetchBilling, fetchWithAuth, postWithAuth } from '@/lib/api';
 import { UsageSummary, BillingCosts, ProjectSummary } from '@/lib/types';
 import { TopBar } from '@/components/topbar';
 import LoadingOverlay from '@/components/loading';
-import { useUser } from '@/hooks/useUser';
-import { useElevatedSession } from '@/hooks/useElevatedSession';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
-import { Button } from '@/components/ui';
 
-function formatCents(cents: number, currency = 'usd'): string {
-  return (cents / 100).toLocaleString(undefined, {
-    style: 'currency',
-    currency: currency.toUpperCase() || 'USD',
-  });
-}
-
-function formatDate(unixSeconds: number): string {
-  if (!unixSeconds) return '--';
-  return new Date(unixSeconds * 1000).toLocaleDateString();
+interface BillingBlock {
+  name: string;
+  summary: UsageSummary;
+  costs: BillingCosts;
+  instanceIds: string[];
 }
 
 export default function BillingPage() {
-  const { orgId } = useUser();
-  const elevated = useElevatedSession();
-
-  const [storefront, setStorefront] = useState<Storefront>('developer');
-  const [subscription, setSubscription] = useState<SubscriptionSummary | null>(null);
-  const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const load = useCallback(async (sf: Storefront) => {
-    setLoading(true);
-    try {
-      const [sub, inv] = await Promise.all([
-        fetchSubscription(sf, orgId),
-        fetchInvoices(sf, orgId).catch(() => []),
-      ]);
-      setSubscription(sub);
-      setInvoices(inv);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load billing data');
-    } finally {
-      setLoading(false);
-    }
-  }, [orgId]);
+  const [blocks, setBlocks] = useState<BillingBlock[]>([]);
 
   useEffect(() => {
-    load(storefront);
-    setSelectedPlan('');
-  }, [storefront, load]);
+    const fetchData = async () => {
+      try {
+        const res = await fetchWithAuth('proxy/runners');
+        const projects: ProjectSummary[] = res.data || [];
 
-  const plans = PLAN_CATALOG[storefront];
-  const currentPlan = subscription ? findPlan(storefront, subscription.plan_code) : undefined;
-  const targetPlan = selectedPlan ? findPlan(storefront, selectedPlan) : undefined;
-  const isUpgrade = !subscription || (targetPlan && currentPlan && targetPlan.priceCents > currentPlan.priceCents) || (targetPlan && !currentPlan);
-  const isDowngrade = !!(subscription && targetPlan && currentPlan && targetPlan.priceCents < currentPlan.priceCents);
+        const results = await Promise.all(
+          projects.map(async (r) => {
+            const name = r.name.replace('ais_', '');
+            const usageRes = await fetchWithAuth(`proxy/usage/group/${name}`);
+            const summary = usageRes.data as UsageSummary;
+            console.log(summary);
 
-  const handleUpgrade = async () => {
-    if (!targetPlan) return;
-    if (!elevated.isElevated) {
-      toast.error('Unlock the elevated session first -- an upgrade charges the card now.');
-      return;
-    }
-    setBusy(true);
-    try {
-      await upgradeSubscription(storefront, targetPlan.code, elevated.token!, orgId);
-      toast.success(`Switched to ${targetPlan.name}`);
-      setSelectedPlan('');
-      load(storefront);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to upgrade');
-    } finally {
-      setBusy(false);
-    }
-  };
 
-  const handleDowngrade = async () => {
-    if (!targetPlan) return;
-    setBusy(true);
-    try {
-      await scheduleDowngrade(storefront, targetPlan.code, orgId);
-      toast.success(`Downgrade to ${targetPlan.name} scheduled for the end of the period`);
-      setSelectedPlan('');
-      load(storefront);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to schedule downgrade');
-    } finally {
-      setBusy(false);
-    }
-  };
+            const costs = await fetchBilling(summary);
+            console.log(costs);
 
-  const handleCancel = async () => {
-    if (!confirm('Cancel this subscription at the end of the current period?')) return;
-    setBusy(true);
-    try {
-      await cancelSubscription(storefront, orgId);
-      toast.success('Subscription set to cancel at period end');
-      load(storefront);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to cancel');
-    } finally {
-      setBusy(false);
-    }
-  };
+            return {
+              name,
+              summary,
+              costs,
+              instanceIds: Array.isArray(summary.instance_id) ? summary.instance_id : []
+            };
+          })
+        );
+
+        setBlocks(results);
+      } catch (err) {
+        console.error('Billing load error', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-page text-foreground">
@@ -120,55 +68,26 @@ export default function BillingPage() {
               <div key={block.name} className="card p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold text-brand">{block.name}</h2>
-                  <Button
-                    small
+                  <button
                     onClick={() =>
                       router.push({
                         pathname: `/billing/${block.name}`,
                         query: { instances: block.instanceIds.join(',') },
                       })
                     }
+                    className="btn-brand text-sm px-4 py-2 rounded-full"
                   >
                     View Daily Breakdown
-                  </Button>
+                  </button>
                 </div>
-                <ul className="text-sm space-y-1" style={{ color: 'var(--muted)' }}>
+                <ul className="text-sm text-gray-300 space-y-1">
                   <li>RAM Usage: ${block.costs?.ram_cost?.toFixed(2) ?? 'N/A'}</li>
                   <li>CPU Usage: ${block.costs?.cpu_cost?.toFixed(2) ?? 'N/A'}</li>
                   <li>Bandwidth: ${block.costs?.bandwidth_cost?.toFixed(2) ?? 'N/A'}</li>
-                  <li className="font-medium mt-2" style={{ color: 'var(--strong)' }}>Total: ${block.costs?.total_cost?.toFixed(2) ?? 'N/A'}</li>
+                  <li className="text-white font-medium mt-2">Total: ${block.costs?.total_cost?.toFixed(2) ?? 'N/A'}</li>
                 </ul>
               </div>
-            </Panel>
-
-            <Panel title="Invoices">
-              {invoices.length === 0 && (
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>No invoices yet.</p>
-              )}
-              <div className="space-y-3">
-                {invoices.map((inv) => (
-                  <details key={inv.id} className="text-sm" style={{ borderBottom: '1px solid var(--line)', paddingBottom: '0.5rem' }}>
-                    <summary className="flex items-center justify-between gap-2 cursor-pointer py-1">
-                      <span style={{ color: 'var(--strong)' }}>
-                        {formatDate(inv.period_start)} -- {formatDate(inv.period_end)}
-                      </span>
-                      <span className="flex items-center gap-2 shrink-0">
-                        <Pill status={inv.status} />
-                        <span className="font-medium" style={{ color: 'var(--strong)' }}>{formatCents(inv.total_cents, inv.currency)}</span>
-                      </span>
-                    </summary>
-                    <ul className="mt-2 pl-4 space-y-1" style={{ color: 'var(--muted)' }}>
-                      {inv.line_items.map((item, i) => (
-                        <li key={i} className="flex justify-between gap-2">
-                          <span>{item.description}{item.quantity !== 1 ? ` x${item.quantity}` : ''}</span>
-                          <span className="shrink-0">{formatCents(item.amount_cents, inv.currency)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                ))}
-              </div>
-            </Panel>
+            ))}
           </div>
         )}
       </main>

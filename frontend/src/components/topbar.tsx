@@ -7,7 +7,7 @@ import { ThemeToggle } from "@/components/ui";
 const NAV: { href: string; label: string; adminOnly?: boolean }[] = [
   { href: "/apps", label: "Apps" },
   { href: "/domains", label: "Domains" },
-  { href: "/billing", label: "Billing" },
+  { href: "/billing", label: "Billing", adminOnly: true },
   { href: "/nodes", label: "Nodes", adminOnly: true },
   { href: "/repos", label: "Repos", adminOnly: true },
   { href: "/admin", label: "Admin", adminOnly: true },

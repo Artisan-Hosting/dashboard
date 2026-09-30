@@ -4,13 +4,13 @@ import {
   AssignDomainBody,
   AttachDomainBody,
   AuditOutcome,
+  BillingCosts,
   DeployNodeResult,
   DomainFinding,
   DomainRescanResult,
   DomainsPage,
   DomainSummary,
   GitConfigOp,
-  InvoiceSummary,
   LogEntry,
   MultiNodeConfigResponse,
   MultiNodeConfigSetResponse,
@@ -28,8 +28,6 @@ import {
   ReposEnvelope,
   ReposResponse,
   SetOrgPolicyBody,
-  SubscriptionCheckout,
-  SubscriptionSummary,
   SyncNodeOutcome,
   UsageSummary,
   WatchdogConfigKind,
@@ -518,6 +516,218 @@ export async function rescanDomains(body: { checkDns?: boolean; checkCloudflare?
     throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to rescan domains');
   }
   return res.data as DomainRescanResult;
+}
+
+// --- DNS Records ---
+
+export interface DnsRecord {
+  id: string;
+  cf_record_id: string;
+  type: string;
+  name: string;
+  content: string;
+  ttl: number;
+  proxied: boolean;
+}
+
+export interface CreateDnsRecordBody {
+  type: string;
+  name: string;
+  content: string;
+  ttl?: number;
+  proxied?: boolean;
+}
+
+export interface UpdateDnsRecordBody extends CreateDnsRecordBody {
+  id: string;
+}
+
+export async function listDnsRecords(domainId: string): Promise<DnsRecord[]> {
+  const res = await fetchWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/dns-records`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to list DNS records');
+  }
+  return (res.data ?? []) as DnsRecord[];
+}
+
+export async function createDnsRecord(domainId: string, body: CreateDnsRecordBody): Promise<DnsRecord> {
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/dns-records`, body);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to create DNS record');
+  }
+  return res.data as DnsRecord;
+}
+
+export async function updateDnsRecord(domainId: string, recordId: string, body: UpdateDnsRecordBody): Promise<DnsRecord> {
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/dns-records/${encodeURIComponent(recordId)}`, body);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to update DNS record');
+  }
+  return res.data as DnsRecord;
+}
+
+export async function deleteDnsRecord(domainId: string, recordId: string, elevatedToken: string): Promise<void> {
+  const res = await deleteWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/dns-records/${encodeURIComponent(recordId)}`, { elevated_token: elevatedToken });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to delete DNS record');
+  }
+}
+
+// --- Certificates ---
+
+export interface Certificate {
+  domain_id: string;
+  key_type: 'ecc' | 'rsa' | string;
+  serial: string;
+  not_before: number;
+  not_after: number;
+  renew_after: number;
+  fail_count: number;
+  last_error: string;
+}
+
+export async function listCertificates(organizationId?: string, expiringWithinDays?: number): Promise<Certificate[]> {
+  const qs = new URLSearchParams();
+  if (organizationId) qs.set('organization_id', organizationId);
+  if (expiringWithinDays !== undefined) qs.set('expiring_within_days', String(expiringWithinDays));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  const res = await fetchWithAuth(`proxy/domains/certificates${suffix}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to list certificates');
+  }
+  return (res.data ?? []) as Certificate[];
+}
+
+export async function forceRenewCertificate(domainId: string, keyType?: 'ecc' | 'rsa', elevatedToken?: string): Promise<{ job_id: string }> {
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/force-renew`, {
+    key_type: keyType,
+    elevated_token: elevatedToken,
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to force certificate renewal');
+  }
+  return res.data as { job_id: string };
+}
+
+// --- Orders ---
+
+export interface Order {
+  id: string;
+  fqdn: string;
+  organization_id: string;
+  user_id: string;
+  cost: { amount_cents: number; currency: string };
+  price: { amount_cents: number; currency: string };
+  state: string;
+  cf_workflow_state: string;
+  stripe_payment_intent_id: string;
+  domain_id: string;
+  last_error: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export async function listOrders(organizationId?: string, limit?: number, offset?: number): Promise<Order[]> {
+  const qs = new URLSearchParams();
+  if (organizationId) qs.set('organization_id', organizationId);
+  if (limit !== undefined) qs.set('limit', String(limit));
+  if (offset !== undefined) qs.set('offset', String(offset));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  const res = await fetchWithAuth(`proxy/domains/orders${suffix}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to list orders');
+  }
+  return (res.data ?? []) as Order[];
+}
+
+export async function getOrder(orderId: string): Promise<Order> {
+  const res = await fetchWithAuth(`proxy/domains/orders/${encodeURIComponent(orderId)}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to get order');
+  }
+  return res.data as Order;
+}
+
+// --- Domain Members ---
+
+export interface DomainMember {
+  domain_id: string;
+  email: string;
+  cf_member_id: string;
+  role: string;
+  status: string;
+  invited_at: number;
+}
+
+export async function listDomainMembers(domainId: string): Promise<DomainMember[]> {
+  const res = await fetchWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/members`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to list domain members');
+  }
+  return (res.data ?? []) as DomainMember[];
+}
+
+export async function inviteDomainMember(domainId: string, email: string, role?: string): Promise<DomainMember> {
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/members`, {
+    email,
+    role: role || 'Domain DNS',
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to invite domain member');
+  }
+  return res.data as DomainMember;
+}
+
+export async function removeDomainMember(domainId: string, email: string, elevatedToken?: string): Promise<void> {
+  const res = await deleteWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/members`, {
+    elevated_token: elevatedToken,
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to remove domain member');
+  }
+}
+
+// --- Freeform Vhost ---
+
+export interface FreeformLintFinding {
+  code: string;
+  severity: string;
+  message: string;
+}
+
+export interface ValidateFreeformVhostResponse {
+  nginx_ok: boolean;
+  nginx_output: string;
+  new_findings: FreeformLintFinding[];
+  corrected: string;
+}
+
+export interface ApplyFreeformVhostResponse {
+  applied: boolean;
+  diff: string;
+  validation: ValidateFreeformVhostResponse;
+}
+
+export async function validateFreeformVhost(domainId: string, serverBlock: string): Promise<ValidateFreeformVhostResponse> {
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/validate-vhost`, {
+    server_block: serverBlock,
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to validate vhost');
+  }
+  return res.data as ValidateFreeformVhostResponse;
+}
+
+export async function applyFreeformVhost(domainId: string, serverBlock: string, elevatedToken?: string, dryRun?: boolean): Promise<ApplyFreeformVhostResponse> {
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/apply-vhost`, {
+    server_block: serverBlock,
+    elevated_token: elevatedToken,
+    dry_run: dryRun ?? false,
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to apply vhost');
+  }
+  return res.data as ApplyFreeformVhostResponse;
 }
 // --- Billing: credits ---
 //

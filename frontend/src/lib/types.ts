@@ -561,3 +561,73 @@ export interface TopUpCheckout {
   stripe_client_secret: string;
   stripe_publishable_key: string;
 }
+
+// --- DNS Records ---
+export interface DnsRecord {
+  id: string;
+  cf_record_id: string;
+  type: string;
+  name: string;
+  content: string;
+  ttl: number;
+  proxied: boolean;
+}
+
+// --- Certificates ---
+export interface Certificate {
+  domain_id: string;
+  key_type: 'ecc' | 'rsa' | string;
+  serial: string;
+  not_before: number;
+  not_after: number;
+  renew_after: number;
+  fail_count: number;
+  last_error: string;
+}
+
+// --- Orders ---
+export interface Order {
+  id: string;
+  fqdn: string;
+  organization_id: string;
+  user_id: string;
+  cost: { amount_cents: number; currency: string };
+  price: { amount_cents: number; currency: string };
+  state: string;
+  cf_workflow_state: string;
+  stripe_payment_intent_id: string;
+  domain_id: string;
+  last_error: string;
+  created_at: number;
+  updated_at: number;
+}
+
+// --- Domain Members ---
+export interface DomainMember {
+  domain_id: string;
+  email: string;
+  cf_member_id: string;
+  role: string;
+  status: string;
+  invited_at: number;
+}
+
+// --- Freeform Vhost ---
+export interface FreeformLintFinding {
+  code: string;
+  severity: string;
+  message: string;
+}
+
+export interface ValidateFreeformVhostResponse {
+  nginx_ok: boolean;
+  nginx_output: string;
+  new_findings: FreeformLintFinding[];
+  corrected: string;
+}
+
+export interface ApplyFreeformVhostResponse {
+  applied: boolean;
+  diff: string;
+  validation: ValidateFreeformVhostResponse;
+}
