@@ -22,8 +22,8 @@ import {
   WatchdogConfigKind,
   ProjectSummary,
 } from '@/lib/types';
-import { systemAppLabel, resolveRunnerLabel } from '@/lib/repoLabel';
-import { Button, Pill, SelectField } from '@/components/ui';
+import { resolveRunnerLabel } from '@/lib/repoLabel';
+import { Button, SelectField } from '@/components/ui';
 
 function serverToDisplay(server: GitServer): string {
   return typeof server === 'string' ? server : `Custom (${server.Custom})`;
