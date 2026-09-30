@@ -527,3 +527,37 @@ export const syncStatusColorMap: Record<SyncStatus, string> = {
   failed: 'text-red-400',
   unknown: 'text-gray-400',
 };
+// --- Billing: credits ---
+
+export interface CreditBalance {
+  organization_id: string;
+  balance_cents: number;
+  // 0 means no cap configured.
+  monthly_spend_cap_cents: number;
+}
+
+export interface CreditLedgerEntry {
+  id: number;
+  entry_type: 'topup' | 'debit' | 'adjustment' | string;
+  // Signed: top-ups positive, debits negative.
+  amount_cents: number;
+  balance_after_cents: number;
+  // Stripe payment intent or session id; empty when there is none.
+  external_reference: string;
+  created_at: number;
+}
+
+export interface CreditLedgerPage {
+  entries: CreditLedgerEntry[];
+  total: number;
+}
+
+// The balance only changes once Stripe confirms the payment, so the caller
+// confirms the card with these and then polls the balance.
+export interface TopUpCheckout {
+  payment_intent_id: string;
+  amount_cents: number;
+  currency: string;
+  stripe_client_secret: string;
+  stripe_publishable_key: string;
+}
