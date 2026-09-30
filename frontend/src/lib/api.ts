@@ -19,8 +19,12 @@ import {
   NodeReloadResult,
   OrgPolicyRow,
   CreditBalance,
+  DomainOffer,
+  DomainQuote,
   Invoice,
   InvoicePage,
+  Order,
+  OrderCheckout,
   Plan,
   Subscription,
   SubscriptionCheckout,
@@ -616,22 +620,6 @@ export async function forceRenewCertificate(domainId: string, keyType?: 'ecc' | 
 
 // --- Orders ---
 
-export interface Order {
-  id: string;
-  fqdn: string;
-  organization_id: string;
-  user_id: string;
-  cost: { amount_cents: number; currency: string };
-  price: { amount_cents: number; currency: string };
-  state: string;
-  cf_workflow_state: string;
-  stripe_payment_intent_id: string;
-  domain_id: string;
-  last_error: string;
-  created_at: number;
-  updated_at: number;
-}
-
 export async function listOrders(organizationId?: string, limit?: number, offset?: number): Promise<Order[]> {
   const qs = new URLSearchParams();
   if (organizationId) qs.set('organization_id', organizationId);
@@ -900,4 +888,39 @@ export async function retryInvoicePayment(body: {
   });
   if (!billingOk(res)) billingFail(res, 'Failed to start the payment');
   return res.data as SubscriptionCheckout;
+}
+
+// --- Domain purchasing ---
+//
+// `ais_domains` decides who may search, quote and buy; creating the order
+// needs an elevated token because it starts a real charge.
+
+export async function searchDomains(query: string, limit = 10): Promise<DomainOffer[]> {
+  const res = await fetchWithAuth(`proxy/domains/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+  if (!billingOk(res)) billingFail(res, 'Search failed');
+  return (res.data ?? []) as DomainOffer[];
+}
+
+export async function quoteDomain(fqdn: string): Promise<DomainQuote> {
+  const res = await postWithAuth('proxy/domains/quote', { fqdn });
+  if (!billingOk(res)) billingFail(res, 'Could not get a price');
+  return res.data as DomainQuote;
+}
+
+// Sending the same quote again returns the order it already made, so a double
+// click or a retry can never buy twice.
+export async function createDomainOrder(body: {
+  quoteId: string;
+  elevatedToken: string;
+  organizationId?: string;
+  runnerId?: string;
+}): Promise<OrderCheckout> {
+  const res = await postWithAuth('proxy/domains/orders', {
+    quote_id: body.quoteId,
+    organization_id: body.organizationId ?? '',
+    runner_id: body.runnerId ?? '',
+    elevated_token: body.elevatedToken,
+  });
+  if (!billingOk(res)) billingFail(res, 'Could not start the order');
+  return res.data as OrderCheckout;
 }

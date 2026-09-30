@@ -586,20 +586,55 @@ export interface Certificate {
 }
 
 // --- Orders ---
+//
+// What Billing/ais_domains charge *us* is deliberately not here: a tenant sees
+// only what they pay.
+export type OrderState =
+  | 'awaiting_payment'
+  | 'paid'
+  | 'registering'
+  | 'completed'
+  | 'refunded'
+  | 'failed'
+  | 'needs_admin';
+
 export interface Order {
   id: string;
   fqdn: string;
   organization_id: string;
-  user_id: string;
-  cost: { amount_cents: number; currency: string };
-  price: { amount_cents: number; currency: string };
-  state: string;
-  cf_workflow_state: string;
+  price_cents: number;
+  currency: string;
+  state: OrderState | string;
   stripe_payment_intent_id: string;
+  // Set once the registration succeeded.
   domain_id: string;
   last_error: string;
   created_at: number;
   updated_at: number;
+}
+
+export interface DomainOffer {
+  fqdn: string;
+  registrable: boolean;
+  // Why not, when it isn't registrable.
+  reason: string;
+  tier: string;
+  price_cents: number;
+  currency: string;
+}
+
+export interface DomainQuote {
+  quote_id: string;
+  offer: DomainOffer | null;
+  // Unix seconds; quotes are short-lived.
+  expires_at: number;
+}
+
+export interface OrderCheckout {
+  order: Order | null;
+  // Empty when the payment can no longer be made.
+  stripe_client_secret: string;
+  stripe_publishable_key: string;
 }
 
 // --- Domain Members ---

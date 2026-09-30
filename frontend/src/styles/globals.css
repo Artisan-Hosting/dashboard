@@ -203,8 +203,9 @@ body {
   font-family: var(--font-sans);
 }
 
-h1, h2 {
+h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-serif);
+  color: var(--strong);
 }
 
 /* Utility classes used across pages */
@@ -429,3 +430,26 @@ dl.kv dd { margin: 0; font-family: var(--font-mono); color: var(--strong); overf
 
 @media (max-width: 980px) { .split { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .tbl .hide-s { display: none; } }
+
+/* ---------- Domain purchase (from redesign-and-blend/billing.css) ---------- */
+.searchbar { display: flex; gap: 10px; flex-wrap: wrap; }
+.searchbar .field { flex: 1 1 260px; font-family: var(--font-sans); font-size: 1.1rem; padding: .7rem .9rem; }
+.results { list-style: none; margin: 18px 0 0; padding: 0; border-top: 1px solid var(--line-strong); }
+.results li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 16px; align-items: center; padding: 14px 4px; border-bottom: 1px solid var(--line); }
+.results .fq { font: 500 1.15rem var(--font-mono); color: var(--strong); overflow-wrap: anywhere; }
+.results li[data-off="1"] .fq { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line-strong); }
+.quote { display: flex; flex-direction: column; gap: 16px; }
+.quote .fq { font: 500 1.6rem var(--font-mono); color: var(--strong); overflow-wrap: anywhere; }
+.timer { font: 500 .95rem var(--font-mono); color: var(--muted); }
+.timer.out { color: var(--bad); }
+.progress { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line-strong); }
+.progress li { display: grid; grid-template-columns: 1.6rem 1fr; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--muted); }
+.progress li::before { content: "\25CB"; font-family: var(--font-mono); }
+.progress li[data-st="doing"] { color: var(--strong); }
+.progress li[data-st="doing"]::before { content: "\25D0"; color: var(--info); }
+.progress li[data-st="done"] { color: var(--strong); }
+.progress li[data-st="done"]::before { content: "\2713"; color: var(--ok); }
+.progress li[data-st="bad"] { color: var(--bad); }
+.progress li[data-st="bad"]::before { content: "\2715"; }
+.progress li small { display: block; color: var(--muted); }
+@media (max-width: 640px) { .results li { grid-template-columns: 1fr auto; } .results li .sub { grid-column: 1; } }
