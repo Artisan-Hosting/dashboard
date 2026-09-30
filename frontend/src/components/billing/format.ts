@@ -47,3 +47,10 @@ export function overageText(unitCode: string, rateCents: number): string {
       return `${unitCode} ${price}`;
   }
 }
+
+export function formatBytes(bytes: number): string {
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  if (!bytes) return '0 B';
+  const i = Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+}
