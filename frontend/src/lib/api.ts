@@ -18,6 +18,9 @@ import {
   NodeInfo,
   NodeReloadResult,
   OrgPolicyRow,
+  CreditBalance,
+  CreditLedgerPage,
+  TopUpCheckout,
   ProjectDetails,
   ProjectSummary,
   RepoCatalogEntry,
@@ -515,4 +518,71 @@ export async function rescanDomains(body: { checkDns?: boolean; checkCloudflare?
     throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to rescan domains');
   }
   return res.data as DomainRescanResult;
+}
+// --- Billing: credits ---
+//
+// Billing decides who may see or spend: Admins always, other roles only when
+// the organization has opted them in (see `setViewerBillingAccess`).
+
+export async function fetchCreditBalance(organizationId?: string): Promise<CreditBalance> {
+  const suffix = organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : '';
+  const res = await fetchWithAuth(`proxy/billing/credits${suffix}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load credit balance');
+  }
+  return res.data as CreditBalance;
+}
+
+export async function fetchCreditLedger(params: {
+  organizationId?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<CreditLedgerPage> {
+  const qs = new URLSearchParams();
+  if (params.organizationId) qs.set('organization_id', params.organizationId);
+  if (params.limit != null) qs.set('limit', String(params.limit));
+  if (params.offset != null) qs.set('offset', String(params.offset));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  const res = await fetchWithAuth(`proxy/billing/credits/ledger${suffix}`);
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to load credit history');
+  }
+  return res.data as CreditLedgerPage;
+}
+
+// Needs an elevated token (this creates a real charge) and a minimum of
+// 2500 cents, enforced by Billing.
+export async function topUpCredit(body: {
+  amountCents: number;
+  elevatedToken: string;
+  organizationId?: string;
+}): Promise<TopUpCheckout> {
+  const res = await postWithAuth('proxy/billing/credits/topup', {
+    organization_id: body.organizationId ?? '',
+    amount_cents: body.amountCents,
+    elevated_token: body.elevatedToken,
+  });
+  if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
+    throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to start the top-up');
+  }
+  return res.data as TopUpCheckout;
+}
+
+// Whether the org has opted its viewers into seeing billing. Default is off:
+// it is the org's own `subscription:read` row for the viewer role.
+export async function fetchViewerBillingAccess(orgId: string): Promise<boolean> {
+  const rows = await fetchOrgPolicy(orgId);
+  return rows.some(
+    (r) => r.resource_type === 'subscription' && r.action === 'read' && r.role === 'viewer' && r.allow,
+  );
+}
+
+export async function setViewerBillingAccess(orgId: string, allow: boolean, elevatedToken: string): Promise<boolean> {
+  return setOrgPolicyRow(orgId, {
+    elevated_token: elevatedToken,
+    resource_type: 'subscription',
+    action: 'read',
+    role: 'viewer',
+    allow,
+  });
 }

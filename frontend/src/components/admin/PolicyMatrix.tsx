@@ -6,7 +6,7 @@ import { OrgPolicyRow } from '@/lib/types';
 // access engine (`resolve_resource_org`) -- an org-level policy row for any
 // other resource type is silently inert today, so this editor doesn't offer
 // them: showing a toggle that changes nothing would be dishonest UI.
-const RESOURCE_TYPES = ['project', 'instance', 'secret'] as const;
+const RESOURCE_TYPES = ['project', 'instance', 'secret', 'subscription'] as const;
 const ACTIONS = ['read', 'write', 'control', 'delete', 'grant', 'purchase'] as const;
 // Never SUPER (always allowed, not policy-driven) or none (rejected by
 // ais_auth's `set_org_policy` as "not a grantable policy role").
