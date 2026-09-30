@@ -5,34 +5,22 @@ import { fetchBilling, fetchWithAuth, postWithAuth } from '@/lib/api';
 import { UsageSummary, BillingCosts, ProjectSummary } from '@/lib/types';
 import { TopBar } from '@/components/topbar';
 import LoadingOverlay from '@/components/loading';
-import { useUser } from '@/hooks/useUser';
-import { useElevatedSession } from '@/hooks/useElevatedSession';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { Button, Tabs, TabPanel } from '@/components/ui';
 import Link from 'next/link';
 
-function formatCents(cents: number, currency = 'usd'): string {
-  return (cents / 100).toLocaleString(undefined, {
-    style: 'currency',
-    currency: currency.toUpperCase() || 'USD',
-  });
-}
-
-function formatDate(unixSeconds: number): string {
-  if (!unixSeconds) return '--';
-  return new Date(unixSeconds * 1000).toLocaleDateString();
+interface BillingBlock {
+  name: string;
+  summary: UsageSummary;
+  costs: BillingCosts;
+  instanceIds: string[];
 }
 
 const usd = (cents: number) =>
   `${cents < 0 ? '-' : ''}$${(Math.abs(cents) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function BillingPage() {
-  const { orgId } = useUser();
-  const elevated = useElevatedSession();
-
-  const [storefront, setStorefront] = useState<Storefront>('developer');
-  const [subscription, setSubscription] = useState<SubscriptionSummary | null>(null);
-  const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [blocks, setBlocks] = useState<BillingBlock[]>([]);
   const [tab, setTab] = useState('summary');
