@@ -203,9 +203,26 @@ body {
   font-family: var(--font-sans);
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-serif);
-  color: var(--strong);
+/* Type scale from redesign-and-blend/console.css. Tailwind's preflight strips
+   heading size and weight and nothing restored them, so every page picked its
+   own. These sit in @layer base so a deliberate utility (text-xl, font-bold)
+   still wins, while a page that uses none gets the console's type. */
+@layer base {
+  body { font-size: 1.0625rem; line-height: 1.55; }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif);
+    color: var(--strong);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  h1 { font-size: clamp(2rem, 4.2vw, 3.1rem); }
+  h2 { font-size: clamp(1.4rem, 2.4vw, 1.75rem); }
+  h3 { font-size: 1.2rem; }
+  a { color: var(--link); text-underline-offset: 3px; }
+  a:hover { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--btn-primary-bg); outline-offset: 2px; border-radius: 4px; }
+  code, .mono { font-family: var(--font-mono); font-size: .92em; }
 }
 
 /* Utility classes used across pages */
@@ -282,7 +299,7 @@ h1, h2, h3, h4, h5, h6 {
 .btn-ghost:hover { background: var(--surface-2); }
 .btn-danger { background: transparent; border-color: var(--bad); color: var(--bad); }
 .btn-danger:hover { background: color-mix(in srgb, var(--bad) 12%, transparent); }
-.btn-sm { padding: .4rem .7rem; font-size: .85rem; }
+.btn-sm { padding: .45rem .75rem; font-size: .88rem; }
 .btn[disabled] { opacity: .45; cursor: not-allowed; }
 
 .icon-btn { width: 38px; height: 38px; display: inline-grid; place-items: center; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--strong); cursor: pointer; flex: none; }
@@ -290,7 +307,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .pill {
   display: inline-flex; align-items: center; gap: .45rem;
-  font: 600 .82rem/1.2 var(--font-sans); padding: .2rem .65rem;
+  font: 600 .85rem/1.2 var(--font-sans); padding: .2rem .65rem;
   border-radius: 999px; border: 1px solid var(--line-strong);
   color: var(--strong); background: var(--surface); white-space: nowrap;
 }
@@ -299,8 +316,8 @@ h1, h2, h3, h4, h5, h6 {
 .pill[data-s="starting"], .pill[data-s="stopping"], .pill[data-s="restarting"], .pill[data-s="building"], .pill[data-s="syncing"],
 .pill[data-s="pending_payment"], .pill[data-s="registering"], .pill[data-s="provisioning_dns"], .pill[data-s="pending_dns"], .pill[data-s="issuing"], .pill[data-s="renewing"] { --dot: var(--info); }
 .pill[data-s="stopped"], .pill[data-s="idle"], .pill[data-s="unknown"], .pill[data-s="unspecified"], .pill[data-s="removed"] { --dot: var(--muted); }
-.pill[data-s="warning"], .pill[data-s="outdated"] { --dot: var(--warn); }
-.pill[data-s="error"], .pill[data-s="failed"] { --dot: var(--bad); }
+.pill[data-s="warning"], .pill[data-s="outdated"], .pill[data-s="waiting"] { --dot: var(--warn); }
+.pill[data-s="error"], .pill[data-s="failed"], .pill[data-s="down"] { --dot: var(--bad); }
 
 .panel { border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
 .panel > header { padding: 14px 18px; background: var(--surface-2); border-bottom: 1px solid var(--line); font: 600 1.05rem var(--font-serif); color: var(--strong); }
@@ -393,7 +410,7 @@ dl.kv dd { margin: 0; font-family: var(--font-mono); color: var(--strong); overf
 .pill[data-s="refunded"], .pill[data-s="none"], .pill[data-s="ending"], .pill[data-s="canceled"], .pill[data-s="void"] { --dot: var(--muted); }
 
 .big { font: 600 clamp(2.4rem, 5vw, 3.4rem)/1 var(--font-serif); color: var(--strong); letter-spacing: -.02em; }
-.sub { color: var(--muted); }
+.sub, .muted { color: var(--muted); }
 .amt { font-family: var(--font-mono); white-space: nowrap; text-align: right; }
 .amt.plus { color: var(--ok); }
 .due { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface-2); }

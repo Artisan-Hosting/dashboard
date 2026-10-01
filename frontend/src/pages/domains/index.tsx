@@ -346,7 +346,7 @@ function DnsRecordsSection({ domain }: { domain: DomainEntry }) {
         </div>
       )}
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="note bad">{error}</p>}
 
       <div className="space-y-2">
         {loading ? (
@@ -456,7 +456,7 @@ function CertificateSection({ domain }: { domain: DomainEntry }) {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="note bad">{error}</p>}
 
       <div className="space-y-2">
         {loading ? (
@@ -539,7 +539,7 @@ function OrdersSection({ domain }: { domain: DomainEntry }) {
         <Button small onClick={loadOrders}>Refresh</Button>
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="note bad">{error}</p>}
 
       <div className="space-y-2">
         {loading ? (
@@ -686,7 +686,7 @@ function MembersSection({ domain }: { domain: DomainEntry }) {
         </div>
       )}
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="note bad">{error}</p>}
 
       <div className="space-y-2">
         {loading ? (
@@ -800,13 +800,13 @@ function VhostEditorSection({ domain }: { domain: DomainEntry }) {
   const formatSeverity = (severity: string) => {
     switch (severity) {
       case 'error':
-        return 'text-red-500 bg-red-500/10';
+        return 'text-[color:var(--bad)] bg-[color-mix(in_srgb,var(--bad)_12%,transparent)]';
       case 'warn':
-        return 'text-yellow-500 bg-yellow-500/10';
+        return 'text-[color:var(--warn)] bg-[color-mix(in_srgb,var(--warn)_12%,transparent)]';
       case 'info':
-        return 'text-blue-500 bg-blue-500/10';
+        return 'text-[color:var(--info)] bg-[color-mix(in_srgb,var(--info)_12%,transparent)]';
       default:
-        return 'text-foreground';
+        return 'text-[color:var(--text)]';
     }
   };
 
@@ -837,14 +837,14 @@ function VhostEditorSection({ domain }: { domain: DomainEntry }) {
             onChange={(e) => setVhostContent(e.target.value)}
             placeholder="# Enter your nginx server block here..."
           />
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <p className="note bad">{error}</p>}
         </div>
 
         <div className="space-y-4">
           {validation && (
             <div className="card p-4 space-y-3">
               <h4 className="font-medium">Validation Results</h4>
-              <div className={`p-2 rounded ${validation.nginx_ok ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+              <div className={`p-2 rounded ${validation.nginx_ok ? 'bg-[color-mix(in_srgb,var(--ok)_12%,transparent)] text-[color:var(--ok)]' : 'bg-[color-mix(in_srgb,var(--bad)_12%,transparent)] text-[color:var(--bad)]'}`}>
                 <p className="font-medium">{validation.nginx_ok ? 'nginx syntax OK' : 'nginx syntax errors found'}</p>
                 {validation.nginx_output && <p className="text-xs mt-1 font-mono whitespace-pre-wrap">{validation.nginx_output}</p>}
               </div>
@@ -873,7 +873,7 @@ function VhostEditorSection({ domain }: { domain: DomainEntry }) {
           {applyResult && (
             <div className="card p-4 space-y-3">
               <h4 className="font-medium">Apply Result</h4>
-              <div className={`p-2 rounded ${applyResult.applied ? 'bg-green-500/10 text-green-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
+              <div className={`p-2 rounded ${applyResult.applied ? 'bg-[color-mix(in_srgb,var(--ok)_12%,transparent)] text-[color:var(--ok)]' : 'bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] text-[color:var(--warn)]'}`}>
                 <p className="font-medium">{applyResult.applied ? (dryRun ? 'Dry run successful' : 'Applied successfully') : 'Apply not performed'}</p>
               </div>
               {applyResult.diff && (
@@ -887,7 +887,7 @@ function VhostEditorSection({ domain }: { domain: DomainEntry }) {
             </div>
           )}
 
-          {validationError && <p className="text-sm text-red-500">{validationError}</p>}
+          {validationError && <p className="note bad">{validationError}</p>}
         </div>
       </div>
     </div>
@@ -1086,7 +1086,7 @@ export default function DomainsPage() {
               </Button>
             </div>
           )}
-          {elevated.error && <p className="text-sm text-red-500">{elevated.error}</p>}
+          {elevated.error && <p className="note bad">{elevated.error}</p>}
         </div>
 
         <BuyDomain orgId={myOrgId} canBuy={isAdminRole(role)} elevated={elevated} onChanged={loadDomains} />
@@ -1139,7 +1139,7 @@ export default function DomainsPage() {
               </div>
             )}
           </div>
-          {domainsError && <p className="text-sm text-red-500">{domainsError}</p>}
+          {domainsError && <p className="note bad">{domainsError}</p>}
         </div>
 
         <div className="card p-6 space-y-2 relative">
@@ -1232,7 +1232,7 @@ export default function DomainsPage() {
                 Open only
               </label>
             </div>
-            {findingsError && <p className="text-sm text-red-500">{findingsError}</p>}
+            {findingsError && <p className="note bad">{findingsError}</p>}
             <div className="space-y-2">
               {findings.map((f, i) => (
                 <div key={i} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm" style={{ borderBottom: '1px solid var(--line)' }}>
@@ -1257,7 +1257,7 @@ export default function DomainsPage() {
               files people are expected to edit. "Drifted" means the file changed on disk
               since it was adopted.
             </p>
-            {vhostsError && <p className="text-sm text-red-500">{vhostsError}</p>}
+            {vhostsError && <p className="note bad">{vhostsError}</p>}
             <div className="space-y-2">
               {vhosts.map((v, i) => (
                 <div key={i} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm" style={{ borderBottom: '1px solid var(--line)' }}>
