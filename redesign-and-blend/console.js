@@ -49,6 +49,7 @@
     ['Open-source apps', 'service', 'services.html?s=oss'],
     ['Virtual machines', 'service', 'services.html?s=compute&t=vms'],
     ['GPU sessions', 'service', 'services.html?s=compute&t=gpu'],
+    ['Get started: create an account', 'account', 'signup.html?from=palette'],
     ['Sign in', 'account', 'login.html'],
     ['Switch light or dark theme', 'action', '#theme'],
   ];
@@ -71,11 +72,12 @@
         <div class="tools">
           <button class="kbar" id="open-palette" type="button" aria-label="Search or jump to a page"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search or jump to&hellip;</span><kbd>${/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K'}</kbd></button>
           <button class="icon-btn" id="theme" type="button" aria-label="Switch light or dark theme">${ICON_MOON}</button>
-          <a class="btn btn-primary btn-sm" href="login.html">Sign in</a>
+          <a class="btn btn-ghost btn-sm" href="login.html">Sign in</a>
+          <a class="btn btn-primary btn-sm" href="${startUrl('topbar')}">Get started</a>
         </div>
       </div></header>
       <div class="ribbon" id="ribbon" role="status"><div class="wrap ribbon-in">
-        <p><strong>Sample data.</strong> Change anything you like. Nothing here is saved. <a href="login.html">Sign in</a> to see your own projects.</p>
+        <p><strong>Sample data.</strong> Change anything you like. Nothing here is saved. <a href="${startUrl('ribbon')}">Get started</a> to run your own, or <a href="login.html">sign in</a>.</p>
         <button type="button" id="ribbon-dismiss">Dismiss</button>
       </div></div>`;
     document.body.prepend(...shell.children);
@@ -88,6 +90,40 @@
     });
     buildPalette();
     buildDrawer();
+    mountCtas();
+  }
+
+  /* ---------- Calls to action ----------
+     The sample console is a shop window: the places where it stops being
+     useful (the drawer that cannot apply, a restart that was only a sample, the
+     bottom of every page) are where "Get started" goes. Each link says where
+     it came from, so signup can pick up the thread. */
+  function startUrl(from) { return 'signup.html' + (from ? '?from=' + encodeURIComponent(from) : ''); }
+  function edgeHTML(from, text, cta) {
+    return `<p class="demo-edge"><span>${text}</span><a class="btn btn-primary btn-sm" href="${startUrl(from)}">${cta || 'Get started'}</a></p>`;
+  }
+  function mountCtas() {
+    const main = $('#main');
+    if (!main) return;
+    main.insertAdjacentHTML('beforeend', `<aside class="cta-band" aria-labelledby="cta-h">
+      <div><h2 id="cta-h">Ready to run your own?</h2><p>Create an account, pick a plan, and put your own app online. It takes a few minutes, and you can leave any time.</p></div>
+      <div class="cta-actions"><a class="btn btn-primary" href="${startUrl('band')}">Get started</a><a class="btn btn-ghost" href="login.html">Sign in</a></div>
+    </aside>`);
+    // After a few real interactions, a slim bar offers the next step. Once.
+    if (session.get('ah-bar') === 'off') return;
+    let n = 0;
+    const show = () => {
+      if ($('.cta-bar') || session.get('ah-bar') === 'off') return;
+      const bar = document.createElement('div');
+      bar.className = 'cta-bar'; bar.setAttribute('role', 'region'); bar.setAttribute('aria-label', 'Get started');
+      bar.innerHTML = `<div class="wrap cta-bar-in"><p><b>Enjoying the sample?</b> Your own projects work the same way.</p><span><a class="btn btn-primary btn-sm" href="${startUrl('bar')}">Get started</a><button class="btn btn-ghost btn-sm" type="button" id="bar-x">Not now</button></span></div>`;
+      document.body.append(bar);
+      $('#bar-x', bar).addEventListener('click', () => { bar.remove(); session.set('ah-bar', 'off'); });
+    };
+    main.addEventListener('click', (e) => {
+      if (e.target.closest('button, [role=switch], [role=radio]') && ++n === 4) window.AH.nudge();
+    });
+    window.AH.nudge = show;
   }
 
   /* ---------- Command palette ---------- */
@@ -142,7 +178,7 @@
       <div><h2 id="drawer-title">What would happen</h2><p class="muted" id="drawer-sub" style="margin-top:6px"></p></div>
       <ol id="drawer-steps"></ol>
       <p class="callout" id="drawer-note"></p>
-      <div class="row"><a class="btn btn-primary" href="login.html">Sign in to apply this</a><button class="btn btn-ghost" type="button" id="drawer-close">Close</button></div>
+      <div class="row"><a class="btn btn-primary" href="${startUrl('drawer')}">Get started to apply this</a><a class="btn btn-ghost" href="login.html">Sign in</a><button class="btn btn-ghost" type="button" id="drawer-close">Close</button></div>
     </div>`;
     document.body.append(drawer);
     $('#drawer-close').addEventListener('click', () => drawer.close());
@@ -157,6 +193,7 @@
       : `<li class="muted" style="list-style:none;margin-left:-1.3rem">${esc(empty || 'No changes yet. Move a knob and try again.')}</li>`;
     $('#drawer-note').innerHTML = '<strong>You’re looking at sample data,</strong> so nothing was applied. Signed in, this same panel lists the real change for your own project and adds an Apply button.';
     drawer.showModal();
+    if (window.AH.nudge) window.AH.nudge();
   }
 
   /* ---------- Meter ---------- */
@@ -264,6 +301,7 @@
       </div>
       <ul class="inst-list" data-r="list"></ul>
       <p class="inst-note" data-r="note" aria-live="polite"></p>
+      <div data-r="edge" hidden></div>
       <div class="instr-meters" data-r="meters"></div>
       ${opts.term === false ? '' : '<div class="term" role="log" aria-live="off" tabindex="0" aria-label="Recent log lines" data-r="term"></div>'}
     </div>`;
@@ -352,6 +390,11 @@
         note('Running again.');
       }
       S.busy = false; S.noteSet = true; render();
+      const edge = R('edge');
+      if (edge && edge.hidden) {
+        edge.innerHTML = edgeHTML('restart', 'That was a sample, so no real site changed. On your own project the same buttons do it for real.');
+        edge.hidden = false;
+      }
     }
     root.addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b || b.disabled) return;
@@ -368,7 +411,7 @@
     return { setEnv(env) { if (S.busy) return; reset(env); S.noteSet = false; render(); }, log };
   }
 
-  window.AH = { $, $$, esc, clamp, sleep, store, reduce, mountShell, openDrawer, meterHTML, renderKnob, fmtValue, mountShop, toggleTheme };
+  window.AH = { startUrl, edgeHTML, $, $$, esc, clamp, sleep, store, reduce, mountShell, openDrawer, meterHTML, renderKnob, fmtValue, mountShop, toggleTheme };
 
   document.addEventListener('DOMContentLoaded', () => {
     const page = document.body.dataset.page;

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create your account | Artisan console (mock)</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('ah-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}</script>
+<link rel="stylesheet" href="console.css">
+<link rel="stylesheet" href="billing.css">
+<link rel="stylesheet" href="signup.css">
+</head>
+<body data-page="signup">
+<div class="mockbar"><div class="wrap mockbar-in">
+  <strong>Mock controls</strong>
+  <label class="chk"><input type="checkbox" id="mc-exists"> That email already has an account</label>
+  <label class="chk"><input type="checkbox" id="mc-expired"> The email link has expired</label>
+  <label class="chk"><input type="checkbox" id="mc-private"> Repo is private</label>
+  <label class="chk"><input type="checkbox" id="mc-norepo"> Repo can't be found</label>
+  <label class="chk"><input type="checkbox" id="mc-decline"> Card gets declined</label>
+  <button class="btn btn-ghost btn-sm" type="button" id="mc-restart">Start over</button>
+</div></div>
+<main id="main" class="wrap">
+  <header class="su-head">
+    <a class="brand" href="index.html">
+      <svg viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="7" fill="var(--btn-bg)"/><path d="M7.5 19 13 7l5.5 12M9.8 14.6h6.4" fill="none" stroke="var(--btn-fg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Artisan Hosting
+    </a>
+    <p class="muted">Already have an account? <a href="login.html">Sign in</a></p>
+  </header>
+  <ol class="steps" id="steps" aria-label="Progress"></ol>
+  <section class="su-body" id="stage" aria-live="polite"></section>
+</main>
+<script src="signup.js"></script>
+</body>
+</html>

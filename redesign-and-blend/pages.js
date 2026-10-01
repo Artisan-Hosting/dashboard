@@ -411,6 +411,7 @@
               <button class="btn btn-ghost" type="button" id="reset">Reset</button>
               <span class="count" id="count" aria-live="polite"></span>
             </div>
+            ${window.AH.edgeHTML('applybar', 'Applying is where the sample stops. On your own project this button makes the change.')}
           </div>
           <aside class="preview" aria-label="Preview">
             <header>${esc(sec.previewTitle || 'What you’d get')}</header>
