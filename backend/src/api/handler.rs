@@ -22,7 +22,7 @@ use warp::{
     reply::Response,
 };
 
-use super::cookie::{SessionData, accept_invite, login};
+use super::cookie::{SessionData, accept_invite, login, verify_signup};
 
 #[derive(Debug, Deserialize)]
 pub struct ResetPasswordRequest {
@@ -109,6 +109,85 @@ pub async fn password_reset_confirm_handler(
         .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
 
     forward_response(response).await
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StartSignupRequest {
+    pub email: String,
+    pub display_name: String,
+    pub password: String,
+    #[serde(default)]
+    pub captcha_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResendSignupRequest {
+    pub email: String,
+    #[serde(default)]
+    pub captcha_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct VerifySignupRequest {
+    pub token: String,
+}
+
+/// Public self-signup, a pure pass-through like the password-reset request:
+/// `ais_auth` answers identically whether or not the address already has an
+/// account, and this must not add anything that would tell them apart (so the
+/// email address is not logged here either).
+pub async fn signup_start_handler(req: StartSignupRequest) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Debug, "signup_start_handler called");
+    let response = get_state()
+        .http_client
+        .clone()
+        .post(&format!("{}auth/signup", get_base_url()))
+        .json(&serde_json::json!({
+            "email": req.email,
+            "display_name": req.display_name,
+            "password": req.password,
+            "captcha_token": req.captcha_token,
+        }))
+        .send()
+        .await
+        .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
+    forward_response(response).await
+}
+
+pub async fn signup_resend_handler(req: ResendSignupRequest) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Debug, "signup_resend_handler called");
+    let response = get_state()
+        .http_client
+        .clone()
+        .post(&format!("{}auth/signup/resend", get_base_url()))
+        .json(&serde_json::json!({ "email": req.email, "captcha_token": req.captcha_token }))
+        .send()
+        .await
+        .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
+    forward_response(response).await
+}
+
+/// What the signup page needs to render (whether to show the Cap widget, and
+/// where it points). Answered by the same service that enforces it.
+pub async fn signup_config_handler() -> Result<impl warp::Reply, warp::Rejection> {
+    let response = get_state()
+        .http_client
+        .clone()
+        .get(&format!("{}auth/signup/config", get_base_url()))
+        .send()
+        .await
+        .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
+    forward_response(response).await
+}
+
+/// Opening the emailed link creates the account and signs the person in, in one
+/// step, exactly like accepting an invite.
+pub async fn signup_verify_handler(req: VerifySignupRequest) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Debug, "signup_verify_handler called");
+    match verify_signup(req.token).await {
+        Ok(session) => finish_session(session, "Account created").await,
+        Err(err) => Err(warp::reject::custom(Whoops(err))),
+    }
 }
 
 pub async fn login_handler(

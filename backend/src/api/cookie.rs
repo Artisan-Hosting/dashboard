@@ -122,6 +122,29 @@ pub async fn accept_invite(
     session_from_token_response(response, "accept_invite").await
 }
 
+/// Verifying a signup creates the account and its draft organization and hands
+/// back a token pair, so it ends the same way an accepted invite does: a session
+/// the person is already signed in on.
+pub async fn verify_signup(token: String) -> Result<SessionData, String> {
+    log!(LogLevel::Debug, "verify_signup(): received request");
+
+    let client = get_state().http_client.clone();
+
+    let response = client
+        .post(&format!("{}auth/signup/verify", get_base_url()))
+        .json(&serde_json::json!({ "token": token }))
+        .send()
+        .await
+        .map_err(|err| {
+            log!(LogLevel::Error, "verify_signup(): HTTP request failed: {}", err.to_string());
+            err.to_string()
+        })?;
+
+    log!(LogLevel::Debug, "verify_signup(): received HTTP status {}", response.status());
+
+    session_from_token_response(response, "verify_signup").await
+}
+
 /// Shared tail of `login()`/`accept_invite()`: both hit an endpoint that
 /// returns `{"auth": ..., "refresh": ...}` on success and build a
 /// `SessionData` from it the exact same way.
