@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { fetchProjects, fetchGroupUsage } from "@/lib/api";
 import { UsageSummary } from "@/lib/types";
 import { TopBar } from "@/components/topbar";
@@ -7,8 +8,10 @@ import LoadingOverlay from "@/components/loading";
 import { handleLogout, handleLogoutAll } from "@/lib/logout";
 import { resolveRunnerLabel } from "@/lib/repoLabel";
 import { Button, Pill } from "@/components/ui";
+import { AddressView, fetchAddresses } from "@/lib/address";
 
 const REFRESH_INTERVAL = 10_000; // 10s
+const ADDRESS_INTERVAL = 30_000;
 
 interface ProjectCard {
   name: string;
@@ -21,6 +24,7 @@ export default function Dashboard() {
   const [userName, setUserName] = useState<string>("Loading...");
   const [projects, setProjects] = useState<ProjectCard[]>([]);
   const [labels, setLabels] = useState<Record<string, string>>({});
+  const [addresses, setAddresses] = useState<Record<string, AddressView[]>>({});
   const [loading, setLoading] = useState(true);
   const [projectsError, setProjectsError] = useState<string | null>(null);
   const inFlight = useRef(false);
@@ -66,6 +70,24 @@ export default function Dashboard() {
     const iv = setInterval(loadData, REFRESH_INTERVAL);
     return () => clearInterval(iv);
   }, [loadData]);
+
+  // The live column. Slower than the status poll because Portal asks the node about each app.
+  const names = projects.map((p) => p.name).join(",");
+  useEffect(() => {
+    let cancelled = false;
+    const read = () =>
+      names.split(",").filter(Boolean).forEach((name) =>
+        fetchAddresses(name)
+          .then((l) => !cancelled && setAddresses((prev) => ({ ...prev, [name]: l.addresses })))
+          .catch(() => {})
+      );
+    read();
+    const iv = setInterval(read, ADDRESS_INTERVAL);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
+  }, [names]);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,6 +150,19 @@ export default function Dashboard() {
                   <Button small onClick={() => router.push(`/apps/${r.name}`)}>
                     Details →
                   </Button>
+                </div>
+
+                <div className="mb-4 text-sm">
+                  {(addresses[r.name] ?? []).length === 0 ? (
+                    <Link href={`/apps/${r.name}`} className="muted">No address yet. Give it one.</Link>
+                  ) : (
+                    (addresses[r.name] ?? []).map((a) => (
+                      <p key={a.fqdn} className="flex items-center gap-2">
+                        <span className="mono">{a.fqdn}</span>
+                        <span className="pill" data-s={a.state === "live" ? "live" : a.state === "failed" || a.state === "app_down" ? "failed" : "waiting"}>{a.state === "live" ? "Live" : a.state === "app_down" ? "App not answering" : a.state === "failed" ? "Needs attention" : "Setting up"}</span>
+                      </p>
+                    ))
+                  )}
                 </div>
 
                 {r.summary && (

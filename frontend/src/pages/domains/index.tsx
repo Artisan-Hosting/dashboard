@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/router';
 import { toast, Toaster } from 'react-hot-toast';
 import { TopBar } from '@/components/topbar';
 import { isAdminRole, isSuperRole } from '@/components/requireAdmin';
@@ -895,6 +896,7 @@ function VhostEditorSection({ domain }: { domain: DomainEntry }) {
 }
 
 export default function DomainsPage() {
+  const router = useRouter();
   const { role, orgId: myOrgId } = useUser();
   const isSuper = isSuperRole(role);
   const elevated = useElevatedSession();
@@ -1089,7 +1091,7 @@ export default function DomainsPage() {
           {elevated.error && <p className="note bad">{elevated.error}</p>}
         </div>
 
-        <BuyDomain orgId={myOrgId} canBuy={isAdminRole(role)} elevated={elevated} onChanged={loadDomains} />
+        <BuyDomain orgId={myOrgId} canBuy={isAdminRole(role)} elevated={elevated} onChanged={loadDomains} forApp={typeof router.query.app === 'string' ? router.query.app : undefined} />
 
         <div className="card p-6 space-y-3">
           <div className="flex flex-wrap gap-3 items-center">

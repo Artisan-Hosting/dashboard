@@ -262,6 +262,7 @@ export default function AdminPage() {
         <TopBar onLogout={handleLogout} onLogoutAll={handleLogoutAll} />
         <main className="p-4 sm:p-6 lg:p-8 space-y-6">
           <h1 className="text-3xl font-bold text-brand mb-2">Admin</h1>
+          {isSuper && <p className="sub mb-2"><a href="/admin/reserved">Reserved names for free addresses</a></p>}
           <p className="text-sm text-gray-400">
             Signed in as <span className="font-semibold">{role}</span>
             {myOrgId && <> in org <span className="font-semibold">{myOrgId}</span></>}.

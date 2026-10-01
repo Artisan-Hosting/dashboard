@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Button, Field } from '@/components/ui';
 import LoadingOverlay from '@/components/loading';
+import { GoLive } from '@/components/address/GoLive';
 import { isAdminRole } from '@/components/requireAdmin';
 import { useUser } from '@/hooks/useUser';
 import {
@@ -176,13 +177,12 @@ export default function NewProjectPage() {
           <pre className="term" style={{ padding: 12, borderRadius: 8, overflowX: 'auto', maxHeight: 240 }}>{deployment.log_tail.join('\n')}</pre>
         )}
         {state === 'running' && (
-          <p className="callout">
-            Running on port <b>{deployment?.port ?? '…'}</b>. Next, point a domain at it.
-          </p>
+          <div style={{ marginTop: 20 }}>
+            <GoLive projectId={projectId} />
+          </div>
         )}
         <div className="flex flex-wrap gap-2" style={{ marginTop: 16 }}>
-          {state === 'running' && <Link href={`/apps/${projectId}`} className="btn btn-primary">Open the project</Link>}
-          {state === 'running' && <Link href="/domains" className="btn btn-ghost">Get a domain</Link>}
+          {state === 'running' && <Link href={`/apps/${projectId}`} className="btn btn-ghost">Open the project</Link>}
           {state === 'failed' && <Button onClick={() => setPhase('form')}>Edit and try again</Button>}
           {state !== 'running' && state !== 'failed' && <span className="sub text-sm">You can leave this page; the deploy carries on.</span>}
         </div>

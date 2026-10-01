@@ -22,6 +22,7 @@ import { toast, Toaster } from 'react-hot-toast';
 import { Button, Meter, Panel, Pill, SelectField, TabPanel, Tabs, Term } from '@/components/ui';
 import { SecretsManager } from '@/components/SecretsManager';
 import { TopBar } from '@/components/topbar';
+import { GoLive } from '@/components/address/GoLive';
 import Link from 'next/link';
 
 function formatBytes(bytes: number): string {
@@ -33,6 +34,7 @@ function formatBytes(bytes: number): string {
 
 const TABS = [
   { key: 'config', label: 'Config' },
+  { key: 'address', label: 'Address' },
   { key: 'secrets', label: 'Secrets' },
   { key: 'logs', label: 'Logs' },
   { key: 'source', label: 'Source' },
@@ -485,6 +487,10 @@ export default function ProjectPage() {
                       {configSaving ? 'Saving…' : 'Save to all instances'}
                     </Button>
                   </div>
+                </TabPanel>
+
+                <TabPanel tabKey="address" active={activeTab}>
+                  {projectId && <GoLive projectId={projectId} appLabel={runnerLabel || undefined} />}
                 </TabPanel>
 
                 <TabPanel tabKey="secrets" active={activeTab}>

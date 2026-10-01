@@ -8,7 +8,7 @@
   'use strict';
   const { $, $$, esc, sleep } = window.AH;
 
-  const APP = 'sample-shop', PORT = 24117, FREE_ZONE = 'artisanapps.net';
+  const APP = 'sample-shop', PORT = 24117, FREE_ZONE = 'arhst.net';
   const EDGE = [['A', '203.0.113.10'], ['AAAA', '2001:db8::10']];
   const TAKEN = ['www', 'shop', 'app', 'admin', 'api', 'mail', 'blog'];
   const LABEL = /^[a-z0-9]([a-z0-9-]{0,40}[a-z0-9])?$/;
