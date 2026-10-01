@@ -17,13 +17,13 @@ const PLANS = {
     { code: 'dev_team', name: 'Team', ram: 6, cpu: 3, bw: 200 },
   ],
   business: [
-    { code: 'biz_essentials', name: 'Essentials Care', ram: 0.25, cpu: 0.25 },
-    { code: 'biz_care', name: 'Business Care', ram: 1, cpu: 1 },
-    { code: 'biz_managed', name: 'Managed Platform', ram: 4, cpu: 2 },
+    { code: 'biz_essentials', name: 'Essentials Care', ram: 0.25, cpu: 0.25, bw: 0 },
+    { code: 'biz_care', name: 'Business Care', ram: 1, cpu: 1, bw: 0 },
+    { code: 'biz_managed', name: 'Managed Platform', ram: 4, cpu: 2, bw: 0 },
   ],
 };
 
-const RATES = { ram: 10, cpu: 13, egress: 0.05 }; // $ per GB-month / vCPU-month / GB
+const RATES = { ram: 10, cpu: 13, bw: 0.05 }; // $ per GB-month / vCPU-month / GB
 
 export default function UsagePage() {
   const router = useRouter();

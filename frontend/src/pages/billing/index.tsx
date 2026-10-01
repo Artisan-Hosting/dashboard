@@ -1,13 +1,15 @@
 // src/pages/billing/index.tsx
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
-import { fetchBilling, fetchWithAuth, postWithAuth } from '@/lib/api';
+import { useEffect, useState, useCallback } from 'react';
+import { toast, Toaster } from 'react-hot-toast';
+import { fetchWithAuth } from '@/lib/api';
 import { UsageSummary, BillingCosts, ProjectSummary } from '@/lib/types';
 import { TopBar } from '@/components/topbar';
 import LoadingOverlay from '@/components/loading';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { Button, Tabs, TabPanel } from '@/components/ui';
 import Link from 'next/link';
+import { useUser } from '@/hooks/useUser';
 
 interface BillingBlock {
   name: string;
@@ -21,6 +23,7 @@ const usd = (cents: number) =>
 
 export default function BillingPage() {
   const router = useRouter();
+  const { orgId } = useUser();
   const [loading, setLoading] = useState(true);
   const [blocks, setBlocks] = useState<BillingBlock[]>([]);
   const [tab, setTab] = useState('summary');
@@ -33,32 +36,44 @@ export default function BillingPage() {
     }
   }, [router.asPath]);
 
-  useEffect(() => {
-    load(storefront);
-    setSelectedPlan('');
-  }, [storefront, load]);
-
-        const results = await Promise.all(
-          projects.map(async (r) => {
-            const name = r.name.replace('ais_', '');
-            const usageRes = await fetchWithAuth(`proxy/usage/group/${name}`);
-            const summary = usageRes.data as UsageSummary;
-
-            const costs = await fetchBilling(summary);
-
-  const handleCancel = async () => {
-    if (!confirm('Cancel this subscription at the end of the current period?')) return;
-    setBusy(true);
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      await cancelSubscription(storefront, orgId);
-      toast.success('Subscription set to cancel at period end');
-      load(storefront);
+      const projectsRes = await fetchWithAuth('proxy/projects');
+      const projects = projectsRes.data as ProjectSummary[];
+      
+      const results = await Promise.all(
+        projects.map(async (r) => {
+          const name = r.name.replace('ais_', '');
+          const usageRes = await fetchWithAuth(`proxy/usage/group/${name}`);
+          const summary = usageRes.data as UsageSummary;
+          return { name, summary };
+        })
+      );
+      
+      const blocksData = results.map(({ name, summary }) => ({
+        name,
+        summary,
+        costs: {
+          ram_cost: 0,
+          cpu_cost: 0,
+          bandwidth_cost: 0,
+          total_cost: 0,
+        },
+        instanceIds: [],
+      }));
+      
+      setBlocks(blocksData);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to cancel');
+      toast.error(err instanceof Error ? err.message : 'Failed to load billing data');
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleTabChange = (key: string) => {
     setTab(key);
@@ -87,7 +102,7 @@ export default function BillingPage() {
           active={tab}
           onChange={handleTabChange}
         >
-          <TabPanel tabKey="summary">
+          <TabPanel tabKey="summary" active={tab}>
             <div className="card p-6 mb-6">
               <h2 className="text-xl font-semibold text-brand mb-4">Overview</h2>
               <p className="text-sm" style={{ color: 'var(--muted)' }}>
@@ -128,15 +143,15 @@ export default function BillingPage() {
             )}
           </TabPanel>
 
-          <TabPanel tabKey="usage">
+          <TabPanel tabKey="usage" active={tab}>
             <UsagePage />
           </TabPanel>
 
-          <TabPanel tabKey="credits">
+          <TabPanel tabKey="credits" active={tab}>
             <CreditsTab />
           </TabPanel>
 
-          <TabPanel tabKey="payments">
+          <TabPanel tabKey="payments" active={tab}>
             <PaymentsTab />
           </TabPanel>
         </Tabs>
@@ -204,9 +219,12 @@ function CreditsTab() {
         It's separate from your monthly plan charges.
       </p>
       <div className="mt-4">
-        <Button as={Link} href="/billing/credits" variant="primary">
+        <a
+          href="/billing/credits"
+          className="btn btn-primary"
+        >
           View Credit Balance & Top-Up
-        </Button>
+        </a>
       </div>
     </div>
   );
