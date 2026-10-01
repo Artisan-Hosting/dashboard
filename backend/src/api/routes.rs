@@ -5,6 +5,8 @@ use warp::{Filter, http::header, reject::Rejection, reply::Reply};
 use crate::api::handler::{
     ResetPasswordRequest, ResetPasswordResponse, generic_proxy_handler, me_handler,
     password_reset_confirm_handler, password_reset_request_handler, runners_handler,
+    signup_config_handler, signup_resend_handler, signup_start_handler, signup_verify_handler,
+    ResendSignupRequest, StartSignupRequest, VerifySignupRequest,
 };
 
 use super::{
@@ -47,6 +49,28 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
         .and(warp::path!("auth" / "accept-invite"))
         .and(warp::body::json::<AcceptInviteRequest>())
         .and_then(accept_invite_handler);
+
+    // Public self-signup. All four are unauthenticated: the caller has no
+    // account yet. (Every hop in front of ais_auth needs its own route; a
+    // missing one is how accept-invite once 404'd.)
+    let signup_start = warp::post()
+        .and(warp::path!("auth" / "signup"))
+        .and(warp::body::json::<StartSignupRequest>())
+        .and_then(signup_start_handler);
+
+    let signup_resend = warp::post()
+        .and(warp::path!("auth" / "signup" / "resend"))
+        .and(warp::body::json::<ResendSignupRequest>())
+        .and_then(signup_resend_handler);
+
+    let signup_verify = warp::post()
+        .and(warp::path!("auth" / "signup" / "verify"))
+        .and(warp::body::json::<VerifySignupRequest>())
+        .and_then(signup_verify_handler);
+
+    let signup_config = warp::get()
+        .and(warp::path!("auth" / "signup" / "config"))
+        .and_then(signup_config_handler);
 
     // login
     let logout = warp::post()
@@ -116,6 +140,10 @@ pub async fn create_api_routes() -> impl Filter<Extract = impl Reply, Error = Re
         .and(
             login
                 .or(accept_invite)
+                .or(signup_start)
+                .or(signup_resend)
+                .or(signup_verify)
+                .or(signup_config)
                 .or(logout)
                 .or(logout_all)
                 .or(whoami)

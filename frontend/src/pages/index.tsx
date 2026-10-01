@@ -144,7 +144,15 @@ export default function LoginPage() {
                     </div>
 
                     <div>
-                        <h2>Have an invite instead?</h2>
+                        <h2>New here?</h2>
+                        <p style={{ marginTop: 8, maxWidth: "46ch" }} className="text-foreground">
+                            Create an account and put your own app online. It takes a few minutes.
+                        </p>
+                        <p style={{ marginTop: 16 }}>
+                            <Link href="/signup" className="btn btn-primary">Create an account</Link>
+                        </p>
+
+                        <h2 style={{ marginTop: 40 }}>Have an invite instead?</h2>
                         <p style={{ marginTop: 8, maxWidth: "46ch" }} className="text-foreground">
                             If someone on your team sent you an invitation link, use that to create your
                             account rather than signing in here.

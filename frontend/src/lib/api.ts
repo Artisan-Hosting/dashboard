@@ -19,6 +19,15 @@ import {
   NodeReloadResult,
   OrgPolicyRow,
   CreditBalance,
+  DomainOffer,
+  DomainQuote,
+  Invoice,
+  InvoicePage,
+  Order,
+  OrderCheckout,
+  Plan,
+  Subscription,
+  SubscriptionCheckout,
   CreditLedgerPage,
   TopUpCheckout,
   ProjectDetails,
@@ -611,22 +620,6 @@ export async function forceRenewCertificate(domainId: string, keyType?: 'ecc' | 
 
 // --- Orders ---
 
-export interface Order {
-  id: string;
-  fqdn: string;
-  organization_id: string;
-  user_id: string;
-  cost: { amount_cents: number; currency: string };
-  price: { amount_cents: number; currency: string };
-  state: string;
-  cf_workflow_state: string;
-  stripe_payment_intent_id: string;
-  domain_id: string;
-  last_error: string;
-  created_at: number;
-  updated_at: number;
-}
-
 export async function listOrders(organizationId?: string, limit?: number, offset?: number): Promise<Order[]> {
   const qs = new URLSearchParams();
   if (organizationId) qs.set('organization_id', organizationId);
@@ -795,4 +788,139 @@ export async function setViewerBillingAccess(orgId: string, allow: boolean, elev
     role: 'viewer',
     allow,
   });
+}
+
+// --- Billing: plans, subscriptions, invoices ---
+//
+// Same visibility rule as credits: Billing answers permission_denied for a
+// role the organization has not opted in, which callers treat as "locked".
+
+function billingFail(res: any, fallback: string): never {
+  throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || fallback);
+}
+
+function billingOk(res: any): boolean {
+  return !!res.data || res.status === 'success' || res.status === 'ok';
+}
+
+export async function fetchPlans(storefront?: string): Promise<Plan[]> {
+  const suffix = storefront ? `?storefront=${encodeURIComponent(storefront)}` : '';
+  const res = await fetchWithAuth(`proxy/billing/plans${suffix}`);
+  if (!billingOk(res)) billingFail(res, 'Failed to load plans');
+  return res.data as Plan[];
+}
+
+export async function fetchSubscriptions(organizationId?: string): Promise<Subscription[]> {
+  const suffix = organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : '';
+  const res = await fetchWithAuth(`proxy/billing/subscriptions${suffix}`);
+  if (!billingOk(res)) billingFail(res, 'Failed to load subscriptions');
+  return res.data as Subscription[];
+}
+
+export async function fetchInvoices(params: {
+  organizationId?: string;
+  storefront?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<InvoicePage> {
+  const qs = new URLSearchParams();
+  if (params.organizationId) qs.set('organization_id', params.organizationId);
+  if (params.storefront) qs.set('storefront', params.storefront);
+  if (params.limit != null) qs.set('limit', String(params.limit));
+  if (params.offset != null) qs.set('offset', String(params.offset));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  const res = await fetchWithAuth(`proxy/billing/invoices${suffix}`);
+  if (!billingOk(res)) billingFail(res, 'Failed to load payments');
+  return res.data as InvoicePage;
+}
+
+// Needs an elevated token: a new plan, or an upgrade, can charge the card.
+export async function upgradeSubscription(body: {
+  storefront: string;
+  planCode: string;
+  elevatedToken: string;
+  organizationId?: string;
+}): Promise<SubscriptionCheckout> {
+  const res = await postWithAuth('proxy/billing/subscription/upgrade', {
+    organization_id: body.organizationId ?? '',
+    storefront: body.storefront,
+    plan_code: body.planCode,
+    elevated_token: body.elevatedToken,
+  });
+  if (!billingOk(res)) billingFail(res, 'Failed to start the plan change');
+  return res.data as SubscriptionCheckout;
+}
+
+// Takes effect at the end of the period and charges nothing, so no elevated token.
+export async function scheduleDowngrade(body: {
+  storefront: string;
+  planCode: string;
+  organizationId?: string;
+}): Promise<Subscription> {
+  const res = await postWithAuth('proxy/billing/subscription/downgrade', {
+    organization_id: body.organizationId ?? '',
+    storefront: body.storefront,
+    plan_code: body.planCode,
+  });
+  if (!billingOk(res)) billingFail(res, 'Failed to schedule the switch');
+  return res.data as Subscription;
+}
+
+export async function cancelSubscription(body: { storefront: string; organizationId?: string }): Promise<Subscription> {
+  const res = await postWithAuth('proxy/billing/subscription/cancel', {
+    organization_id: body.organizationId ?? '',
+    storefront: body.storefront,
+  });
+  if (!billingOk(res)) billingFail(res, 'Failed to cancel the plan');
+  return res.data as Subscription;
+}
+
+// Pays an invoice that is still open, instead of creating a second one.
+export async function retryInvoicePayment(body: {
+  invoiceId: string;
+  elevatedToken: string;
+  organizationId?: string;
+}): Promise<SubscriptionCheckout> {
+  const res = await postWithAuth('proxy/billing/invoices/retry', {
+    organization_id: body.organizationId ?? '',
+    invoice_id: body.invoiceId,
+    elevated_token: body.elevatedToken,
+  });
+  if (!billingOk(res)) billingFail(res, 'Failed to start the payment');
+  return res.data as SubscriptionCheckout;
+}
+
+// --- Domain purchasing ---
+//
+// `ais_domains` decides who may search, quote and buy; creating the order
+// needs an elevated token because it starts a real charge.
+
+export async function searchDomains(query: string, limit = 10): Promise<DomainOffer[]> {
+  const res = await fetchWithAuth(`proxy/domains/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+  if (!billingOk(res)) billingFail(res, 'Search failed');
+  return (res.data ?? []) as DomainOffer[];
+}
+
+export async function quoteDomain(fqdn: string): Promise<DomainQuote> {
+  const res = await postWithAuth('proxy/domains/quote', { fqdn });
+  if (!billingOk(res)) billingFail(res, 'Could not get a price');
+  return res.data as DomainQuote;
+}
+
+// Sending the same quote again returns the order it already made, so a double
+// click or a retry can never buy twice.
+export async function createDomainOrder(body: {
+  quoteId: string;
+  elevatedToken: string;
+  organizationId?: string;
+  runnerId?: string;
+}): Promise<OrderCheckout> {
+  const res = await postWithAuth('proxy/domains/orders', {
+    quote_id: body.quoteId,
+    organization_id: body.organizationId ?? '',
+    runner_id: body.runnerId ?? '',
+    elevated_token: body.elevatedToken,
+  });
+  if (!billingOk(res)) billingFail(res, 'Could not start the order');
+  return res.data as OrderCheckout;
 }

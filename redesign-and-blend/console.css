@@ -371,6 +371,20 @@ dl.kv dd { margin: 0; font-family: var(--font-mono); color: var(--strong); overf
 .aside-list li { padding: 14px 0; border-bottom: 1px solid var(--line); max-width: 46ch; }
 .aside-list b { color: var(--strong); }
 
+/* ---------- Calls to action (sample console only) ---------- */
+.demo-edge { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; margin: 16px 0 0; padding: 12px 14px; border: 1px dashed var(--line-strong); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--muted); font-size: .95rem; }
+.demo-edge span { max-width: 56ch; }
+.demo-edge[hidden], div[data-r=edge][hidden] { display: none; }
+.cta-band { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin: 24px 0 72px; padding: 28px 32px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); }
+.cta-band h2 { font-size: 1.5rem; }
+.cta-band p { margin-top: 6px; max-width: 54ch; color: var(--muted); }
+.cta-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.cta-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--surface); border-top: 1px solid var(--line-strong); box-shadow: 0 -6px 24px rgba(0, 0, 0, .12); }
+.cta-bar-in { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; padding-top: 12px; padding-bottom: 12px; }
+.cta-bar p { margin: 0; }
+.cta-bar span { display: inline-flex; gap: 10px; }
+.drawer .row { flex-wrap: wrap; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 980px) {
   .hero, .usage, .login { grid-template-columns: 1fr; gap: 36px; }

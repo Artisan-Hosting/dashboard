@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
 import { TopBar } from '@/components/topbar';
-import { isSuperRole } from '@/components/requireAdmin';
+import { isAdminRole, isSuperRole } from '@/components/requireAdmin';
 import LoadingOverlay from '@/components/loading';
 import { useUser } from '@/hooks/useUser';
 import { useElevatedSession } from '@/hooks/useElevatedSession';
@@ -44,6 +44,8 @@ import {
   ApplyFreeformVhostResponse,
 } from '@/lib/types';
 import { Button, Field, Pill, Panel, SelectField, Switch, Tabs, TabPanel } from '@/components/ui';
+import { ORDER_LABEL, ORDER_PILL } from '@/components/domains/orderLabels';
+import { BuyDomain } from '@/components/domains/BuyDomain';
 
 interface Organization {
   id: string;
@@ -551,22 +553,16 @@ function OrdersSection({ domain }: { domain: DomainEntry }) {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium truncate">{order.fqdn}</p>
                   <div className="text-xs space-y-1" style={{ color: 'var(--muted)' }}>
-                    <p>ID: {order.id}</p>
-                    <p>State: {order.state}</p>
-                    <p>CF Workflow: {order.cf_workflow_state}</p>
-                    <p>Stripe Intent: {order.stripe_payment_intent_id || 'N/A'}</p>
-                    {order.last_error && <p style={{ color: 'var(--warn)' }}>Last Error: {order.last_error}</p>}
-                    <p>Created: {new Date(order.created_at * 1000).toLocaleString()}</p>
+                    <p>Order {order.id}</p>
+                    {order.last_error && order.state !== 'completed' && (
+                      <p style={{ color: 'var(--warn)' }}>{order.last_error}</p>
+                    )}
+                    <p>Ordered {new Date(order.created_at * 1000).toLocaleString()}</p>
                   </div>
                 </div>
                 <div className="text-right space-y-2">
-                  <div className="text-sm">
-                    <span className="font-medium">Price:</span> {formatCurrency(order.price.amount_cents, order.price.currency)}
-                  </div>
-                  <div className="text-sm">
-                    <span className="font-medium">Cost:</span> {formatCurrency(order.cost.amount_cents, order.cost.currency)}
-                  </div>
-                  <Pill status={order.state === 'completed' ? 'active' : order.state === 'error' ? 'error' : 'warning'} label={order.state} />
+                  <div className="text-sm">{formatCurrency(order.price_cents, order.currency || 'USD')}</div>
+                  <Pill status={ORDER_PILL[order.state] ?? order.state} label={ORDER_LABEL[order.state] ?? order.state} />
                 </div>
               </div>
             </div>
@@ -1092,6 +1088,8 @@ export default function DomainsPage() {
           )}
           {elevated.error && <p className="text-sm text-red-500">{elevated.error}</p>}
         </div>
+
+        <BuyDomain orgId={myOrgId} canBuy={isAdminRole(role)} elevated={elevated} onChanged={loadDomains} />
 
         <div className="card p-6 space-y-3">
           <div className="flex flex-wrap gap-3 items-center">

@@ -22,7 +22,8 @@ use warp::{
     reply::Response,
 };
 
-use super::cookie::{SessionData, accept_invite, login};
+use super::captcha::{self, Captcha, CaptchaFailure};
+use super::cookie::{SessionData, accept_invite, login, verify_signup};
 
 #[derive(Debug, Deserialize)]
 pub struct ResetPasswordRequest {
@@ -109,6 +110,98 @@ pub async fn password_reset_confirm_handler(
         .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
 
     forward_response(response).await
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StartSignupRequest {
+    pub email: String,
+    pub display_name: String,
+    pub password: String,
+    #[serde(default)]
+    pub captcha_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResendSignupRequest {
+    pub email: String,
+    #[serde(default)]
+    pub captcha_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct VerifySignupRequest {
+    pub token: String,
+}
+
+/// Public self-signup, a pure pass-through like the password-reset request:
+/// `ais_auth` answers identically whether or not the address already has an
+/// account, and this must not add anything that would tell them apart (so the
+/// email address is not logged here either).
+pub async fn signup_start_handler(req: StartSignupRequest) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Debug, "signup_start_handler called");
+    let client = get_state().http_client.clone();
+    // The bot check happens here and nowhere downstream: this is the only way
+    // in (see `captcha`). The token is not forwarded.
+    if let Err(failure) = captcha::check(Captcha::from_env().as_ref(), &client, &req.captcha_token).await {
+        return Ok(captcha_failure_response(failure));
+    }
+    let response = client
+        .post(&format!("{}auth/signup", get_base_url()))
+        .json(&serde_json::json!({
+            "email": req.email,
+            "display_name": req.display_name,
+            "password": req.password,
+        }))
+        .send()
+        .await
+        .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
+    forward_response(response).await
+}
+
+pub async fn signup_resend_handler(req: ResendSignupRequest) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Debug, "signup_resend_handler called");
+    let client = get_state().http_client.clone();
+    if let Err(failure) = captcha::check(Captcha::from_env().as_ref(), &client, &req.captcha_token).await {
+        return Ok(captcha_failure_response(failure));
+    }
+    let response = client
+        .post(&format!("{}auth/signup/resend", get_base_url()))
+        .json(&serde_json::json!({ "email": req.email }))
+        .send()
+        .await
+        .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
+    forward_response(response).await
+}
+
+/// What the signup page needs to render: whether to show the Cap widget and
+/// where it points. Answered here because the check is made here.
+pub async fn signup_config_handler() -> Result<impl warp::Reply, warp::Rejection> {
+    let (enabled, endpoint) = Captcha::public_config(Captcha::from_env().as_ref());
+    Ok(warp::reply::json(&serde_json::json!({
+        "captcha_enabled": enabled,
+        "captcha_endpoint": endpoint,
+    })))
+}
+
+/// The same `{"error": "..."}` shape ais_auth's gateway uses, so the page reads
+/// one format whichever layer said no.
+fn captcha_failure_response(failure: CaptchaFailure) -> Response {
+    let mut response = Response::new(Body::from(serde_json::json!({ "error": failure.message() }).to_string()));
+    *response.status_mut() = failure.status();
+    response
+        .headers_mut()
+        .insert("content-type", HeaderValue::from_static("application/json"));
+    response
+}
+
+/// Opening the emailed link creates the account and signs the person in, in one
+/// step, exactly like accepting an invite.
+pub async fn signup_verify_handler(req: VerifySignupRequest) -> Result<impl warp::Reply, warp::Rejection> {
+    log!(LogLevel::Debug, "signup_verify_handler called");
+    match verify_signup(req.token).await {
+        Ok(session) => finish_session(session, "Account created").await,
+        Err(err) => Err(warp::reject::custom(Whoops(err))),
+    }
 }
 
 pub async fn login_handler(

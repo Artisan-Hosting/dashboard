@@ -46,6 +46,9 @@
     const note = $('.ribbon-in p');
     if (note) note.innerHTML = '<strong>Mock of the signed-in screens.</strong> Amounts are sample amounts. Nothing here is saved, charged or sent.';
     $('#ribbon-dismiss')?.remove();
+    $$('.cta-band, .cta-bar').forEach((n) => n.remove());
+    window.AH.nudge = () => {}; // signed in: no sales prompts
+    $('.tools .btn-ghost[href="login.html"]')?.remove();
     const signIn = $('.tools .btn-primary');
     if (signIn) signIn.outerHTML = '<span class="acct" title="Signed in (mock)"><b>dana@acme.example</b><small>Acme Studio</small></span>';
 
