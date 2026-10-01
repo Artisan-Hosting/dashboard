@@ -22,6 +22,7 @@ use warp::{
     reply::Response,
 };
 
+use super::captcha::{self, Captcha, CaptchaFailure};
 use super::cookie::{SessionData, accept_invite, login, verify_signup};
 
 #[derive(Debug, Deserialize)]
@@ -138,15 +139,18 @@ pub struct VerifySignupRequest {
 /// email address is not logged here either).
 pub async fn signup_start_handler(req: StartSignupRequest) -> Result<impl warp::Reply, warp::Rejection> {
     log!(LogLevel::Debug, "signup_start_handler called");
-    let response = get_state()
-        .http_client
-        .clone()
+    let client = get_state().http_client.clone();
+    // The bot check happens here and nowhere downstream: this is the only way
+    // in (see `captcha`). The token is not forwarded.
+    if let Err(failure) = captcha::check(Captcha::from_env().as_ref(), &client, &req.captcha_token).await {
+        return Ok(captcha_failure_response(failure));
+    }
+    let response = client
         .post(&format!("{}auth/signup", get_base_url()))
         .json(&serde_json::json!({
             "email": req.email,
             "display_name": req.display_name,
             "password": req.password,
-            "captcha_token": req.captcha_token,
         }))
         .send()
         .await
@@ -156,28 +160,38 @@ pub async fn signup_start_handler(req: StartSignupRequest) -> Result<impl warp::
 
 pub async fn signup_resend_handler(req: ResendSignupRequest) -> Result<impl warp::Reply, warp::Rejection> {
     log!(LogLevel::Debug, "signup_resend_handler called");
-    let response = get_state()
-        .http_client
-        .clone()
+    let client = get_state().http_client.clone();
+    if let Err(failure) = captcha::check(Captcha::from_env().as_ref(), &client, &req.captcha_token).await {
+        return Ok(captcha_failure_response(failure));
+    }
+    let response = client
         .post(&format!("{}auth/signup/resend", get_base_url()))
-        .json(&serde_json::json!({ "email": req.email, "captcha_token": req.captcha_token }))
+        .json(&serde_json::json!({ "email": req.email }))
         .send()
         .await
         .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
     forward_response(response).await
 }
 
-/// What the signup page needs to render (whether to show the Cap widget, and
-/// where it points). Answered by the same service that enforces it.
+/// What the signup page needs to render: whether to show the Cap widget and
+/// where it points. Answered here because the check is made here.
 pub async fn signup_config_handler() -> Result<impl warp::Reply, warp::Rejection> {
-    let response = get_state()
-        .http_client
-        .clone()
-        .get(&format!("{}auth/signup/config", get_base_url()))
-        .send()
-        .await
-        .map_err(|e| warp::reject::custom(Whoops(e.to_string())))?;
-    forward_response(response).await
+    let (enabled, endpoint) = Captcha::public_config(Captcha::from_env().as_ref());
+    Ok(warp::reply::json(&serde_json::json!({
+        "captcha_enabled": enabled,
+        "captcha_endpoint": endpoint,
+    })))
+}
+
+/// The same `{"error": "..."}` shape ais_auth's gateway uses, so the page reads
+/// one format whichever layer said no.
+fn captcha_failure_response(failure: CaptchaFailure) -> Response {
+    let mut response = Response::new(Body::from(serde_json::json!({ "error": failure.message() }).to_string()));
+    *response.status_mut() = failure.status();
+    response
+        .headers_mut()
+        .insert("content-type", HeaderValue::from_static("application/json"));
+    response
 }
 
 /// Opening the emailed link creates the account and signs the person in, in one

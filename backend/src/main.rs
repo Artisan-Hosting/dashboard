@@ -40,6 +40,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
         std::process::exit(1);
     }
 
+    if api::captcha::Captcha::from_env().is_some() {
+        log!(LogLevel::Info, "signup: Cap captcha is enabled");
+    } else {
+        log!(
+            LogLevel::Warn,
+            "signup: CAPTCHA_API_ENDPOINT / CAPTCHA_SECRET_KEY are not set, so public signup has NO bot check"
+        );
+    }
+
     match load_active_sessions(get_db_pool()).await {
         Ok(sessions) => {
             let count = sessions.len();
