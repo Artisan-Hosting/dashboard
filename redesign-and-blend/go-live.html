@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Go live | Artisan console (mock)</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('ah-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}</script>
+<link rel="stylesheet" href="console.css">
+<link rel="stylesheet" href="billing.css">
+<link rel="stylesheet" href="golive.css">
+</head>
+<body data-page="go-live">
+<main id="main" class="wrap">
+
+  <div class="page-head">
+    <div>
+      <h1>Give your app an address</h1>
+      <p>Your app is running. Choose where visitors will find it. You never type a server or a port: we know both.</p>
+    </div>
+  </div>
+
+  <ol class="steps-h" id="steps" aria-label="Steps">
+    <li>Deployed</li><li>Choose an address</li><li>Setting it up</li><li>Live</li>
+  </ol>
+
+  <div class="stack" style="padding-bottom:80px">
+
+    <section class="app-card" aria-labelledby="h-app">
+      <div>
+        <h2 id="h-app" class="app-name">sample-shop</h2>
+        <p class="sub">acme/sample-shop &middot; branch main</p>
+      </div>
+      <dl class="facts">
+        <div><dt>Status</dt><dd><span class="pill" data-s="running">Running</span></dd></div>
+        <div><dt>Where it runs</dt><dd>Chosen for you</dd></div>
+        <div><dt>Port</dt><dd class="mono">24117</dd></div>
+      </dl>
+    </section>
+
+    <section id="s-choose" aria-labelledby="h-choose">
+      <h2 id="h-choose" style="margin-bottom:12px">Where should it live?</h2>
+      <div class="opts" role="radiogroup" aria-labelledby="h-choose" id="opts"></div>
+      <div id="detail" class="detail"></div>
+      <div class="actions"><button class="btn btn-primary" id="go" type="button">Set it up</button><span class="sub" id="why"></span></div>
+    </section>
+
+    <section id="s-run" hidden aria-labelledby="h-run">
+      <h2 id="h-run" style="margin-bottom:4px">Setting up <span class="mono" id="run-fq"></span></h2>
+      <ul class="check" id="check"></ul>
+      <div id="run-extra"></div>
+    </section>
+
+    <section id="s-live" hidden aria-labelledby="h-live"></section>
+
+    <section aria-labelledby="h-apps">
+      <h2 id="h-apps" style="margin-bottom:4px">Your apps</h2>
+      <p class="sub" style="margin-bottom:12px">The same live check follows each app, so you can see at a glance what is missing.</p>
+      <div class="scroll-x"><table class="tbl"><thead><tr><th>App</th><th>Address</th><th>Status</th><th></th></tr></thead><tbody id="apps"></tbody></table></div>
+    </section>
+
+  </div>
+
+</main>
+<script src="console.js"></script>
+<script src="signed.js"></script>
+<script src="go-live.js"></script>
+</body>
+</html>

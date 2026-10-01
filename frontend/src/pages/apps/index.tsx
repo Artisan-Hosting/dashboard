@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { fetchProjects, fetchGroupUsage } from "@/lib/api";
 import { UsageSummary } from "@/lib/types";
 import { TopBar } from "@/components/topbar";
@@ -7,8 +8,10 @@ import LoadingOverlay from "@/components/loading";
 import { handleLogout, handleLogoutAll } from "@/lib/logout";
 import { resolveRunnerLabel } from "@/lib/repoLabel";
 import { Button, Pill } from "@/components/ui";
+import { AddressView, fetchAddresses } from "@/lib/address";
 
 const REFRESH_INTERVAL = 10_000; // 10s
+const ADDRESS_INTERVAL = 30_000;
 
 interface ProjectCard {
   name: string;
@@ -21,6 +24,7 @@ export default function Dashboard() {
   const [userName, setUserName] = useState<string>("Loading...");
   const [projects, setProjects] = useState<ProjectCard[]>([]);
   const [labels, setLabels] = useState<Record<string, string>>({});
+  const [addresses, setAddresses] = useState<Record<string, AddressView[]>>({});
   const [loading, setLoading] = useState(true);
   const [projectsError, setProjectsError] = useState<string | null>(null);
   const inFlight = useRef(false);
@@ -67,6 +71,24 @@ export default function Dashboard() {
     return () => clearInterval(iv);
   }, [loadData]);
 
+  // The live column. Slower than the status poll because Portal asks the node about each app.
+  const names = projects.map((p) => p.name).join(",");
+  useEffect(() => {
+    let cancelled = false;
+    const read = () =>
+      names.split(",").filter(Boolean).forEach((name) =>
+        fetchAddresses(name)
+          .then((l) => !cancelled && setAddresses((prev) => ({ ...prev, [name]: l.addresses })))
+          .catch(() => {})
+      );
+    read();
+    const iv = setInterval(read, ADDRESS_INTERVAL);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
+  }, [names]);
+
   useEffect(() => {
     let cancelled = false;
     projects.forEach((r) => {
@@ -90,19 +112,22 @@ export default function Dashboard() {
           Current Projects
         </h2>
 
-        {projectsError && <p className="text-sm text-red-500 mb-4">{projectsError}</p>}
+        {projectsError && <p className="note bad mb-4">{projectsError}</p>}
 
         {!loading && projects.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="text-gray-400 mb-4">
+            <div className="muted mb-4">
               <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-300 mb-2">No apps found</h3>
-            <p className="text-gray-500 max-w-md">
+            <h3 className="mb-2">No apps found</h3>
+            <p className="muted max-w-md">
               You don't have any apps deployed yet. Apps will appear here once they're created.
             </p>
+            <div className="mt-4">
+              <Button onClick={() => router.push("/projects/new")}>Add a repository</Button>
+            </div>
           </div>
         )}
 
@@ -125,6 +150,19 @@ export default function Dashboard() {
                   <Button small onClick={() => router.push(`/apps/${r.name}`)}>
                     Details →
                   </Button>
+                </div>
+
+                <div className="mb-4 text-sm">
+                  {(addresses[r.name] ?? []).length === 0 ? (
+                    <Link href={`/apps/${r.name}`} className="muted">No address yet. Give it one.</Link>
+                  ) : (
+                    (addresses[r.name] ?? []).map((a) => (
+                      <p key={a.fqdn} className="flex items-center gap-2">
+                        <span className="mono">{a.fqdn}</span>
+                        <span className="pill" data-s={a.state === "live" ? "live" : a.state === "failed" || a.state === "app_down" ? "failed" : "waiting"}>{a.state === "live" ? "Live" : a.state === "app_down" ? "App not answering" : a.state === "failed" ? "Needs attention" : "Setting up"}</span>
+                      </p>
+                    ))
+                  )}
                 </div>
 
                 {r.summary && (
