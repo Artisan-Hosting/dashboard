@@ -103,6 +103,9 @@ export default function Dashboard() {
             <p className="text-gray-500 max-w-md">
               You don't have any apps deployed yet. Apps will appear here once they're created.
             </p>
+            <div className="mt-4">
+              <Button onClick={() => router.push("/projects/new")}>Add a repository</Button>
+            </div>
           </div>
         )}
 

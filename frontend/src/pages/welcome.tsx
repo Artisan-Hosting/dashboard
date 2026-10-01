@@ -105,7 +105,11 @@ export default function WelcomePage() {
                 detail={isAdmin ? 'Needed before you can deploy or buy a domain' : 'An Admin of your organization chooses the plan'}
                 action={isAdmin ? <Link href="/billing" className="btn btn-primary btn-sm">Choose a plan</Link> : undefined}
               />
-              <Row title="Add a repository" detail="Connecting your own code from here is coming soon. Until then, we set it up with you." />
+              <Row
+                title="Add a repository"
+                detail={isAdmin ? 'Connect your code and we build and run it' : 'An Admin of your organization adds the project'}
+                action={isAdmin ? <Link href="/projects/new" className="btn btn-primary btn-sm">Add a project</Link> : undefined}
+              />
               <Row
                 title="Get a domain"
                 detail="Buy a new name or bring one you own"
