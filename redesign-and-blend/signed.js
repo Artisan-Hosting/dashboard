@@ -41,7 +41,8 @@
     if (nav) {
       nav.insertAdjacentHTML('beforeend',
         '<a href="billing.html"' + (active === 'billing' ? ' aria-current="page"' : '') + '>Billing</a>' +
-        '<a href="buy-domain.html"' + (active === 'buy-domain' ? ' aria-current="page"' : '') + '>Buy a domain</a>');
+        '<a href="buy-domain.html"' + (active === 'buy-domain' ? ' aria-current="page"' : '') + '>Buy a domain</a>' +
+        '<a href="go-live.html"' + (active === 'go-live' ? ' aria-current="page"' : '') + '>Go live</a>');
     }
     const note = $('.ribbon-in p');
     if (note) note.innerHTML = '<strong>Mock of the signed-in screens.</strong> Amounts are sample amounts. Nothing here is saved, charged or sent.';
