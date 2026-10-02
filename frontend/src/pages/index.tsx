@@ -149,7 +149,8 @@ export default function LoginPage() {
                             Create an account and put your own app online. It takes a few minutes.
                         </p>
                         <p style={{ marginTop: 16 }}>
-                            <Link href="/signup" className="btn btn-primary">Create an account</Link>
+                            <Link href="/signup" className="btn btn-primary">Create an account</Link>{" "}
+                            <Link href="/demo" className="btn btn-ghost">Look around first</Link>
                         </p>
 
                         <h2 style={{ marginTop: 40 }}>Have an invite instead?</h2>

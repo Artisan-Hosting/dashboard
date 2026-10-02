@@ -10,6 +10,8 @@ const FROM_NOTE: Record<string, string> = {
   drawer: 'You were previewing a change. Create an account and you can make it on your own project.',
   applybar: 'You were about to apply a change. Create an account and you can make it for real.',
   restart: 'You tried restarting the sample project. Create an account and you can do that to your own.',
+  list: 'You were looking at the sample projects. Create an account and add your own.',
+  domains: 'You were looking at domains in the sample. Create an account and attach your own.',
   bar: 'Glad the sample was useful. Your own projects work exactly the same way.',
 };
 
