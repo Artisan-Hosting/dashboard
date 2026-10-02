@@ -1091,7 +1091,7 @@ export default function DomainsPage() {
           {elevated.error && <p className="note bad">{elevated.error}</p>}
         </div>
 
-        <BuyDomain orgId={myOrgId} canBuy={isAdminRole(role)} elevated={elevated} onChanged={loadDomains} forApp={typeof router.query.app === 'string' ? router.query.app : undefined} />
+        <BuyDomain orgId={myOrgId} canBuy={isAdminRole(role)} elevated={elevated} onChanged={loadDomains} />
 
         <div className="card p-6 space-y-3">
           <div className="flex flex-wrap gap-3 items-center">

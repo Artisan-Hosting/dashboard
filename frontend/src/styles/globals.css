@@ -203,26 +203,9 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Type scale from redesign-and-blend/console.css. Tailwind's preflight strips
-   heading size and weight and nothing restored them, so every page picked its
-   own. These sit in @layer base so a deliberate utility (text-xl, font-bold)
-   still wins, while a page that uses none gets the console's type. */
-@layer base {
-  body { font-size: 1.0625rem; line-height: 1.55; }
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-serif);
-    color: var(--strong);
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    line-height: 1.15;
-  }
-  h1 { font-size: clamp(2rem, 4.2vw, 3.1rem); }
-  h2 { font-size: clamp(1.4rem, 2.4vw, 1.75rem); }
-  h3 { font-size: 1.2rem; }
-  a { color: var(--link); text-underline-offset: 3px; }
-  a:hover { color: var(--accent); }
-  :focus-visible { outline: 2px solid var(--btn-primary-bg); outline-offset: 2px; border-radius: 4px; }
-  code, .mono { font-family: var(--font-mono); font-size: .92em; }
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  color: var(--strong);
 }
 
 /* Utility classes used across pages */
@@ -410,7 +393,7 @@ dl.kv dd { margin: 0; font-family: var(--font-mono); color: var(--strong); overf
 .pill[data-s="refunded"], .pill[data-s="none"], .pill[data-s="ending"], .pill[data-s="canceled"], .pill[data-s="void"] { --dot: var(--muted); }
 
 .big { font: 600 clamp(2.4rem, 5vw, 3.4rem)/1 var(--font-serif); color: var(--strong); letter-spacing: -.02em; }
-.sub, .muted { color: var(--muted); }
+.sub { color: var(--muted); }
 .amt { font-family: var(--font-mono); white-space: nowrap; text-align: right; }
 .amt.plus { color: var(--ok); }
 .due { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface-2); }
@@ -471,25 +454,25 @@ dl.kv dd { margin: 0; font-family: var(--font-mono); color: var(--strong); overf
 .progress li small { display: block; color: var(--muted); }
 @media (max-width: 640px) { .results li { grid-template-columns: 1fr auto; } .results li .sub { grid-column: 1; } }
 
-/* ---------- Go live: an address for a running app (from redesign-and-blend/golive.css) ---------- */
-.app-card { display: flex; justify-content: space-between; gap: 16px 32px; flex-wrap: wrap; align-items: center; padding: 16px 18px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); }
-.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
-.opt { text-align: left; font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); color: var(--text); }
-.opt:hover { background: var(--surface-2); }
-.opt b { color: var(--strong); font-size: 1.02rem; }
-.opt small { color: var(--muted); font-size: .9rem; }
-.opt[aria-checked="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.addr-detail { margin-top: 16px; display: flex; flex-direction: column; gap: 14px; }
-.addr-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.addr-row .field { width: auto; flex: 1 1 160px; max-width: 280px; }
-.addr-row .suffix { font: 500 1rem var(--font-mono); color: var(--strong); overflow-wrap: anywhere; }
-.addr-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 18px; }
-.hint { color: var(--muted); font-size: .92rem; }
-.hint.bad { color: var(--bad); }
-.records { margin-top: 14px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: 12px 14px; background: var(--surface); }
-.records table { width: 100%; border-collapse: collapse; font: 500 .9rem var(--font-mono); }
-.records td, .records th { text-align: left; padding: 4px 8px 4px 0; overflow-wrap: anywhere; }
-.records th { color: var(--muted); font-weight: 600; }
-.live { border: 1px solid var(--ok); border-radius: var(--radius); padding: 18px; background: var(--surface); display: flex; flex-direction: column; gap: 10px; }
-.live .addr { font: 600 1.5rem var(--font-mono); color: var(--strong); overflow-wrap: anywhere; }
-.btn[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+/* ---------- Logged-out demo (/demo), ported from console.css ---------- */
+.tag { display: inline-block; font: 600 .78rem/1 var(--font-sans); padding: .28rem .55rem; border-radius: 6px; background: color-mix(in srgb, var(--warm) 55%, transparent); color: var(--charcoal); vertical-align: middle; }
+:root[data-theme="dark"] .tag { background: color-mix(in srgb, var(--warm) 18%, transparent); color: var(--warm); }
+.ribbon { background: #f0efc4; color: #3a3a12; border-bottom: 1px solid var(--line); font-size: .95rem; }
+:root[data-theme="dark"] .ribbon { background: #262a1a; color: var(--warm); }
+.ribbon-in { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 8px; padding-bottom: 8px; }
+.ribbon a { color: inherit; font-weight: 600; }
+.ribbon button { background: none; border: 0; color: inherit; font: 600 .9rem var(--font-sans); text-decoration: underline; cursor: pointer; padding: .25rem; }
+.demo-edge { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; margin: 16px 0 0; padding: 12px 14px; border: 1px dashed var(--line-strong); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--muted); font-size: .95rem; }
+.demo-edge span { max-width: 56ch; }
+.cta-band { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin: 24px 0 72px; padding: 28px 32px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); }
+.cta-band h2 { font-size: 1.5rem; }
+.cta-band p { margin-top: 6px; max-width: 54ch; color: var(--muted); }
+.cta-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.soon-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-top: 12px; }
+.soon-list > div { padding: 14px 16px; border: 1px dashed var(--line-strong); border-radius: var(--radius-sm); }
+.soon-list p { margin-top: 4px; color: var(--muted); font-size: .95rem; }
+@media (max-width: 720px) { .ribbon-in { align-items: flex-start; } .cta-band { padding: 20px; } }
+.mono { font-family: var(--font-mono); }
+.facts { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: .95rem; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; color: var(--strong); font-weight: 600; }

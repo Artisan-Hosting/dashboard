@@ -29,12 +29,9 @@ export function BuyDomain({
   canBuy,
   elevated,
   onChanged,
-  forApp,
 }: {
   orgId: string;
   canBuy: boolean;
-  /** The app this domain is being bought for. The server attaches it when the domain is ready. */
-  forApp?: string;
   elevated: ReturnType<typeof useElevatedSession>;
   onChanged: () => void;
 }) {
@@ -216,7 +213,7 @@ export function BuyDomain({
               cta="Continue to payment"
               elevated={elevated}
               begin={async (token) => {
-                const checkout = await createDomainOrder({ quoteId: quote.quote_id, elevatedToken: token, organizationId: orgId || undefined, runnerId: forApp || undefined });
+                const checkout = await createDomainOrder({ quoteId: quote.quote_id, elevatedToken: token, organizationId: orgId || undefined });
                 orderId.current = checkout.order?.id ?? null;
                 if (checkout.order) setOrder(checkout.order);
                 if (!checkout.stripe_client_secret) {
