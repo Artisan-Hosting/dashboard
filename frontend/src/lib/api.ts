@@ -576,7 +576,7 @@ export async function updateDnsRecord(domainId: string, recordId: string, body: 
 }
 
 export async function deleteDnsRecord(domainId: string, recordId: string, elevatedToken: string): Promise<void> {
-  const res = await deleteWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/dns-records/${encodeURIComponent(recordId)}`, { elevated_token: elevatedToken });
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/dns-records/${encodeURIComponent(recordId)}/delete`, { elevated_token: elevatedToken });
   if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
     throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to delete DNS record');
   }
@@ -671,9 +671,9 @@ export async function inviteDomainMember(domainId: string, email: string, role?:
   return res.data as DomainMember;
 }
 
-export async function removeDomainMember(domainId: string, email: string, elevatedToken?: string): Promise<void> {
-  const res = await deleteWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/members`, {
-    elevated_token: elevatedToken,
+export async function removeDomainMember(domainId: string, email: string): Promise<void> {
+  const res = await postWithAuth(`proxy/domains/${encodeURIComponent(domainId)}/members/remove`, {
+    email,
   });
   if (!res.data && (res.status !== 'success' && res.status !== 'ok')) {
     throw new Error((res.errors ?? []).map((e: any) => e.message).join('; ') || 'Failed to remove domain member');
