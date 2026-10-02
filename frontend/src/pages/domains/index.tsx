@@ -629,7 +629,7 @@ function MembersSection({ domain }: { domain: DomainEntry }) {
   const handleRemove = async (email: string) => {
     setRemoving(email);
     try {
-      await removeDomainMember(domain.id, email, elevated.token ?? '');
+      await removeDomainMember(domain.id, email);
       toast.success(`Removed ${email}`);
       loadMembers();
     } catch (err) {
