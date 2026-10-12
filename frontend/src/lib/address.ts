@@ -118,6 +118,14 @@ export const addReserved = (rule: {
 export const removeReserved = (id: number) =>
   call<{ removed: boolean }>(() => postWithAuth('proxy/domains/reserved/remove', { id }), 'Could not remove that rule');
 
+// Super only. `<service>-<12 hex of the organization id>.<free zone>`; same organization, same host.
+export const provisionServiceHost = (body: { service: string; organization_id: string; project_id: string }) =>
+  call<{ fqdn: string; notes: string[] }>(() => postWithAuth('proxy/domains/shared/provision', body), 'Could not provision that host');
+
+// Super only. Wildcard DNS to the edge plus the catch-all vhost; safe to repeat.
+export const parkSharedZone = (dry_run: boolean) =>
+  call<{ notes: string[] }>(() => postWithAuth('proxy/domains/shared/park', { dry_run }), 'Could not park the zone');
+
 /** Human words for a reservation, e.g. `c` + 8 digits 0 to 99999999 -> "c00000000 to c99999999". */
 export function describeRule(r: ReservedRule): string {
   if (r.kind === 'exact') return r.prefix;
