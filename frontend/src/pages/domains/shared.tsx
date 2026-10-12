@@ -4,12 +4,13 @@ import { TopBar } from '@/components/topbar';
 import { isSuperRole } from '@/components/requireAdmin';
 import LoadingOverlay from '@/components/loading';
 import { useUser } from '@/hooks/useUser';
+import { useElevatedSession } from '@/hooks/useElevatedSession';
 import { handleLogout, handleLogoutAll } from '@/lib/logout';
 import { fetchDomains, fetchWithAuth } from '@/lib/api';
 import { listReserved, provisionServiceHost, parkSharedZone } from '@/lib/address';
 import { DomainEntry } from '@/lib/types';
 import { Button, Field, Pill, SelectField, Tabs, TabPanel } from '@/components/ui';
-import { DnsRecordsSection, CertificateSection, VhostEditorSection } from '@/components/domains/DomainSections';
+import { DnsRecordsSection, CertificateSection, VhostEditorSection, ElevatedBar } from '@/components/domains/DomainSections';
 
 interface Organization {
   id: string;
@@ -113,6 +114,7 @@ function ParkDialog({ onClose }: { onClose: () => void }) {
 export default function SharedDomainPage() {
   const { role } = useUser();
   const isSuper = isSuperRole(role);
+  const elevated = useElevatedSession();
 
   const [zone, setZone] = useState('');
   const [zoneDomain, setZoneDomain] = useState<DomainEntry | null>(null);
@@ -177,6 +179,7 @@ export default function SharedDomainPage() {
             {loading && <LoadingOverlay />}
             {error && <p className="note bad">{error}</p>}
             {!error && !zone && !loading && <p className="note bad">free_zone.zone is not set on the domain service.</p>}
+            <ElevatedBar elevated={elevated} />
             <Tabs
               tabs={[
                 { key: 'hosts', label: 'Hosts' },
@@ -218,13 +221,13 @@ export default function SharedDomainPage() {
                 </div>
               </TabPanel>
               <TabPanel tabKey="dns" active={tab}>
-                {zoneDomain ? <DnsRecordsSection domain={zoneDomain} /> : <ZoneMissing zone={zone} />}
+                {zoneDomain ? <DnsRecordsSection domain={zoneDomain} elevated={elevated} /> : <ZoneMissing zone={zone} />}
               </TabPanel>
               <TabPanel tabKey="certs" active={tab}>
-                {zoneDomain ? <CertificateSection domain={zoneDomain} /> : <ZoneMissing zone={zone} />}
+                {zoneDomain ? <CertificateSection domain={zoneDomain} elevated={elevated} /> : <ZoneMissing zone={zone} />}
               </TabPanel>
               <TabPanel tabKey="vhost" active={tab}>
-                {zoneDomain ? <VhostEditorSection domain={zoneDomain} /> : <ZoneMissing zone={zone} />}
+                {zoneDomain ? <VhostEditorSection domain={zoneDomain} elevated={elevated} /> : <ZoneMissing zone={zone} />}
               </TabPanel>
             </Tabs>
           </div>
