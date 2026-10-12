@@ -1,6 +1,35 @@
 import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { useElevatedSession } from '@/hooks/useElevatedSession';
+
+export type Elevated = ReturnType<typeof useElevatedSession>;
+
+// The unlock form: the sections below need the session this one opens, so it is passed in, never re-created.
+export function ElevatedBar({ elevated }: { elevated: Elevated }) {
+  return (
+    <div className="card p-4 space-y-2">
+      {elevated.isElevated ? (
+        <p className="text-sm" style={{ color: 'var(--ok)' }}>Unlocked -- expires in {elevated.secondsLeft}s.</p>
+      ) : (
+        <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+          <Field
+            sans
+            type="password"
+            placeholder="Re-enter your password to unlock write actions"
+            value={elevated.password}
+            onChange={(e) => elevated.setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && elevated.elevate()}
+            className="w-full sm:w-96"
+          />
+          <Button onClick={elevated.elevate} disabled={elevated.busy || !elevated.password}>
+            {elevated.busy ? 'Checking...' : 'Unlock'}
+          </Button>
+        </div>
+      )}
+      {elevated.error && <p className="note bad">{elevated.error}</p>}
+    </div>
+  );
+}
 import {
   listDnsRecords,
   createDnsRecord,
@@ -23,7 +52,7 @@ import {
 } from '@/lib/types';
 import { Button, Field, Pill } from '@/components/ui';
 
-export function DnsRecordsSection({ domain }: { domain: DomainEntry }) {
+export function DnsRecordsSection({ domain, elevated }: { domain: DomainEntry; elevated: Elevated }) {
   const [records, setRecords] = useState<DnsRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,8 +95,11 @@ export function DnsRecordsSection({ domain }: { domain: DomainEntry }) {
     }
   };
 
-  const elevated = useElevatedSession();
   const handleDelete = async (recordId: string) => {
+    if (!elevated.isElevated) {
+      toast.error('Unlock an elevated session first (password box above).');
+      return;
+    }
     try {
       await deleteDnsRecord(domain.id, recordId, elevated.token ?? '');
       toast.success('Record deleted');
@@ -191,7 +223,7 @@ export function DnsRecordsSection({ domain }: { domain: DomainEntry }) {
   );
 }
 
-export function CertificateSection({ domain }: { domain: DomainEntry }) {
+export function CertificateSection({ domain, elevated }: { domain: DomainEntry; elevated: Elevated }) {
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -199,7 +231,6 @@ export function CertificateSection({ domain }: { domain: DomainEntry }) {
   const [daysToExpiry, setDaysToExpiry] = useState(30);
   const [renewing, setRenewing] = useState<string | null>(null);
   const [keyType, setKeyType] = useState<'ecc' | 'rsa'>('ecc');
-  const elevated = useElevatedSession();
 
   const loadCerts = useCallback(async () => {
     setLoading(true);
@@ -308,7 +339,7 @@ export function CertificateSection({ domain }: { domain: DomainEntry }) {
   );
 }
 
-export function VhostEditorSection({ domain }: { domain: DomainEntry }) {
+export function VhostEditorSection({ domain, elevated }: { domain: DomainEntry; elevated: Elevated }) {
   const [vhostContent, setVhostContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -362,7 +393,6 @@ export function VhostEditorSection({ domain }: { domain: DomainEntry }) {
     }
   };
 
-  const elevated = useElevatedSession();
   const handleApply = async () => {
     if (!vhostContent) {
       toast.error('Vhost content is empty');

@@ -853,10 +853,10 @@ export default function DomainsPage() {
                    onChange={setActiveTab}
                  >
                   <TabPanel tabKey="dns" active={activeTab}>
-                    <DnsRecordsSection domain={selectedDomain} />
+                    <DnsRecordsSection domain={selectedDomain} elevated={elevated} />
                   </TabPanel>
                   <TabPanel tabKey="certs" active={activeTab}>
-                    <CertificateSection domain={selectedDomain} />
+                    <CertificateSection domain={selectedDomain} elevated={elevated} />
                   </TabPanel>
                   <TabPanel tabKey="orders" active={activeTab}>
                     <OrdersSection domain={selectedDomain} />
@@ -865,7 +865,7 @@ export default function DomainsPage() {
                     <MembersSection domain={selectedDomain} />
                   </TabPanel>
                   <TabPanel tabKey="vhost" active={activeTab}>
-                    <VhostEditorSection domain={selectedDomain} />
+                    <VhostEditorSection domain={selectedDomain} elevated={elevated} />
                   </TabPanel>
                 </Tabs>
               </div>
